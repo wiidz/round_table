@@ -82,6 +82,7 @@ func (e *Engine) Run(ctx context.Context, meetingID string) (meeting.State, erro
 	if s.Status == meeting.StatusCompleted || s.Status == meeting.StatusArchived {
 		return s, nil
 	}
+	e.logf("▶ engine run started status=%s meeting=%s", s.Status, meetingID)
 
 	for {
 		if err := ctx.Err(); err != nil {

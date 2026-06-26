@@ -37,6 +37,7 @@ func (e *Engine) advanceConfirmation(ctx context.Context, s meeting.State) (meet
 		return s, errNoConfirmationBrief
 	}
 
+	e.logf("… waiting for principal decision cycle=%d", s.Confirmation.Cycle)
 	resp, err := e.Principal.Confirm(ctx, s.ID, s.Confirmation.Brief, s.Confirmation.Cycle)
 	if err != nil {
 		return s, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,7 +41,15 @@ func (e *Engine) inviteSpeak(ctx context.Context, s meeting.State, participantID
 	} else {
 		prompt = e.buildPrompt(s, participantID)
 	}
+	phase := PhaseDebate
+	if s.CurrentRound == 0 {
+		phase = PhasePreMeeting
+	}
+	phaseLabel := strings.TrimPrefix(phase, "Phase: ")
+	e.logLLMWaiting(phaseLabel, participantID, "turn="+debateTurnLabel(s, participantID)+" round="+strconv.Itoa(s.CurrentRound))
+	start := time.Now()
 	resp, err := e.Participant.Respond(ctx, s.ID, participantID, prompt)
+	elapsed := time.Since(start)
 	if err != nil {
 		return s, err
 	}
@@ -50,10 +59,7 @@ func (e *Engine) inviteSpeak(ctx context.Context, s meeting.State, participantID
 	} else if stance == "" {
 		stance = event.StanceAgree
 	}
-	phase := PhaseDebate
-	if s.CurrentRound == 0 {
-		phase = PhasePreMeeting
-	}
+	e.logLLMDone(phaseLabel, participantID, string(stance), resp, elapsed)
 	return e.append(ctx, s, eventParticipantResponded(
 		participantID, s.CurrentRound, resp.Content, stance, resp.ObjectReason,
 		tokenUsageFromResponse(phase, participantID, s.CurrentRound, 0, resp),
@@ -168,6 +174,7 @@ func (e *Engine) append(ctx context.Context, s meeting.State, env event.Envelope
 	if err := e.project(ctx, next, env); err != nil {
 		return s, err
 	}
+	e.logProgress(env, next)
 	return next, nil
 }
 

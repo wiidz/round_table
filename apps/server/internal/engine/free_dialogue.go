@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"round_table/apps/server/internal/domain/consensus"
 	"round_table/apps/server/internal/domain/meeting"
@@ -30,10 +31,15 @@ func (e *Engine) advanceFreeDialogue(ctx context.Context, s meeting.State) (meet
 func (e *Engine) inviteFreeDialogueAsk(ctx context.Context, s meeting.State) (meeting.State, error) {
 	askerID, answererID := freeDialoguePair(s)
 	prompt := e.buildFreeDialogueAskPrompt(s, askerID, answererID)
+	detail := freeDialogueTurnLabel(s) + " ask " + askerID + "→" + answererID
+	e.logLLMWaiting("free-dialogue-ask", askerID, detail)
+	start := time.Now()
 	resp, err := e.Participant.Respond(ctx, s.ID, askerID, prompt)
+	elapsed := time.Since(start)
 	if err != nil {
 		return s, err
 	}
+	e.logLLMDone("free-dialogue-ask", askerID, "none", resp, elapsed)
 	return e.append(ctx, s, eventFreeDialogueQuestionAsked(
 		askerID, answererID, s.FreeDialogueQuestionIndex, resp.Content,
 		tokenUsageFromResponse(PhaseFreeDialogueAsk, askerID, 1, s.FreeDialogueQuestionIndex, resp),
@@ -43,10 +49,15 @@ func (e *Engine) inviteFreeDialogueAsk(ctx context.Context, s meeting.State) (me
 func (e *Engine) inviteFreeDialogueAnswer(ctx context.Context, s meeting.State) (meeting.State, error) {
 	pending := s.PendingFreeDialogue
 	prompt := e.buildFreeDialogueAnswerPrompt(s, pending.AnswererID, pending.Question)
+	detail := freeDialogueTurnLabel(s) + " answer for " + pending.AskerID
+	e.logLLMWaiting("free-dialogue-answer", pending.AnswererID, detail)
+	start := time.Now()
 	resp, err := e.Participant.Respond(ctx, s.ID, pending.AnswererID, prompt)
+	elapsed := time.Since(start)
 	if err != nil {
 		return s, err
 	}
+	e.logLLMDone("free-dialogue-answer", pending.AnswererID, "none", resp, elapsed)
 	return e.append(ctx, s, eventFreeDialogueAnswered(
 		pending.AskerID, pending.AnswererID, pending.QuestionIndex,
 		pending.Question, resp.Content,
@@ -64,6 +75,7 @@ func (e *Engine) completeFreeDialogue(ctx context.Context, s meeting.State) (mee
 }
 
 func (e *Engine) continueAfterDebateRound(ctx context.Context, s meeting.State) (meeting.State, error) {
+	e.logf("◇ consensus check after round %d", s.CurrentRound)
 	result, err := e.Strategy.Evaluate(consensus.Context{Meeting: s})
 	if err != nil {
 		return s, err
@@ -73,9 +85,11 @@ func (e *Engine) continueAfterDebateRound(ctx context.Context, s meeting.State) 
 	}
 
 	if s.CurrentRound >= s.MaxRoundsPerSegment {
+		e.logf("◇ max debate rounds reached (%d) — moderator decision", s.MaxRoundsPerSegment)
 		return e.append(ctx, s, eventModeratorDecision(s.ConsensusStrategy))
 	}
 
+	e.logf("◆ generating moderator summary for round %d", s.CurrentRound)
 	modSummary := moderatorSummarizeRound(s)
 	s, err = e.append(ctx, s, eventModeratorSummarized(s.CurrentRound, modSummary))
 	if err != nil {

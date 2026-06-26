@@ -35,7 +35,7 @@ func NewEngine(cfg config.Config) (*engine.Engine, error) {
 		ModelName: cfg.Model.DefaultModel,
 	}
 
-	return engine.New(
+	eng := engine.New(
 		memory.New(),
 		consensus.NoObjection{},
 		parts,
@@ -43,7 +43,9 @@ func NewEngine(cfg config.Config) (*engine.Engine, error) {
 		ws,
 		prof,
 		know,
-	), nil
+	)
+	eng.Progress = engine.StdProgressLogger{}
+	return eng, nil
 }
 
 func resolveAPIKey(cfg config.Config) (string, error) {

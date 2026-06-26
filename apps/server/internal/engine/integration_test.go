@@ -230,7 +230,7 @@ func newTestEngine(t *testing.T, dataRoot string, parts *stub.Participant, prin 
 	if prin == nil {
 		prin = &prinstub.Principal{}
 	}
-	return engine.New(
+	eng := engine.New(
 		memory.New(),
 		consensus.NoObjection{},
 		parts,
@@ -239,6 +239,8 @@ func newTestEngine(t *testing.T, dataRoot string, parts *stub.Participant, prin 
 		profilefs.NewStore(filepath.Join(dataRoot, "profiles"), filepath.Join(templates, "profiles")),
 		fs.NewStore(filepath.Join(dataRoot, "knowledge"), filepath.Join(templates, "knowledge")),
 	)
+	eng.Progress = engine.DiscardProgressLogger{}
+	return eng
 }
 
 func repoRoot(t *testing.T) string {

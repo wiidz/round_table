@@ -19,6 +19,7 @@ type Engine struct {
 	Workspace   workspace.Port
 	Profile     profile.Port
 	Knowledge   knowledge.Port
+	Progress    ProgressLogger
 }
 
 // New returns an Engine with required dependencies.
