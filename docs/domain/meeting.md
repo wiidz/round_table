@@ -58,7 +58,7 @@ Consensus → Confirmation? → Completed
 | 模式 | 说明 | 终止 |
 |------|------|------|
 | `decision` | 是否批准类议题，`agree/object` + Consensus | No Objection 或 Moderator 兜底 |
-| `deliberation` | 方案共建，各角色贡献设计点 | Moderator 合成就绪检测或达 `max_rounds` → `artifacts/design-draft.md` |
+| `deliberation` | 方案共建，各角色贡献设计点 | Moderator 合成就绪检测或达 `max_rounds` → 按 Agenda 分节合成 `artifacts/design-draft.md`（无 Agenda 时扁平结构） |
 
 创建时：`MeetingCreated.meeting_mode`；CLI：`meet -mode deliberation`。
 

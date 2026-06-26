@@ -100,6 +100,13 @@ func (e *Engine) buildDeliberationPrompt(s meeting.State, participantID string) 
 		s.Topic, PhaseDeliberation, s.CurrentRound, participantID, s.Participants[participantID].Role)
 	b.WriteString("\nThis is a **deliberation** meeting — contribute design ideas, constraints, and trade-offs from your role.\n")
 	b.WriteString("Do NOT vote approve/reject; focus on building a shared scheme.\n")
+	if len(s.Agenda) > 0 {
+		b.WriteString("\nAgenda items (contribute to relevant items from your role):\n")
+		for _, item := range s.Agenda {
+			fmt.Fprintf(&b, "- %s\n", item.Title)
+		}
+		b.WriteByte('\n')
+	}
 	if s.PrincipalFeedback != "" {
 		fmt.Fprintf(&b, "\nPrincipal feedback (address this round):\n%s\n", s.PrincipalFeedback)
 	}

@@ -150,7 +150,24 @@ completeDeliberation
 - [x] `meet -mode deliberation` + `game-class-design` 场景模板
 - [x] `SynthesisCompleted` 携带 `TokenUsage`
 - [x] v0.2：合成就绪检测（`DeliberationReadinessChecked`、`min_rounds_before_synthesis`）
-- [ ] v0.2：Agenda 子项驱动合成结构
+- [x] v0.2：Agenda 子项驱动合成结构
+
+---
+
+## v0.2 补充：Agenda 子项驱动合成（已实现）
+
+当 `MeetingCreated.agenda[]` 非空时：
+
+| 层级 | 行为 |
+|------|------|
+| **合成 prompt** | 列出 agenda_id + Title；要求 LLM 按子项输出 |
+| **LLM JSON** | `sections[{agenda_id, summary, decisions, open_questions}]` + `cross_cutting` |
+| **design-draft** | Executive Summary 按 Agenda 分节（替代单一「核心方案」） |
+| **readiness** | 判定 gaps 时参考各 agenda 覆盖度 |
+| **无 Agenda** | 保持 v0.1.1 扁平 `core_scheme` 路径（向后兼容） |
+| **规则 fallback** | 仍用扁平结构（无 LLM 时不强行拆 agenda） |
+
+CLI：`-agenda "id:Title,id2:Title2"`；`make meet-game-class` 带默认四议程。
 
 ---
 

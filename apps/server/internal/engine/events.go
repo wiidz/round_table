@@ -7,15 +7,27 @@ import (
 	"round_table/apps/server/internal/domain/event"
 )
 
-func eventMeetingCreated(topic, goal, meetingMode, confirmationMode string, maxRounds, minRoundsBeforeSynthesis, freeDialogueMaxQuestions int) event.Envelope {
-	q := freeDialogueMaxQuestions
-	minRounds := minRoundsBeforeSynthesis
+type meetingCreatedParams struct {
+	Topic                    string
+	Goal                     string
+	MeetingMode              string
+	ConfirmationMode         string
+	MaxRoundsPerSegment      int
+	MinRoundsBeforeSynthesis int
+	FreeDialogueMaxQuestions int
+	Agenda                   []event.AgendaItem
+}
+
+func eventMeetingCreated(p meetingCreatedParams) event.Envelope {
+	q := p.FreeDialogueMaxQuestions
+	minRounds := p.MinRoundsBeforeSynthesis
 	payload, _ := json.Marshal(event.MeetingCreatedPayload{
-		Topic:                    topic,
-		Goal:                     goal,
-		MeetingMode:              meetingMode,
-		ConfirmationMode:         confirmationMode,
-		MaxRoundsPerSegment:      maxRounds,
+		Topic:                    p.Topic,
+		Goal:                     p.Goal,
+		MeetingMode:              p.MeetingMode,
+		Agenda:                   p.Agenda,
+		ConfirmationMode:         p.ConfirmationMode,
+		MaxRoundsPerSegment:      p.MaxRoundsPerSegment,
 		MinRoundsBeforeSynthesis: &minRounds,
 		FreeDialogueMaxQuestions: &q,
 	})

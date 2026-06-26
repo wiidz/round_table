@@ -27,6 +27,7 @@ go run ./apps/server/cmd/meet/main.go \
   -mode deliberation \
   -topic "设计新职业「影舞者」的核心技能与定位" \
   -max-rounds 2 \
+  -agenda "skills:核心技能与资源机制,positioning:职业定位与差异化,monetization:商业化与活动联动,engineering:工程实现与平衡约束" \
   -max-free-dialogue-questions 1 \
   -participants "designer:游戏策划:gameplay,ops:运营:monetization,player:玩家代表:experience,tech_lead:主程:engineering"
 ```
@@ -34,7 +35,7 @@ go run ./apps/server/cmd/meet/main.go \
 ## 成功标准
 
 - 日志：`synthesis: resolved_by=readiness|synthesis|max_rounds`
-- `artifacts/design-draft.md` 含各轮贡献汇总
+- `artifacts/design-draft.md` Executive Summary **按 Agenda 分节**
 - 辩论轮发言 `stance=none`（无 agree/object 投票）
 - `MEETING.md` 显示会议模式为「研讨型」
 

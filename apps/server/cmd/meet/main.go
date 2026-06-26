@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
 	"round_table/apps/server/internal/engine"
 	"round_table/apps/server/internal/platform/bootstrap"
@@ -25,6 +26,7 @@ func main() {
 	maxRounds := flag.Int("max-rounds", 0, "max debate rounds per segment, excluding pre-meeting round 0 (0 = server.yaml default)")
 	minRoundsBeforeSynthesis := flag.Int("min-rounds-before-synthesis", 0, "earliest debate round to allow early synthesis in deliberation mode (0 = server.yaml default)")
 	maxFreeQuestions := flag.Int("max-free-dialogue-questions", -1, "questions per participant in free dialogue after Round 1 (-1=server.yaml default, 0=disable)")
+	agenda := flag.String("agenda", "", "deliberation agenda items: id:Title,id2:Title2 (optional)")
 	flag.Parse()
 
 	if *topic == "" {
@@ -48,8 +50,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("participants: %v", err)
 	}
+	agendaItems, err := parseAgenda(*agenda)
+	if err != nil {
+		log.Fatalf("agenda: %v", err)
+	}
 	for _, p := range parts {
 		log.Printf("participant: %s (%s)", p.ID, p.Role)
+	}
+	for _, item := range agendaItems {
+		log.Printf("agenda: %s (%s)", item.ID, item.Title)
 	}
 
 	rounds := *maxRounds
@@ -86,13 +95,14 @@ func main() {
 		MaxRoundsPerSegment:      rounds,
 		MinRoundsBeforeSynthesis: &minQ,
 		FreeDialogueMaxQuestions: &freeQ,
+		Agenda:                   agendaItems,
 		Participants:             parts,
 	}); err != nil {
 		log.Fatalf("CreateMeeting: %v", err)
 	}
 
-	log.Printf("running meeting (model=%s, mode=%s, max_debate_rounds=%d, min_rounds_before_synthesis=%d, free_dialogue_questions=%d, pre-meeting=round 0)...",
-		cfg.Model.DefaultModel, *meetingMode, rounds, minRounds, freeQuestions)
+	log.Printf("running meeting (model=%s, mode=%s, max_debate_rounds=%d, min_rounds_before_synthesis=%d, agenda_items=%d, free_dialogue_questions=%d, pre-meeting=round 0)...",
+		cfg.Model.DefaultModel, *meetingMode, rounds, minRounds, len(agendaItems), freeQuestions)
 	final, err := eng.Run(ctx, id)
 	if err != nil {
 		log.Fatalf("Run: %v", err)
@@ -155,4 +165,39 @@ func parseParticipantItem(item string) (engine.ParticipantInput, error) {
 		Role:      rest[:last],
 		Expertise: rest[last+1:],
 	}, nil
+}
+
+func parseAgenda(raw string) ([]event.AgendaItem, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	var out []event.AgendaItem
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		colon := strings.Index(item, ":")
+		if colon <= 0 {
+			return nil, fmt.Errorf("invalid agenda item %q, want id:Title", item)
+		}
+		id := strings.TrimSpace(item[:colon])
+		title := strings.TrimSpace(item[colon+1:])
+		if id == "" || title == "" {
+			return nil, fmt.Errorf("invalid agenda item %q, want id:Title", item)
+		}
+		out = append(out, event.AgendaItem{ID: id, Title: title})
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("agenda must contain at least one item when -agenda is set")
+	}
+	seen := make(map[string]bool)
+	for _, item := range out {
+		if seen[item.ID] {
+			return nil, fmt.Errorf("duplicate agenda id %q", item.ID)
+		}
+		seen[item.ID] = true
+	}
+	return out, nil
 }

@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 
+	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
 )
 
@@ -25,6 +26,7 @@ type CreateMeetingInput struct {
 	MaxRoundsPerSegment        int
 	MinRoundsBeforeSynthesis   *int // nil = default (2)
 	FreeDialogueMaxQuestions   *int // nil = default (1); explicit 0 disables
+	Agenda                     []event.AgendaItem
 	Participants             []ParticipantInput
 }
 
@@ -71,7 +73,16 @@ func (e *Engine) CreateMeeting(ctx context.Context, in CreateMeetingInput) (meet
 		meetMode = meeting.MeetingModeDecision
 	}
 
-	s, err := e.append(ctx, meeting.NewState(in.MeetingID), eventMeetingCreated(in.Topic, in.Goal, meetMode, confMode, in.MaxRoundsPerSegment, minRoundsBeforeSynthesis, freeQuestions))
+	s, err := e.append(ctx, meeting.NewState(in.MeetingID), eventMeetingCreated(meetingCreatedParams{
+		Topic:                    in.Topic,
+		Goal:                     in.Goal,
+		MeetingMode:              meetMode,
+		ConfirmationMode:         confMode,
+		MaxRoundsPerSegment:      in.MaxRoundsPerSegment,
+		MinRoundsBeforeSynthesis: minRoundsBeforeSynthesis,
+		FreeDialogueMaxQuestions: freeQuestions,
+		Agenda:                   in.Agenda,
+	}))
 	if err != nil {
 		return s, err
 	}

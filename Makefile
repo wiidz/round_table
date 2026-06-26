@@ -48,6 +48,7 @@ seed-scenario-game-class:
 ## meet-game-class: game class deliberation scenario (see data/_templates/scenarios/game-class-design/README.md)
 meet-game-class: seed-scenario-game-class
 	go run $(MEET_CMD)/main.go -mode deliberation -topic "$(TOPIC_GAME_CLASS)" -max-rounds 2 \
+		-agenda "skills:核心技能与资源机制,positioning:职业定位与差异化,monetization:商业化与活动联动,engineering:工程实现与平衡约束" \
 		-participants "designer:游戏策划:gameplay,ops:运营:monetization,player:玩家代表:experience,tech_lead:主程:engineering"
 
 ## build: compile for the current OS

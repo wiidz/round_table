@@ -41,9 +41,14 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 	}
 
 	prompt := buildDeliberationSynthesisPrompt(s)
-	system, err := e.buildModeratorSynthesisSystem()
+	system, err := e.buildModeratorSynthesisSystem(s)
 	if err != nil {
 		return "", nil, nil, err
+	}
+
+	schema := synthesisSchema
+	if hasAgendaForSynthesis(s) {
+		schema = buildAgendaSynthesisSchema(s.Agenda)
 	}
 
 	phaseLabel := strings.TrimPrefix(PhaseDeliberationSynthesis, "Phase: ")
@@ -59,7 +64,7 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 		Model: modelName,
 		Messages: []model.Message{
 			{Role: "system", Content: system},
-			{Role: "user", Content: prompt + "\n\n" + synthesisSchema},
+			{Role: "user", Content: prompt + "\n\n" + schema},
 		},
 		Temperature: 0.3,
 		OnDelta:     onDelta,
@@ -73,6 +78,18 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 		onEnd()
 	}
 	e.logf("◆ LLM synthesis done in %s", time.Since(start).Round(time.Millisecond))
+
+	if hasAgendaForSynthesis(s) {
+		agendaOut, agendaErr := parseAgendaSynthesisOutput(raw.Content, s.Agenda)
+		if agendaErr == nil {
+			summary, openQuestions = assembleDesignDraftFromAgenda(s, agendaOut)
+			usage = tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage)
+			return summary, openQuestions, usage, nil
+		}
+		e.logf("◆ LLM agenda synthesis parse failed (%v) — falling back to rule-based", agendaErr)
+		summary, openQuestions = moderatorSynthesizeFinal(s)
+		return summary, openQuestions, tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage), nil
+	}
 
 	out, parseErr := parseSynthesisOutput(raw.Content)
 	if parseErr != nil {
@@ -94,15 +111,24 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 	return summary, openQuestions, usage, nil
 }
 
-func (e *Engine) buildModeratorSynthesisSystem() (string, error) {
+func (e *Engine) buildModeratorSynthesisSystem(s meeting.State) (string, error) {
 	var b strings.Builder
 	b.WriteString("You are the RoundTable Moderator synthesizing a deliberation meeting into a design draft.\n")
 	b.WriteString("Output JSON only. Write content in Chinese (简体中文).\n\n")
-	b.WriteString("Rules:\n")
-	b.WriteString("- core_scheme: design snapshot — what the final scheme looks like (structure, resources, mechanics).\n")
-	b.WriteString("- decisions: incremental agreements from the record that are NOT already in core_scheme. May be empty.\n")
+	if hasAgendaForSynthesis(s) {
+		b.WriteString("Rules (agenda-structured output):\n")
+		b.WriteString("- Emit one sections[] entry per agenda_id listed in the prompt; do not skip or invent ids.\n")
+		b.WriteString("- summary: design snapshot for that agenda item only.\n")
+		b.WriteString("- decisions: incremental agreements for that item NOT already in summary. May be [].\n")
+		b.WriteString("- open_questions: unresolved items for that agenda item.\n")
+		b.WriteString("- cross_cutting: only for agreements/questions spanning multiple agenda items.\n")
+	} else {
+		b.WriteString("Rules:\n")
+		b.WriteString("- core_scheme: design snapshot — what the final scheme looks like (structure, resources, mechanics).\n")
+		b.WriteString("- decisions: incremental agreements from the record that are NOT already in core_scheme. May be empty.\n")
+	}
 	b.WriteString("- decisions: exclude items with 留待讨论/待确认/未表态 (move those to open_questions).\n")
-	b.WriteString("- open_questions: unresolved, disputed, or needs-confirmation items; move tentative decisions here.\n")
+	b.WriteString("- open_questions: unresolved, disputed, or needs-confirmation items.\n")
 	b.WriteString("- Do not invent facts absent from the meeting record.\n\n")
 	if e.Profile != nil {
 		if data, err := e.Profile.ReadModerator(profile.FileAgents); err == nil {
@@ -122,6 +148,7 @@ func buildDeliberationSynthesisPrompt(s meeting.State) string {
 		fmt.Fprintf(&b, "Goal: %s\n", s.Goal)
 	}
 	fmt.Fprintf(&b, "Rounds completed: %d\n\n", s.CurrentRound)
+	writeDeliberationAgendaBlock(&b, s)
 
 	if s.PreMeetingSummary != "" {
 		b.WriteString("## Pre-meeting\n\n")
@@ -157,7 +184,11 @@ func buildDeliberationSynthesisPrompt(s meeting.State) string {
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString("Synthesize the design draft executive summary fields from the record above.\n")
+	if len(s.Agenda) > 0 {
+		b.WriteString("Synthesize the design draft using the agenda structure from the record above.\n")
+	} else {
+		b.WriteString("Synthesize the design draft executive summary fields from the record above.\n")
+	}
 	return b.String()
 }
 

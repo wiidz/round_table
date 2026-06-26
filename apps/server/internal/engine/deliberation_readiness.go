@@ -63,7 +63,7 @@ func (e *Engine) assessDeliberationReadiness(ctx context.Context, s meeting.Stat
 	}
 
 	prompt := buildDeliberationReadinessPrompt(s)
-	system, err := e.buildModeratorReadinessSystem()
+	system, err := e.buildModeratorReadinessSystem(s)
 	if err != nil {
 		return deliberationReadinessResult{}, err
 	}
@@ -125,19 +125,26 @@ func (e *Engine) assessDeliberationReadiness(ctx context.Context, s meeting.Stat
 	}, nil
 }
 
-func (e *Engine) buildModeratorReadinessSystem() (string, error) {
+func (e *Engine) buildModeratorReadinessSystem(s meeting.State) (string, error) {
 	var b strings.Builder
 	b.WriteString("You are the RoundTable Moderator judging whether a deliberation meeting has enough material to synthesize a design draft now.\n")
 	b.WriteString("Output JSON only. Write rationale and gaps in Chinese (简体中文).\n\n")
 	b.WriteString("Mark ready=true when:\n")
 	b.WriteString("- Topic/Goal core elements are covered across rounds\n")
+	if len(s.Agenda) > 0 {
+		b.WriteString("- Each agenda item has enough substance to fill its synthesis section (gaps may remain as open_questions)\n")
+	}
 	b.WriteString("- Major conflicts are resolved OR can be captured as open_questions in the draft\n")
 	b.WriteString("- Another debate round would likely add little new substance\n\n")
 	b.WriteString("Mark ready=false when:\n")
 	b.WriteString("- Blocking disagreements remain that would make a draft misleading\n")
 	b.WriteString("- Essential scheme elements for the Topic are still missing\n")
+	if len(s.Agenda) > 0 {
+		b.WriteString("- A whole agenda item is still unaddressed with no tentative direction\n")
+	}
 	b.WriteString("- This round added no substantive new information and gaps remain\n\n")
 	b.WriteString("open_questions may remain in the final draft — do NOT require all issues to be closed.\n")
+	b.WriteString(agendaReadinessSchemaHint(s))
 	if e.Profile != nil {
 		if data, err := e.Profile.ReadModerator(profile.FileAgents); err == nil {
 			b.WriteString("\n--- Moderator AGENTS.md ---\n")
