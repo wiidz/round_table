@@ -13,7 +13,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORKSPACE="${ROUND_TABLE_WORKSPACE:-$REPO_ROOT/data/workspaces}"
 NEXTCLOUD_CONTAINER="${NEXTCLOUD_CONTAINER:-nas-nextcloud-1}"
 NEXTCLOUD_USER="${NEXTCLOUD_USER:-hujiayilu}"
-OCC_PATH="${NEXTCLOUD_USER}/files/round_table_workspace"
+OCC_PATH="${NEXTCLOUD_USER}/files/round_table_workspaces"
 LOCKFILE="/tmp/roundtable-nextcloud-workspace-sync.lock"
 MTIME_CACHE="/tmp/roundtable-nextcloud-workspace-mtime"
 
