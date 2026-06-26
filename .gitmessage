@@ -1,0 +1,55 @@
+<type>(<module>): <一句话描述>
+
+Context
+
+为什么需要这次修改？
+
+当前背景是什么？
+
+Decision
+
+本次做出的设计决策是什么？
+
+为什么选择这种方案？
+
+Implementation
+
+1.
+2.
+3.
+
+Module
+
+server | web | android | ios | docs | infra | repo
+
+（与标题 scope 一致；跨模块改动每行一个）
+
+Affected Components
+
+Meeting
+
+Moderator
+
+Participant
+
+...
+
+（领域组件；纯工程改动无领域影响填 None）
+
+Files
+
+- relative/path/file.go
+  做了什么
+
+- relative/path/file.md
+  做了什么
+
+References
+
+ADR-000X（如有）
+
+Issue #XX（如有）
+
+Breaking Changes
+
+（没有可省略）

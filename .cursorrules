@@ -29,6 +29,19 @@ You are **not** responsible for making architectural decisions.
 
 ---
 
+# Git Commits
+
+When the user asks to **create a commit** (or similar: 提交、commit、写 commit message):
+
+1. **Read `docs/COMMITS.md`** before drafting the message.
+2. Follow the structured format: `type(module): subject` + Context / Decision / Implementation / **Module** / Affected Components / Files / References / Breaking Changes.
+3. **Module** (title scope) = engineering area: `server`, `web`, `android`, `ios`, `docs`, `infra`, `repo` (see `docs/COMMITS.md`). **Affected Components** = domain concepts (Meeting, Moderator, …) or `None`.
+4. Pass the full body via HEREDOC (per user git safety rules).
+
+Do not use a one-line commit message unless the user explicitly requests it.
+
+---
+
 # Technology Stack
 
 ## Backend
@@ -137,3 +150,14 @@ Never make hidden architectural decisions.
 RoundTable is building a **Multi-Agent Meeting Engine**.
 
 Every implementation should move the project closer to that goal.
+
+---
+
+# Key Docs
+
+| Doc | When to read |
+|-----|----------------|
+| docs/CONSTITUTION.md | Architecture, core concepts |
+| docs/NAMING.md | Naming, domain language |
+| docs/COMMITS.md | Creating commits |
+| docs/domain/README.md | Domain model |

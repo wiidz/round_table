@@ -26,6 +26,7 @@ Participant 永远不能抢话。
 什么时候说
 谁回应
 是否结束
+
 Principle 3
 
 Participants own expertise.
@@ -75,3 +76,29 @@ Agenda。
 Minutes。
 
 Consensus。
+
+Confirmation。
+
+Principle 6
+
+Principal owns the decision.
+
+不是：
+
+Moderator 替 Principal 做决定。
+
+也不是：
+
+Participant 直接与 Principal 对话。
+
+而是：
+
+Principal 发起 Meeting。
+
+Principal 审阅 Confirmation。
+
+Principal 批准或驳回最终结论。
+
+Principal 拥有最终决策权。
+
+详见 [principal.md](./domain/principal.md)。

@@ -1,4 +1,4 @@
-# RoundTable Constitution v0.1
+# RoundTable Constitution v0.2
 
 > Build AI Teams, not AI Agents.
 
@@ -14,7 +14,7 @@ It is **NOT** an Agent Runtime.
 
 It is **NOT** a Workflow Engine.
 
-It is a collaborative reasoning platform where multiple AI participants discuss, debate, and reach consensus under the control of a Moderator.
+It is a collaborative reasoning platform where multiple AI participants discuss, debate, and reach consensus under the control of a Moderator, on behalf of a Principal.
 
 The goal is not autonomous execution.
 
@@ -62,13 +62,43 @@ Contains:
 
 * Topic
 * Agenda
+* Principal
 * Moderator
 * Participants
 * Rounds
-* Minutes
 * Consensus
+* Confirmation
+* Minutes
 * Artifacts
 * Action Items
+
+---
+
+## Principal
+
+The Principal is NOT an AI expert.
+
+The Principal is NOT the Moderator.
+
+The Principal is the **decision owner** — the person who initiates the Meeting and accepts or rejects the outcome.
+
+Responsibilities:
+
+* defines Topic and Agenda
+* creates the Meeting
+* reviews Confirmation Brief
+* approves or rejects the final conclusion
+* holds ultimate control (veto, force consensus, pause, abort)
+
+The Principal owns the problem.
+
+The Principal does not provide domain expertise.
+
+One Meeting has exactly one Principal.
+
+In the domain layer and everywhere else in RoundTable, use **Principal** only.
+
+See [principal.md](./domain/principal.md).
 
 ---
 
@@ -87,6 +117,8 @@ Responsibilities:
 * starts and ends rounds
 * assigns participants
 * manages meeting state
+* prepares confirmation brief
+* presents confirmation to the Principal
 
 The Moderator owns orchestration.
 
@@ -113,6 +145,8 @@ Participants never schedule themselves.
 Participants only respond when invited by the Moderator.
 
 Participants never communicate directly.
+
+Participants never communicate directly with the Principal.
 
 All communication passes through the Moderator.
 
@@ -154,6 +188,24 @@ Represents whether sufficient agreement has been reached.
 Consensus is a Meeting property.
 
 Not a Participant property.
+
+---
+
+## Confirmation
+
+The optional gate before a Meeting produces its final conclusion.
+
+After Consensus among Participants, the Moderator prepares a **Confirmation Brief** — numbered items for the Principal to review.
+
+The Principal approves or rejects. Rejection returns the Meeting to discussion.
+
+Confirmation can be skipped via configuration (`confirmation_mode: skip`).
+
+Consensus answers: do the experts agree?
+
+Confirmation answers: does the Principal accept?
+
+See [confirmation.md](./domain/confirmation.md).
 
 ---
 
@@ -207,7 +259,7 @@ RoundTable models discussions rather than conversations.
 
 Discussion drives the architecture.
 
-Chat is only a user interface.
+Chat is only the interface layer.
 
 ---
 
@@ -217,7 +269,7 @@ All communication flows through the Moderator.
 
 Correct:
 
-User
+Principal
 
 ↓
 
@@ -243,6 +295,14 @@ Moderator
 
 Consensus
 
+↓
+
+Confirmation（optional）
+
+↓
+
+Decision
+
 Incorrect:
 
 Participant A
@@ -252,6 +312,14 @@ Participant A
 Participant B
 
 Participants never directly exchange messages.
+
+Participant
+
+↓
+
+Principal
+
+is also forbidden.
 
 ---
 
@@ -348,11 +416,13 @@ scripts/
 
 # Naming Rules
 
-Use domain language.
+Use domain language. Full guide: [NAMING.md](./NAMING.md).
 
 Preferred:
 
 Meeting
+
+Principal
 
 Moderator
 
@@ -363,6 +433,8 @@ Round
 Agenda
 
 Consensus
+
+Confirmation
 
 Minutes
 
@@ -416,6 +488,8 @@ Do not couple the domain to any LLM provider.
 
 Do not allow Participants to communicate directly.
 
+Do not allow Participants to communicate directly with the Principal.
+
 Do not store business logic inside UI.
 
 Do not let infrastructure leak into the domain.
@@ -462,10 +536,14 @@ RoundTable aims to become a reusable Meeting Engine capable of coordinating mult
 
 The Meeting is the product.
 
+The Principal owns the problem.
+
 The Moderator is the orchestrator.
 
 Participants provide expertise.
 
-Consensus produces decisions.
+Consensus produces collective agreement.
+
+Confirmation produces the Principal's decision.
 
 Everything begins with a Meeting.

@@ -1,0 +1,71 @@
+# Meeting
+
+Meeting 是 RoundTable 的**最高层抽象**（聚合根）。所有复杂问题都被建模为一场结构化会议。
+
+> One problem. Many minds. One decision.
+
+---
+
+## 已定义
+
+### 定义
+
+Meeting 表示围绕一个 **Topic** 的完整讨论过程，由 **Principal** 发起，Moderator 调度多个 Participant，通过多轮 Round 推进，最终产出 Consensus、Minutes 与 Artifacts。
+
+### 组成
+
+| 属性 | 说明 |
+|------|------|
+| **Topic** | 讨论主题 |
+| **Principal** | 委托人，发起者兼最终验收者（见 [principal.md](./principal.md)） |
+| **Agenda** | 讨论目标，可包含一项或多项 |
+| **Moderator** | 调度者，负责 orchestration |
+| **Participants** | 领域专家集合 |
+| **Rounds** | 多轮有序讨论 |
+| **Consensus** | Participant 是否达成一致（Meeting 级属性） |
+| **Confirmation** | Principal 确认关（可选，见 [confirmation.md](./confirmation.md)） |
+| **Minutes** | 结构化纪要，非 chat history |
+| **Artifacts** | 产出物（文档、代码、设计等） |
+| **Action Items** | 后续待办 |
+| **Knowledge** | 跨 Meeting 引用的持久知识 |
+| **Status** | 生命周期状态 |
+
+### 生命周期
+
+```
+Created → Preparing → Running → Paused → Consensus → Confirmation → Completed → Archived
+                                                      ↘ (skip) ↗
+```
+
+`Confirmation` 在 `confirmation_mode: required` 时启用；`skip` 时 Consensus 后直接 Completed。
+
+详见 [state_machine.md](../flow/state_achine.md)。
+
+### 设计约束
+
+- Meeting 是产品，Agent 是实现细节
+- 一个 Meeting 有且仅有一个 Principal
+- 所有通信经 Moderator，Participant 不直连
+- Minutes 是策展后的知识，不是原始对话记录
+- Knowledge 长期持久；Minutes 仅属当前 Meeting
+
+---
+
+## 待决策
+
+| 编号 | 问题 | 选项 / 备注 |
+|------|------|-------------|
+| D-M01 | Agenda 与 Topic 的关系 | Topic 是总主题，Agenda 是可逐项推进的子目标？ |
+| D-M02 | 一个 Meeting 是否允许多 Topic | 单 Topic 简化模型；多 Topic 需子 Meeting 或 Agenda 拆分 |
+| D-M03 | Paused 状态下是否允许修改 Participants | 影响 Preparing / Running 边界 |
+| D-M04 | Archived 与 Completed 的数据保留策略 | Minutes / Artifacts 是否只读、是否可 fork 新 Meeting |
+| D-M05 | Knowledge 注入时机 | Meeting 创建时加载 vs 每 Round 按需加载 |
+
+---
+
+## 关联
+
+- 父索引：[README.md](./README.md)
+- 委托人：[principal.md](./principal.md)
+- 权威定义：[CONSTITUTION.md](../CONSTITUTION.md) § Core Concepts — Meeting
+- 上下文：[context_diagram.md](../flow/context_diagram.md)
