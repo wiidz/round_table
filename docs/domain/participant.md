@@ -45,7 +45,7 @@ Idle → Waiting → Thinking → Speaking → Waiting → Done
 
 | 编号 | 问题 | 选项 / 备注 |
 |------|------|-------------|
-| D-P01 | Knowledge 作用域 | 全局共享 / 每 Participant 私有 / Meeting 级快照 |
+| D-P01 | Knowledge 作用域 | ✅ ADR-0006：默认 Participant/Principal **隔离**，可选 `shared/` |
 | D-P02 | Opinion 是否持久化 | 仅当前 Round 有效 vs 写入 Event 供 Minutes 引用 |
 | D-P03 | 同一 Role 是否允许多实例 | 如两个 Programmer 参与同一 Meeting |
 | D-P04 | Capabilities 与 Role 关系 | Role 隐含 Capabilities vs 显式声明 |

@@ -29,7 +29,15 @@ Go module 代理（国内网络建议先设置）：
 export GOPROXY=https://goproxy.cn,direct
 ```
 
-配置分层：`configs/server.yaml`（默认）→ `.env`（secrets，见 `.env.example`）→ 环境变量。
+配置分层：`configs/server.yaml` → `.env` → 环境变量。
+
+运行时数据三层（见 [data/README.md](../../data/README.md)）：
+
+| 层 | 路径 | ADR |
+|----|------|-----|
+| Workspace | `data/workspaces/` | ADR-0009 |
+| Profile | `data/profiles/` | ADR-0010 |
+| Knowledge | `data/knowledge/` | ADR-0006 |
 
 开发命令（仓库根目录；`make` 已内置 `GOPROXY`）：
 

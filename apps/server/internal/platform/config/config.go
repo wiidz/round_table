@@ -10,10 +10,13 @@ import (
 // Config holds runtime settings.
 // Load order (later wins): defaults → server.yaml → .env → process environment.
 type Config struct {
-	Server  Server  `yaml:"server"`
-	Meeting Meeting `yaml:"meeting"`
-	Storage Storage `yaml:"storage"`
-	Secrets Secrets
+	Server    Server    `yaml:"server"`
+	Meeting   Meeting   `yaml:"meeting"`
+	Storage   Storage   `yaml:"storage"`
+	Workspace Workspace `yaml:"workspace"`
+	Profile   Profile   `yaml:"profile"`
+	Knowledge Knowledge `yaml:"knowledge"`
+	Secrets   Secrets
 }
 
 type Server struct {
@@ -31,6 +34,21 @@ type Meeting struct {
 type Storage struct {
 	Driver     string `yaml:"driver"`
 	SQLitePath string `yaml:"sqlite_path"`
+}
+
+type Workspace struct {
+	Root string `yaml:"root"`
+}
+
+type Profile struct {
+	Root      string `yaml:"root"`
+	Templates string `yaml:"templates"`
+}
+
+type Knowledge struct {
+	Root          string `yaml:"root"`
+	Templates     string `yaml:"templates"`
+	SharedEnabled bool   `yaml:"shared_enabled"`
 }
 
 // Secrets are loaded only from .env / environment — never from YAML.
@@ -83,6 +101,18 @@ func defaults() Config {
 			Driver:     "memory",
 			SQLitePath: "./data/roundtable.db",
 		},
+		Workspace: Workspace{
+			Root: "./data/workspaces",
+		},
+		Profile: Profile{
+			Root:      "./data/profiles",
+			Templates: "./data/_templates/profiles",
+		},
+		Knowledge: Knowledge{
+			Root:          "./data/knowledge",
+			Templates:     "./data/_templates/knowledge",
+			SharedEnabled: true,
+		},
 	}
 }
 
@@ -97,6 +127,14 @@ func applyEnv(cfg *Config) {
 
 	overrideString(&cfg.Storage.Driver, "ROUND_TABLE_STORAGE_DRIVER")
 	overrideString(&cfg.Storage.SQLitePath, "ROUND_TABLE_STORAGE_SQLITE_PATH")
+
+	overrideString(&cfg.Workspace.Root, "ROUND_TABLE_WORKSPACE_ROOT")
+
+	overrideString(&cfg.Profile.Root, "ROUND_TABLE_PROFILE_ROOT")
+	overrideString(&cfg.Profile.Templates, "ROUND_TABLE_PROFILE_TEMPLATES")
+
+	overrideString(&cfg.Knowledge.Root, "ROUND_TABLE_KNOWLEDGE_ROOT")
+	overrideString(&cfg.Knowledge.Templates, "ROUND_TABLE_KNOWLEDGE_TEMPLATES")
 }
 
 func loadSecrets() Secrets {

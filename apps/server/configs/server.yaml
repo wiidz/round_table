@@ -13,3 +13,15 @@ meeting:
 storage:
   driver: memory  # memory | sqlite
   sqlite_path: ./data/roundtable.db
+
+workspace:
+  root: ./data/workspaces
+
+profile:
+  root: ./data/profiles
+  templates: ./data/_templates/profiles
+
+knowledge:
+  root: ./data/knowledge
+  templates: ./data/_templates/knowledge
+  shared_enabled: true

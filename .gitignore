@@ -23,3 +23,11 @@ apps/server/.env
 
 # Air
 tmp/
+
+# Meeting workspace (runtime outputs)
+data/workspaces/
+data/profiles/participants/
+data/profiles/principals/
+data/knowledge/participants/
+data/knowledge/principals/
+data/knowledge/shared/

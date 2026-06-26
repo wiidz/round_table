@@ -47,6 +47,9 @@ Event 横切所有状态变更，是 Meeting State 的唯一来源。
 | Consensus | [consensus.md](./consensus.md) | Participant 之间是否达成一致 |
 | Confirmation | [confirmation.md](./confirmation.md) | Principal 确认关，审阅结论是否符合预期 |
 | Event | [event.md](./event.md) | 领域事件，驱动状态变更与审计 |
+| Workspace | [workspace.md](./workspace.md) | Meeting 文件产出区（Minutes、Artifacts） |
+| Profile | [profile.md](./profile.md) | Participant/Principal 身份文件（SOUL、USER） |
+| Knowledge | [knowledge.md](./knowledge.md) | 跨 Meeting 长期记忆 |
 
 ---
 
@@ -112,7 +115,10 @@ Domain 层不得引用上述具体实现。
 | [ADR-0003](../architecture/ADR-0003-event-model.md) | Event 模型与持久化 | Accepted |
 | [ADR-0004](../architecture/ADR-0004-principal-confirmation.md) | Principal Confirmation 确认关 | Accepted |
 | [ADR-0005](../architecture/ADR-0005-round-termination.md) | Round 终止条件 | Accepted |
+| [ADR-0006](../architecture/ADR-0006-knowledge-scope.md) | Knowledge 作用域 | Accepted |
 | [ADR-0007](../architecture/ADR-0007-moderator-scheduling.md) | Moderator 调度策略 | Accepted |
+| [ADR-0009](../architecture/ADR-0009-meeting-workspace.md) | Meeting Workspace | Accepted |
+| [ADR-0010](../architecture/ADR-0010-agent-profiles.md) | Agent Profile | Accepted |
 
 完整索引：[architecture/README.md](../architecture/README.md)
 
@@ -123,10 +129,12 @@ Domain 层不得引用上述具体实现。
 | 编号 | 主题 | 涉及概念 | 状态 |
 |------|------|----------|------|
 | D-001 | Consensus 判定策略 | Consensus, Moderator | ✅ ADR-0002 |
-| D-002 | Participant 知识作用域 | Participant, Knowledge | 待 ADR-0006 |
+| D-002 | Participant 知识作用域 | Participant, Knowledge | ✅ ADR-0006 |
 | D-003 | Event 持久化与回放 | Event, Minutes | ✅ ADR-0003 |
 | D-004 | Round 终止条件 | Round, Consensus | ✅ ADR-0005 |
 | D-005 | Principal Confirmation 确认关 | Confirmation, Principal | ✅ ADR-0004 |
 | D-006 | Moderator 调度策略 | Moderator, Scheduler | ✅ ADR-0007 |
+| D-007 | Meeting Workspace | Meeting, Artifact, Minutes | ✅ ADR-0009 |
+| D-008 | Agent Profile | Participant, Principal | ✅ ADR-0010 |
 
 各概念文档中的「已决议 / 待决策」栏为详细说明。

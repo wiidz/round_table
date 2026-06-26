@@ -14,8 +14,11 @@ Domain 概念见 [docs/domain/](../domain/README.md)，权威原则见 [CONSTITU
 | [ADR-0003](./ADR-0003-event-model.md) | Event 模型与持久化 | Accepted |
 | [ADR-0004](./ADR-0004-principal-confirmation.md) | Principal Confirmation 确认关 | Accepted |
 | [ADR-0005](./ADR-0005-round-termination.md) | Round 终止条件 | Accepted |
+| [ADR-0006](./ADR-0006-knowledge-scope.md) | Knowledge 作用域与存储 | Accepted |
 | [ADR-0007](./ADR-0007-moderator-scheduling.md) | Moderator 调度策略 | Accepted |
 | [ADR-0008](./ADR-0008-project-structure.md) | Go 工程结构 | Accepted |
+| [ADR-0009](./ADR-0009-meeting-workspace.md) | Meeting Workspace 文件产出 | Accepted |
+| [ADR-0010](./ADR-0010-agent-profiles.md) | Agent Profile 身份层 | Accepted |
 
 ---
 
@@ -36,4 +39,4 @@ Domain 概念见 [docs/domain/](../domain/README.md)，权威原则见 [CONSTITU
 
 | 编号 | 主题 | 来源 |
 |------|------|------|
-| ADR-0006 | Knowledge 作用域 | [participant.md](../domain/participant.md) D-P01 |
+| — | （暂无） | — |

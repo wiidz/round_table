@@ -9,5 +9,8 @@
 | `model/` | Model Provider Adapter | 规划 |
 | `runtime/` | Agent Runtime Adapter | 规划 |
 | `transport/` | HTTP / WebSocket | 规划 Phase 4 |
+| `workspace/` | Meeting Markdown 产出读写 | fs ✅ |
+| `profile/` | SOUL / AGENTS / USER 身份文件 | fs ✅ |
+| `knowledge/` | MEMORY / memory/ 长期知识 | fs ✅ |
 
 Domain 层不得 import 本目录。

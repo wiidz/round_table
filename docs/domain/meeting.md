@@ -48,6 +48,7 @@ Created → Preparing → Running → Paused → Consensus → Confirmation → 
 - 所有通信经 Moderator，Participant 不直连
 - Minutes 是策展后的知识，不是原始对话记录
 - Knowledge 长期持久；Minutes 仅属当前 Meeting
+- 物理产出（md 文件）在 [Workspace](./workspace.md)（ADR-0009）
 
 ---
 

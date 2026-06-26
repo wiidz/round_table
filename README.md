@@ -106,6 +106,9 @@ make run    # 启动 :8080 /health
 | [ADR-0004](./docs/architecture/ADR-0004-principal-confirmation.md) | Principal Confirmation 确认关 |
 | [ADR-0005](./docs/architecture/ADR-0005-round-termination.md) | Round 终止条件 |
 | [ADR-0007](./docs/architecture/ADR-0007-moderator-scheduling.md) | Moderator 调度策略 |
+| [ADR-0006](./docs/architecture/ADR-0006-knowledge-scope.md) | Knowledge 作用域（默认隔离） |
+| [ADR-0009](./docs/architecture/ADR-0009-meeting-workspace.md) | Meeting Workspace 文件产出 |
+| [ADR-0010](./docs/architecture/ADR-0010-agent-profiles.md) | Agent Profile（SOUL/USER） |
 
 ---
 

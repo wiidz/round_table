@@ -24,6 +24,11 @@ RoundTable 进入 Phase 0 代码化，需要确定 Go 仓库目录结构。
 ```
 round_table/
 ├── go.work                  # Go workspace，引用 apps/server
+├── data/
+│   ├── _templates/          # 入库模板
+│   ├── workspaces/          # Meeting 产出（ADR-0009）
+│   ├── profiles/            # SOUL/AGENTS/USER（ADR-0010）
+│   └── knowledge/           # MEMORY/memory（ADR-0006）
 ├── apps/
 │   ├── server/              # 全部 Go 代码
 │   │   ├── go.mod
@@ -81,6 +86,9 @@ apps/server/
 │   ├── scheduler/           # Moderator 调度（ADR-0007 Fixed Order）
 │   ├── adapter/             # 端口实现
 │   │   ├── storage/         # EventStore（memory → sqlite）
+│   │   ├── workspace/       # Meeting Markdown 产出（ADR-0009）
+│   │   ├── profile/         # SOUL / AGENTS / USER（ADR-0010）
+│   │   ├── knowledge/       # MEMORY / memory/（ADR-0006）
 │   │   ├── participant/     # ParticipantPort（stub → model）
 │   │   ├── model/           # LLM Model Adapter（v0.2）
 │   │   ├── runtime/         # Agent Runtime Adapter（v0.2）
@@ -107,7 +115,7 @@ transport → engine（仅 DTO 转换，无业务）
 | Meeting First | `apps/server/internal/domain/meeting` 为核心 |
 | Runtime/Model/Transport 独立 | `internal/adapter/*` |
 | stdlib 优先 | v0.1 HTTP 用 `net/http`，存储先 memory 再 sqlite |
-| 接口优于实现 | `storage.Store`、`participant.Port`、`consensus.Strategy` |
+| 接口优于实现 | `storage.Store`、`workspace.Port`、`participant.Port` |
 | Monorepo | `apps/server` + `apps/web` + … |
 
 ### 7. apps/ 与 Transport
