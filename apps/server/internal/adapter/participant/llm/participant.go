@@ -8,6 +8,7 @@ import (
 	"round_table/apps/server/internal/adapter/model"
 	"round_table/apps/server/internal/adapter/participant"
 	"round_table/apps/server/internal/adapter/profile"
+	"round_table/apps/server/internal/stream"
 )
 
 const responseSchema = `Respond ONLY with a JSON object (no markdown fences).
@@ -65,6 +66,7 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 		schema = freeDialogueAnswerSchema
 	}
 
+	onDelta, onEnd := p.streamHandlers(ctx)
 	raw, err := p.Model.Complete(ctx, model.Request{
 		Model: modelName,
 		Messages: []model.Message{
@@ -72,9 +74,13 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 			{Role: "user", Content: prompt + "\n\n" + schema},
 		},
 		Temperature: 0.7,
+		OnDelta:     onDelta,
 	})
 	if err != nil {
 		return participant.Response{}, err
+	}
+	if onEnd != nil {
+		onEnd()
 	}
 
 	out, err := parseOutput(raw.Content)
@@ -98,6 +104,17 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 		Model:         modelName,
 		Usage:         raw.Usage,
 	}, nil
+}
+
+func (p *Participant) streamHandlers(ctx context.Context) (model.StreamHandler, func()) {
+	h, ok := stream.HandlersFrom(ctx)
+	if !ok {
+		return nil, nil
+	}
+	if h.OnStart != nil {
+		h.OnStart(h.Meta)
+	}
+	return h.OnDelta, h.OnEnd
 }
 
 func (p *Participant) buildSystem(participantID string) (string, error) {

@@ -8,6 +8,7 @@ import (
 
 	"round_table/apps/server/internal/domain/consensus"
 	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/stream"
 )
 
 func (e *Engine) startFreeDialogue(ctx context.Context, s meeting.State) (meeting.State, error) {
@@ -33,6 +34,11 @@ func (e *Engine) inviteFreeDialogueAsk(ctx context.Context, s meeting.State) (me
 	prompt := e.buildFreeDialogueAskPrompt(s, askerID, answererID)
 	detail := freeDialogueTurnLabel(s) + " ask " + askerID + "→" + answererID
 	e.logLLMWaiting("free-dialogue-ask", askerID, detail)
+	ctx = e.withStreamCtx(ctx, stream.Meta{
+		ParticipantID: askerID,
+		Phase:         "free-dialogue-ask",
+		Detail:        freeDialogueTurnLabel(s) + " ask → " + answererID,
+	})
 	start := time.Now()
 	resp, err := e.Participant.Respond(ctx, s.ID, askerID, prompt)
 	elapsed := time.Since(start)
@@ -51,6 +57,11 @@ func (e *Engine) inviteFreeDialogueAnswer(ctx context.Context, s meeting.State) 
 	prompt := e.buildFreeDialogueAnswerPrompt(s, pending.AnswererID, pending.Question)
 	detail := freeDialogueTurnLabel(s) + " answer for " + pending.AskerID
 	e.logLLMWaiting("free-dialogue-answer", pending.AnswererID, detail)
+	ctx = e.withStreamCtx(ctx, stream.Meta{
+		ParticipantID: pending.AnswererID,
+		Phase:         "free-dialogue-answer",
+		Detail:        freeDialogueTurnLabel(s) + " answer ← " + pending.AskerID,
+	})
 	start := time.Now()
 	resp, err := e.Participant.Respond(ctx, s.ID, pending.AnswererID, prompt)
 	elapsed := time.Since(start)

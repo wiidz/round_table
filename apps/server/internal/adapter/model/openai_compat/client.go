@@ -24,6 +24,12 @@ type chatRequest struct {
 	Model       string        `json:"model"`
 	Messages    []chatMessage `json:"messages"`
 	Temperature float64       `json:"temperature,omitempty"`
+	Stream      bool          `json:"stream"`
+	StreamOptions *streamOptions `json:"stream_options,omitempty"`
+}
+
+type streamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
 }
 
 type chatMessage struct {
@@ -64,7 +70,7 @@ func NewClient(baseURL, apiKey string, timeout time.Duration) *Client {
 
 var _ model.Port = (*Client)(nil)
 
-// Complete implements model.Port.
+// Complete implements model.Port using SSE streaming (OpenAI-compatible stream=true).
 func (c *Client) Complete(ctx context.Context, req model.Request) (model.Response, error) {
 	if c.APIKey == "" {
 		return model.Response{}, fmt.Errorf("openai_compat: api key required")
@@ -77,6 +83,8 @@ func (c *Client) Complete(ctx context.Context, req model.Request) (model.Respons
 		Model:       req.Model,
 		Messages:    msgs,
 		Temperature: req.Temperature,
+		Stream:      true,
+		StreamOptions: &streamOptions{IncludeUsage: true},
 	})
 	if err != nil {
 		return model.Response{}, err
@@ -88,6 +96,7 @@ func (c *Client) Complete(ctx context.Context, req model.Request) (model.Respons
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
+	httpReq.Header.Set("Accept", "text/event-stream")
 
 	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
@@ -95,31 +104,10 @@ func (c *Client) Complete(ctx context.Context, req model.Request) (model.Respons
 	}
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return model.Response{}, err
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		data, _ := io.ReadAll(resp.Body)
+		return model.Response{}, decodeErrorBody(resp.StatusCode, data)
 	}
 
-	var out chatResponse
-	if err := json.Unmarshal(data, &out); err != nil {
-		return model.Response{}, fmt.Errorf("openai_compat: decode response: %w", err)
-	}
-	if out.Error != nil {
-		return model.Response{}, fmt.Errorf("openai_compat: api error: %s", out.Error.Message)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return model.Response{}, fmt.Errorf("openai_compat: http %d: %s", resp.StatusCode, string(data))
-	}
-	if len(out.Choices) == 0 {
-		return model.Response{}, fmt.Errorf("openai_compat: empty choices")
-	}
-	result := model.Response{Content: strings.TrimSpace(out.Choices[0].Message.Content)}
-	if out.Usage != nil {
-		result.Usage = model.Usage{
-			PromptTokens:     out.Usage.PromptTokens,
-			CompletionTokens: out.Usage.CompletionTokens,
-			TotalTokens:      out.Usage.TotalTokens,
-		}
-	}
-	return result, nil
+	return readResponseBody(resp.Header.Get("Content-Type"), resp.Body, req.OnDelta)
 }

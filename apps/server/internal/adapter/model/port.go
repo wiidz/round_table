@@ -2,6 +2,9 @@ package model
 
 import "context"
 
+// StreamHandler receives incremental text deltas from a streaming completion.
+type StreamHandler func(delta string)
+
 // Message is one chat turn for completion APIs.
 type Message struct {
 	Role    string
@@ -20,6 +23,9 @@ type Request struct {
 	Model       string
 	Messages    []Message
 	Temperature float64
+	// OnDelta is invoked for each streamed content delta. Nil disables callbacks
+	// but the client may still use SSE streaming internally.
+	OnDelta StreamHandler
 }
 
 // Response is a completion result with optional usage stats.

@@ -13,6 +13,7 @@ import (
 	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
 	"round_table/apps/server/internal/scheduler"
+	"round_table/apps/server/internal/stream"
 )
 
 func (e *Engine) startRound(ctx context.Context, s meeting.State) (meeting.State, error) {
@@ -47,6 +48,11 @@ func (e *Engine) inviteSpeak(ctx context.Context, s meeting.State, participantID
 	}
 	phaseLabel := strings.TrimPrefix(phase, "Phase: ")
 	e.logLLMWaiting(phaseLabel, participantID, "turn="+debateTurnLabel(s, participantID)+" round="+strconv.Itoa(s.CurrentRound))
+	ctx = e.withStreamCtx(ctx, stream.Meta{
+		ParticipantID: participantID,
+		Phase:         phaseLabel,
+		Detail:        "turn " + debateTurnLabel(s, participantID) + " · round " + strconv.Itoa(s.CurrentRound),
+	})
 	start := time.Now()
 	resp, err := e.Participant.Respond(ctx, s.ID, participantID, prompt)
 	elapsed := time.Since(start)

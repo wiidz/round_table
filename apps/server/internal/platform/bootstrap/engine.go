@@ -45,6 +45,7 @@ func NewEngine(cfg config.Config) (*engine.Engine, error) {
 		know,
 	)
 	eng.Progress = engine.StdProgressLogger{}
+	eng.Stream = engine.StdStreamLogger{}
 	return eng, nil
 }
 

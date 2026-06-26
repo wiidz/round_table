@@ -20,6 +20,7 @@ type Engine struct {
 	Profile     profile.Port
 	Knowledge   knowledge.Port
 	Progress    ProgressLogger
+	Stream      StreamLogger
 }
 
 // New returns an Engine with required dependencies.
