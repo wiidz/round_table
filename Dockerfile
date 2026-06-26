@@ -1,10 +1,7 @@
 # RoundTable server — multi-stage build (Discord bot + HTTP health server)
 #
-# Build (ShellCrash mixed-port 4567 on host):
+# Build via host proxy (ShellCrash mixed-port 4567):
 #   HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567 docker compose build discord
-#
-# Override Alpine mirror:
-#   APK_MIRROR=mirrors.aliyun.com docker compose build discord
 
 FROM golang:1.25-alpine AS gobuild
 
@@ -15,7 +12,7 @@ ARG NO_PROXY=localhost,127.0.0.1
 WORKDIR /src
 
 ENV CGO_ENABLED=0
-ENV GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=direct
 
 COPY go.work go.work.sum ./
 COPY apps/server/go.mod apps/server/go.sum ./apps/server/
@@ -28,22 +25,14 @@ COPY apps/server/ ./
 RUN go build -trimpath -ldflags="-s -w" -o /out/roundtable-discord ./cmd/discord/main.go && \
     go build -trimpath -ldflags="-s -w" -o /out/roundtable-server ./cmd/roundtable/main.go
 
-# --- runtime (single apk stage — Tsinghua + USTC mirrors) ---
+# --- runtime (Alpine official repositories) ---
 
 FROM alpine:3.21
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
-ARG APK_MIRROR
 
-COPY deploy/apk-repositories /etc/apk/repositories
-
-# Optional single-mirror override (replaces multi-mirror file)
-RUN if [ -n "$APK_MIRROR" ]; then \
-      printf "https://%s/alpine/v3.21/main\nhttps://%s/alpine/v3.21/community\n" "$APK_MIRROR" "$APK_MIRROR" \
-        > /etc/apk/repositories; \
-    fi && \
-    apk add --no-cache ca-certificates tzdata wget su-exec && \
+RUN apk add --no-cache ca-certificates tzdata wget su-exec && \
     adduser -D -u 1000 roundtable
 
 WORKDIR /app
