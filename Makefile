@@ -1,16 +1,22 @@
 SERVER   := ./apps/server
 APP      := roundtable
 CMD      := $(SERVER)/cmd/roundtable
+MEET_CMD := $(SERVER)/cmd/meet
 BIN_DIR  := ./bin
 
 # China-friendly module proxy for local dev (see apps/server/README.md)
 export GOPROXY := https://goproxy.cn,direct
 
-.PHONY: run build test clean migrate tidy
+.PHONY: run build test clean migrate tidy meet
 
 ## run: start the server
 run:
 	go run $(CMD)/main.go
+
+## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in apps/server/.env)
+meet:
+	@test -n "$(TOPIC)" || (echo 'usage: make meet TOPIC="your topic"'; exit 1)
+	go run $(MEET_CMD)/main.go -topic "$(TOPIC)" $(MEET_FLAGS)
 
 ## build: compile for the current OS
 build:

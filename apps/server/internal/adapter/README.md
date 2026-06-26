@@ -5,9 +5,9 @@
 | 包 | 职责 | 状态 |
 |----|------|------|
 | `storage/` | EventStore（memory → sqlite） | memory ✅ |
-| `participant/` | ParticipantPort（stub → LLM） | stub ✅ |
+| `participant/` | ParticipantPort（stub → LLM） | stub ✅ / llm ✅ |
 | `principal/` | Principal Confirmation 关 | stub ✅ |
-| `model/` | Model Provider Adapter | 规划 |
+| `model/` | Model Provider Adapter | openai_compat ✅ |
 | `runtime/` | Agent Runtime Adapter | 规划 |
 | `transport/` | HTTP / WebSocket | 规划 Phase 4 |
 | `workspace/` | Meeting Markdown 产出读写 | fs ✅ |

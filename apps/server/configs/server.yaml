@@ -10,6 +10,12 @@ meeting:
   max_confirmation_cycles: 3
   confirmation_mode: required
 
+model:
+  provider: deepseek
+  base_url: https://api.deepseek.com/v1
+  default_model: deepseek-chat
+  timeout_sec: 120
+
 storage:
   driver: memory  # memory | sqlite
   sqlite_path: ./data/roundtable.db

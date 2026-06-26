@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Server    Server    `yaml:"server"`
 	Meeting   Meeting   `yaml:"meeting"`
+	Model     Model     `yaml:"model"`
 	Storage   Storage   `yaml:"storage"`
 	Workspace Workspace `yaml:"workspace"`
 	Profile   Profile   `yaml:"profile"`
@@ -29,6 +30,13 @@ type Meeting struct {
 	MaxRoundsPerSegment   int    `yaml:"max_rounds_per_segment"`
 	MaxConfirmationCycles int    `yaml:"max_confirmation_cycles"`
 	ConfirmationMode      string `yaml:"confirmation_mode"`
+}
+
+type Model struct {
+	Provider     string `yaml:"provider"`
+	BaseURL      string `yaml:"base_url"`
+	DefaultModel string `yaml:"default_model"`
+	TimeoutSec   int    `yaml:"timeout_sec"`
 }
 
 type Storage struct {
@@ -97,6 +105,12 @@ func defaults() Config {
 			MaxConfirmationCycles: 3,
 			ConfirmationMode:      "required",
 		},
+		Model: Model{
+			Provider:     "deepseek",
+			BaseURL:      "https://api.deepseek.com/v1",
+			DefaultModel: "deepseek-chat",
+			TimeoutSec:   120,
+		},
 		Storage: Storage{
 			Driver:     "memory",
 			SQLitePath: "./data/roundtable.db",
@@ -124,6 +138,11 @@ func applyEnv(cfg *Config) {
 	overrideInt(&cfg.Meeting.MaxRoundsPerSegment, "ROUND_TABLE_MAX_ROUNDS_PER_SEGMENT")
 	overrideInt(&cfg.Meeting.MaxConfirmationCycles, "ROUND_TABLE_MAX_CONFIRMATION_CYCLES")
 	overrideString(&cfg.Meeting.ConfirmationMode, "ROUND_TABLE_CONFIRMATION_MODE")
+
+	overrideString(&cfg.Model.Provider, "ROUND_TABLE_MODEL_PROVIDER")
+	overrideString(&cfg.Model.BaseURL, "ROUND_TABLE_MODEL_BASE_URL")
+	overrideString(&cfg.Model.DefaultModel, "ROUND_TABLE_MODEL_DEFAULT_MODEL")
+	overrideInt(&cfg.Model.TimeoutSec, "ROUND_TABLE_MODEL_TIMEOUT_SEC")
 
 	overrideString(&cfg.Storage.Driver, "ROUND_TABLE_STORAGE_DRIVER")
 	overrideString(&cfg.Storage.SQLitePath, "ROUND_TABLE_STORAGE_SQLITE_PATH")
