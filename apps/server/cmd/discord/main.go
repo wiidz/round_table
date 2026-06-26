@@ -28,21 +28,24 @@ func main() {
 		log.Fatalf("discord: principal registry: %v", err)
 	}
 
+	botOpts := discordtransport.Options{
+		AllowDM:    dc.AllowDM,
+		AllowGuild: dc.AllowGuild,
+		GuildID:    dc.GuildID,
+		Locale:     dc.Locale,
+	}
+
 	bot, err := discordtransport.New(discordtransport.Options{
 		Token:      cfg.Secrets.DiscordBotToken,
 		AllowDM:    dc.AllowDM,
 		AllowGuild: dc.AllowGuild,
 		GuildID:    dc.GuildID,
+		Locale:     dc.Locale,
 	})
 	if err != nil {
 		log.Fatalf("discord: %v", err)
 	}
 
-	botOpts := discordtransport.Options{
-		AllowDM:    dc.AllowDM,
-		AllowGuild: dc.AllowGuild,
-		GuildID:    dc.GuildID,
-	}
 	pool, err := discordtransport.OpenBotPool(discordtransport.PoolOptions{
 		Default: bot,
 		BotOpts: botOpts,
@@ -60,6 +63,13 @@ func main() {
 		Bots:      pool,
 		Principal: discordtransport.NewChannelPrincipal(pool, dc.Locale),
 	}
+
+	loc := discordtransport.ParseLocale(dc.Locale)
+	bot.SetOnGatewayResumed(func() {
+		for _, chID := range meet.ActiveMeetingChannelIDs() {
+			_ = bot.Send(context.Background(), chID, discordtransport.GatewayResumedText(loc))
+		}
+	})
 
 	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg, meet)
 

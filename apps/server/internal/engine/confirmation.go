@@ -23,6 +23,7 @@ func (e *Engine) beginConfirmation(ctx context.Context, s meeting.State) (meetin
 	}
 	cycle := confirmationCycle(s)
 	brief := prepareConfirmationBrief(s)
+	brief.MaxConfirmationCycles = s.MaxConfirmationCycles
 	s, err := e.append(ctx, s, eventConfirmationPrepared(cycle, brief))
 	if err != nil {
 		return s, err

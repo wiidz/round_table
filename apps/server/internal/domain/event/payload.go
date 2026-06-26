@@ -174,6 +174,7 @@ type ConfirmationBrief struct {
 	Items               []ConfirmationItem `json:"items"`
 	LimitFallback       bool               `json:"limit_fallback,omitempty"`
 	LimitRejectFeedback string             `json:"limit_reject_feedback,omitempty"`
+	MaxConfirmationCycles int              `json:"max_confirmation_cycles,omitempty"`
 }
 
 // ConfirmationPreparedPayload is the v1 payload for ConfirmationPrepared.

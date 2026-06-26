@@ -63,6 +63,24 @@ func (m *meetSessions) active(channelID string) (string, bool) {
 	return id, ok
 }
 
+func (m *meetSessions) channelIDs() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.byChannel) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(m.byChannel))
+	for ch := range m.byChannel {
+		out = append(out, ch)
+	}
+	return out
+}
+
+// ActiveMeetingChannelIDs returns channels with a running meeting (for reconnect notices).
+func (r *MeetRunner) ActiveMeetingChannelIDs() []string {
+	return r.sessions.channelIDs()
+}
+
 // BeginSetupFromTrigger starts setup when Principal sends a natural-language trigger (no prefix).
 func (r *MeetRunner) BeginSetupFromTrigger(msg transport.Inbound) (string, error) {
 	loc := ParseLocale(r.Discord.Locale)
@@ -200,7 +218,11 @@ func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string
 	}
 
 	go r.runMeeting(msg.ChannelID, meetingID, binding, cfg)
-	return formatMeetLaunchAck(loc, meetingID, cfg, binding.DisplayName), nil
+	maxConfirm := r.Cfg.Meeting.MaxConfirmationCycles
+	if maxConfirm <= 0 {
+		maxConfirm = 3
+	}
+	return formatMeetLaunchAck(loc, meetingID, cfg, binding.DisplayName, maxConfirm), nil
 }
 
 // HandleRunningIntervention processes Principal pause/abort/force commands during a meeting.
@@ -264,7 +286,8 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 
 	minPtr := cfg.MinRoundsBeforeSynthesis
 	freePtr := cfg.FreeDialogueQuestions
-	if _, err := eng.CreateMeeting(ctx, engine.CreateMeetingInput{
+	maxConfirm := r.Cfg.Meeting.MaxConfirmationCycles
+	createIn := engine.CreateMeetingInput{
 		MeetingID:                meetingID,
 		Topic:                    cfg.Topic,
 		MeetingMode:              cfg.Mode,
@@ -273,7 +296,11 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		MinRoundsBeforeSynthesis: &minPtr,
 		FreeDialogueMaxQuestions: &freePtr,
 		Participants:             parts,
-	}); err != nil {
+	}
+	if maxConfirm > 0 {
+		createIn.MaxConfirmationCycles = &maxConfirm
+	}
+	if _, err := eng.CreateMeeting(ctx, createIn); err != nil {
 		_ = r.Bots.Default.Send(ctx, channelID, meetCreateFailedText(loc, err))
 		return
 	}

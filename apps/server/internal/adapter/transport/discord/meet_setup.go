@@ -519,8 +519,12 @@ func validateLaunchConfig(cfg meetLaunchConfig) error {
 	return nil
 }
 
-func formatMeetLaunchAck(loc Locale, meetingID string, cfg meetLaunchConfig, principalName string) string {
+func formatMeetLaunchAck(loc Locale, meetingID string, cfg meetLaunchConfig, principalName string, maxConfirmationCycles int) string {
 	if loc == LocaleZH {
+		confirmLine := confirmationModeLabel(cfg.Confirmation, loc)
+		if cfg.Confirmation == meeting.ConfirmationModeRequired && maxConfirmationCycles > 0 {
+			confirmLine = fmt.Sprintf("%s（最多 %d 轮确认）", confirmLine, maxConfirmationCycles)
+		}
 		return fmt.Sprintf(`🚀 **会议已启动**
 - 🆔 `+"`%s`"+`
 - 📌 主题：%s
@@ -531,8 +535,12 @@ func formatMeetLaunchAck(loc Locale, meetingID string, cfg meetLaunchConfig, pri
 
 进度将推送到本频道。`, meetingID, cfg.Topic, meetingModeLabel(cfg.Mode, loc),
 			cfg.MaxRounds, cfg.MinRoundsBeforeSynthesis,
-			confirmationModeLabel(cfg.Confirmation, loc),
+			confirmLine,
 			freeDialogueLabel(cfg.FreeDialogueQuestions, loc), principalName)
+	}
+	confirmLine := cfg.Confirmation
+	if cfg.Confirmation == meeting.ConfirmationModeRequired && maxConfirmationCycles > 0 {
+		confirmLine = fmt.Sprintf("%s (max %d confirmation cycles)", cfg.Confirmation, maxConfirmationCycles)
 	}
 	return fmt.Sprintf(`🚀 **Meeting started**
 - 🆔 `+"`%s`"+`
@@ -544,6 +552,6 @@ func formatMeetLaunchAck(loc Locale, meetingID string, cfg meetLaunchConfig, pri
 
 Progress will post here.`, meetingID, cfg.Topic, cfg.Mode,
 		cfg.MaxRounds, cfg.MinRoundsBeforeSynthesis,
-		cfg.Confirmation,
+		confirmLine,
 		freeDialogueLabel(cfg.FreeDialogueQuestions, LocaleEN), principalName)
 }

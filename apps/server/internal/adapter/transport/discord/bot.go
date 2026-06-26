@@ -18,6 +18,10 @@ type Options struct {
 	AllowDM    bool
 	AllowGuild bool
 	GuildID    string // empty = all guilds the bot is in
+	Locale     string // en | zh — network / reconnect notices
+
+	// OnGatewayResumed is called when discordgo resumes the gateway session after disconnect.
+	OnGatewayResumed func()
 }
 
 // Bot implements transport.Port for one Discord bot token.
@@ -25,6 +29,7 @@ type Bot struct {
 	session *discordgo.Session
 	selfID  string
 	opts    Options
+	loc     Locale
 }
 
 // New opens a Discord session (not yet connected to the gateway).
@@ -42,7 +47,7 @@ func New(opts Options) (*Bot, error) {
 	}
 	session.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentDirectMessages | discordgo.IntentMessageContent
 
-	b := &Bot{session: session, opts: opts}
+	b := &Bot{session: session, opts: opts, loc: ParseLocale(opts.Locale)}
 	if err := b.session.Open(); err != nil {
 		return nil, fmt.Errorf("discord: open gateway: %w", err)
 	}
@@ -54,6 +59,12 @@ func New(opts Options) (*Bot, error) {
 func (b *Bot) Run(ctx context.Context, handler transport.MessageHandler) error {
 	if handler == nil {
 		return fmt.Errorf("discord: message handler required")
+	}
+
+	if b.opts.OnGatewayResumed != nil {
+		b.session.AddHandler(func(_ *discordgo.Session, _ *discordgo.Resumed) {
+			b.opts.OnGatewayResumed()
+		})
 	}
 
 	b.session.AddHandler(func(_ *discordgo.Session, ev *discordgo.MessageCreate) {
@@ -104,6 +115,15 @@ func (b *Bot) DisplayName() string {
 	return b.session.State.User.Username
 }
 
+// SetOnGatewayResumed registers a callback when discordgo resumes after disconnect.
+// Must be called before Run.
+func (b *Bot) SetOnGatewayResumed(fn func()) {
+	if b == nil {
+		return
+	}
+	b.opts.OnGatewayResumed = fn
+}
+
 // Close disconnects the gateway session.
 func (b *Bot) Close() error {
 	if b == nil || b.session == nil {
@@ -117,11 +137,20 @@ func (b *Bot) send(channelID, content string) error {
 	if content == "" {
 		return nil
 	}
-	_, err := b.session.ChannelMessageSend(channelID, content)
+	err := retrySend(func() error {
+		_, sendErr := b.session.ChannelMessageSend(channelID, content)
+		return sendErr
+	})
 	if err != nil {
+		b.notifySendFailed(channelID)
 		return fmt.Errorf("discord: send message: %w", err)
 	}
 	return nil
+}
+
+func (b *Bot) notifySendFailed(channelID string) {
+	warn := networkSendFailedText(b.loc)
+	_, _ = b.session.ChannelMessageSend(channelID, warn)
 }
 
 func (b *Bot) shouldHandle(ev *discordgo.MessageCreate) bool {

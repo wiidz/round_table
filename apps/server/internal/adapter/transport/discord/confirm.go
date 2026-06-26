@@ -14,7 +14,11 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 	}
 	var b strings.Builder
 	if loc == LocaleZH {
-		fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d 轮\n", cycle)
+		if brief.MaxConfirmationCycles > 0 {
+			fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d/%d 轮\n", cycle, brief.MaxConfirmationCycles)
+		} else {
+			fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d 轮\n", cycle)
+		}
 		fmt.Fprintf(&b, "🆔 `%s`\n\n", meetingID)
 		if brief.ExecutiveSummary != "" {
 			fmt.Fprintf(&b, "%s\n\n", brief.ExecutiveSummary)
@@ -37,7 +41,11 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 		return strings.TrimRight(b.String(), "\n")
 	}
 
-	fmt.Fprintf(&b, "📋 **Principal confirmation** · cycle %d\n", cycle)
+	fmt.Fprintf(&b, "📋 **Principal confirmation** · cycle %d", cycle)
+	if brief.MaxConfirmationCycles > 0 {
+		fmt.Fprintf(&b, "/%d", brief.MaxConfirmationCycles)
+	}
+	fmt.Fprintf(&b, "\n")
 	fmt.Fprintf(&b, "🆔 `%s`\n\n", meetingID)
 	if brief.ExecutiveSummary != "" {
 		fmt.Fprintf(&b, "%s\n\n", brief.ExecutiveSummary)
