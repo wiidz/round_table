@@ -46,7 +46,7 @@ services:
       - ./data/knowledge:/app/data/knowledge
       - ./data/transport:/app/data/transport
       # 挂载到 nextcloud
-      - /mnt/data1/projects/round_table/data/workspace:/var/www/html/data/hujiayilu/files/round_table_workspace
+      - /mnt/data1/projects/round_table/data/workspaces:/var/www/html/data/hujiayilu/files/round_table_workspace
     logging:
       driver: json-file
       options:
