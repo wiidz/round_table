@@ -43,3 +43,8 @@ transport:
     guild_id: ""   # optional: restrict bot to one Discord server ID
     command_prefix: "!rt"
     bindings_file: ./data/transport/discord-principal.json
+    meet_participants: "designer:游戏策划:gameplay,player:玩家代表:experience"
+    meet_mode: deliberation
+    meet_confirmation: skip
+    meet_max_rounds: 2
+    meet_free_dialogue_questions: 0

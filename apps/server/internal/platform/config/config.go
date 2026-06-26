@@ -70,12 +70,17 @@ type Transport struct {
 
 // DiscordTransport configures the Discord bot adapter.
 type DiscordTransport struct {
-	Enabled        bool   `yaml:"enabled"`
-	AllowDM        bool   `yaml:"allow_dm"`
-	AllowGuild     bool   `yaml:"allow_guild"`
-	GuildID        string `yaml:"guild_id"` // optional: restrict to one server
-	CommandPrefix  string `yaml:"command_prefix"`
-	BindingsFile   string `yaml:"bindings_file"`
+	Enabled                 bool   `yaml:"enabled"`
+	AllowDM                 bool   `yaml:"allow_dm"`
+	AllowGuild              bool   `yaml:"allow_guild"`
+	GuildID                 string `yaml:"guild_id"`
+	CommandPrefix           string `yaml:"command_prefix"`
+	BindingsFile            string `yaml:"bindings_file"`
+	MeetParticipants        string `yaml:"meet_participants"`
+	MeetMode                string `yaml:"meet_mode"`
+	MeetConfirmation        string `yaml:"meet_confirmation"`
+	MeetMaxRounds           int    `yaml:"meet_max_rounds"`
+	MeetFreeDialogueQuestions int  `yaml:"meet_free_dialogue_questions"`
 }
 
 // Secrets are loaded only from .env / environment — never from YAML.
@@ -151,11 +156,16 @@ func defaults() Config {
 		},
 		Transport: Transport{
 			Discord: DiscordTransport{
-				Enabled:       false,
-				AllowDM:       true,
-				AllowGuild:    true,
-				CommandPrefix: "!rt",
-				BindingsFile:  "./data/transport/discord-principal.json",
+				Enabled:                   false,
+				AllowDM:                   true,
+				AllowGuild:                true,
+				CommandPrefix:             "!rt",
+				BindingsFile:              "./data/transport/discord-principal.json",
+				MeetParticipants:          "designer:游戏策划:gameplay,player:玩家代表:experience",
+				MeetMode:                  "deliberation",
+				MeetConfirmation:          "skip",
+				MeetMaxRounds:             2,
+				MeetFreeDialogueQuestions: 0,
 			},
 		},
 	}

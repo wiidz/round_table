@@ -70,7 +70,7 @@ func (e *Engine) logProgress(env event.Envelope, s meeting.State) {
 		e.logf("■ free dialogue completed (%d exchanges)", len(s.FreeDialogueExchanges))
 	case event.TypeModeratorSummarized:
 		p, _ := decodePayload[event.ModeratorSummarizedPayload](env)
-		e.logf("◆ moderator summary written for round %d", p.RoundNumber)
+		e.logf("◆ moderator summary round=%d\n%s", p.RoundNumber, p.Summary)
 	case event.TypeDeliberationReadinessChecked:
 		p, _ := decodePayload[event.DeliberationReadinessCheckedPayload](env)
 		if p.Ready {

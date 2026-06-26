@@ -14,7 +14,7 @@ func TestCommandHandler_principalBind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewCommandHandler("!rt", reg)
+	h := NewCommandHandler("!rt", reg, nil)
 
 	reply, err := h.Handle(context.Background(), transport.Inbound{
 		Platform:   "discord",
@@ -45,8 +45,20 @@ func TestCommandHandler_principalBind(t *testing.T) {
 	}
 }
 
+func TestNewCommandHandler_wiresMeet(t *testing.T) {
+	reg, err := principalbind.NewRegistry(t.TempDir() + "/b.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	meet := &MeetRunner{Registry: reg}
+	h := NewCommandHandler("!rt", reg, meet)
+	if h.Meet != meet {
+		t.Fatal("Meet runner not wired")
+	}
+}
+
 func TestCommandHandler_nonCommandSilent(t *testing.T) {
-	h := NewCommandHandler("!rt", mustReg(t))
+	h := NewCommandHandler("!rt", mustReg(t), nil)
 	reply, err := h.Handle(context.Background(), transport.Inbound{Content: "hello"})
 	if err != nil || reply != "" {
 		t.Fatalf("reply=%q err=%v", reply, err)

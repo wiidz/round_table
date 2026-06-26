@@ -83,4 +83,11 @@ make run-discord
 
 绑定数据持久化在 `data/transport/discord-principal.json`（路径可在 server.yaml 配置）。
 
+```
+!rt meet 设计影舞者核心技能          # 默认 deliberation（见 server.yaml）
+!rt meet -mode decision 是否上线    # 裁决型
+```
+
+仅已绑定的 Principal 可发起；每个 Discord 频道同时只允许一场会议。进度里程碑会推送到频道。
+
 结构说明见 [ADR-0008](../../docs/architecture/ADR-0008-project-structure.md)。

@@ -38,13 +38,20 @@ func main() {
 		log.Fatalf("discord: %v", err)
 	}
 
-	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg)
+	meet := &discordtransport.MeetRunner{
+		Cfg:      cfg,
+		Discord:  dc,
+		Registry: reg,
+		Sender:   bot,
+	}
+
+	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg, meet)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	log.Printf("discord bot connected — prefix=%q bindings=%s", cmd.Prefix, dc.BindingsFile)
-	log.Printf("try: %sprincipal bind | %sprincipal whoami | %shelp", cmd.Prefix, cmd.Prefix, cmd.Prefix)
+	log.Printf("try: %sprincipal bind | %smeet 会议主题 | %shelp", cmd.Prefix, cmd.Prefix, cmd.Prefix)
 
 	if err := bot.Run(ctx, cmd.Handle); err != nil {
 		log.Fatalf("discord: %v", err)

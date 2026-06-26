@@ -7,21 +7,23 @@ import (
 
 	"round_table/apps/server/internal/adapter/transport"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
+	"round_table/apps/server/internal/domain/meeting"
 )
 
 // CommandHandler routes RoundTable Discord text commands (Principal binding, help).
 type CommandHandler struct {
 	Prefix   string
 	Registry *principalbind.Registry
+	Meet     *MeetRunner
 }
 
 // NewCommandHandler returns a handler with normalized prefix (trailing space).
-func NewCommandHandler(prefix string, reg *principalbind.Registry) *CommandHandler {
+func NewCommandHandler(prefix string, reg *principalbind.Registry, meet *MeetRunner) *CommandHandler {
 	p := strings.TrimSpace(prefix)
 	if p == "" {
 		p = "!rt"
 	}
-	return &CommandHandler{Prefix: p + " ", Registry: reg}
+	return &CommandHandler{Prefix: p + " ", Registry: reg, Meet: meet}
 }
 
 // Handle implements transport.MessageHandler.
@@ -40,6 +42,8 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 		return h.helpText(), nil
 	case "principal", "p":
 		return h.handlePrincipal(msg, args[1:])
+	case "meet", "m":
+		return h.handleMeet(msg, args[1:])
 	default:
 		return fmt.Sprintf("未知指令 `%s`。发送 `%shelp` 查看用法。", args[0], h.Prefix), nil
 	}
@@ -90,6 +94,21 @@ func (h *CommandHandler) handlePrincipal(msg transport.Inbound, args []string) (
 	}
 }
 
+func (h *CommandHandler) handleMeet(msg transport.Inbound, args []string) (string, error) {
+	if h.Meet == nil {
+		return "会议功能未启用。", nil
+	}
+	defaultMode := h.Meet.Discord.MeetMode
+	if defaultMode == "" {
+		defaultMode = meeting.MeetingModeDecision
+	}
+	parsed, err := parseMeetArgs(args, defaultMode)
+	if err != nil {
+		return fmt.Sprintf("用法：`%smeet [-mode decision|deliberation] 会议主题`", h.Prefix), nil
+	}
+	return h.Meet.Start(msg, parsed)
+}
+
 func (h *CommandHandler) helpText() string {
 	return fmt.Sprintf(`**RoundTable Discord 指令**
 
@@ -98,5 +117,6 @@ func (h *CommandHandler) helpText() string {
 - `+"`%shelp`"+` — 显示帮助
 - `+"`%sprincipal bind`"+` — 将你自己绑定为本范围 Principal（每个服务器/私信会话仅一位）
 - `+"`%sprincipal whoami`"+` — 查看当前 Principal 绑定
-- `+"`%sprincipal unbind`"+` — 解除你的 Principal 绑定`, h.Prefix, h.Prefix, h.Prefix, h.Prefix, h.Prefix)
+- `+"`%sprincipal unbind`"+` — 解除你的 Principal 绑定
+- `+"`%smeet [-mode decision|deliberation] 主题`"+` — 发起会议（仅 Principal，每频道同时一场）`, h.Prefix, h.Prefix, h.Prefix, h.Prefix, h.Prefix, h.Prefix)
 }
