@@ -10,6 +10,7 @@ import (
 	knowport "round_table/apps/server/internal/adapter/knowledge"
 	"round_table/apps/server/internal/adapter/knowledge/fs"
 	"round_table/apps/server/internal/adapter/participant/stub"
+	prinstub "round_table/apps/server/internal/adapter/principal/stub"
 	profilefs "round_table/apps/server/internal/adapter/profile/fs"
 	"round_table/apps/server/internal/adapter/storage/memory"
 	"round_table/apps/server/internal/adapter/workspace"
@@ -22,16 +23,7 @@ import (
 func TestEngine_Integration_skipConfirmation(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()
-	templates := filepath.Join(repoRoot(t), "data", "_templates")
-
-	eng := engine.New(
-		memory.New(),
-		consensus.NoObjection{},
-		&stub.Participant{},
-		wsfs.NewStore(filepath.Join(dataRoot, "workspaces")),
-		profilefs.NewStore(filepath.Join(dataRoot, "profiles"), filepath.Join(templates, "profiles")),
-		fs.NewStore(filepath.Join(dataRoot, "knowledge"), filepath.Join(templates, "knowledge")),
-	)
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:        "mtg-int-1",
@@ -83,16 +75,7 @@ func TestEngine_Integration_skipConfirmation(t *testing.T) {
 func TestEngine_Integration_maxRoundsModeratorDecision(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()
-	templates := filepath.Join(repoRoot(t), "data", "_templates")
-
-	eng := engine.New(
-		memory.New(),
-		consensus.NoObjection{},
-		&stub.Participant{Stance: "object", Content: "需要修改", ObjectReason: "方案不完整"},
-		wsfs.NewStore(filepath.Join(dataRoot, "workspaces")),
-		profilefs.NewStore(filepath.Join(dataRoot, "profiles"), filepath.Join(templates, "profiles")),
-		fs.NewStore(filepath.Join(dataRoot, "knowledge"), filepath.Join(templates, "knowledge")),
-	)
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "object", Content: "需要修改", ObjectReason: "方案不完整"}, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:           "mtg-int-2",
@@ -117,6 +100,91 @@ func TestEngine_Integration_maxRoundsModeratorDecision(t *testing.T) {
 	if final.Consensus == nil || final.Consensus.ResolvedBy != "moderator" {
 		t.Fatalf("expected moderator decision, got %+v", final.Consensus)
 	}
+}
+
+func TestEngine_Integration_requiredConfirmation(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{})
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:        "mtg-int-3",
+		Topic:            "Confirmation 测试",
+		ConfirmationMode: meeting.ConfirmationModeRequired,
+		Participants: []engine.ParticipantInput{
+			{ID: "p1", Role: "Architect"},
+			{ID: "p2", Role: "Developer"},
+		},
+	}
+
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status = %s", final.Status)
+	}
+	if final.Confirmation == nil || !final.Confirmation.Approved {
+		t.Fatal("expected approved confirmation")
+	}
+
+	wsRoot := filepath.Join(dataRoot, "workspaces", spec.MeetingID)
+	assertFileContains(t, filepath.Join(wsRoot, "confirmation", "brief.md"), "Confirmation Brief")
+}
+
+func TestEngine_Integration_confirmationRejectThenApprove(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{
+		RejectUntilCycle: 2,
+		Feedback:           "需要更多细节",
+	})
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:        "mtg-int-4",
+		Topic:            "驳回后再共识",
+		ConfirmationMode: meeting.ConfirmationModeRequired,
+		Participants: []engine.ParticipantInput{
+			{ID: "p1", Role: "Expert"},
+		},
+	}
+
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status = %s", final.Status)
+	}
+	if final.ConfirmationCycle != 1 {
+		t.Fatalf("confirmation cycle = %d, want 1 after one reject", final.ConfirmationCycle)
+	}
+	if len(final.Minutes.Rounds) < 2 {
+		t.Fatalf("expected >=2 rounds after reject, got %d", len(final.Minutes.Rounds))
+	}
+}
+
+func newTestEngine(t *testing.T, dataRoot string, parts *stub.Participant, prin *prinstub.Principal) *engine.Engine {
+	t.Helper()
+	templates := filepath.Join(repoRoot(t), "data", "_templates")
+	if prin == nil {
+		prin = &prinstub.Principal{}
+	}
+	return engine.New(
+		memory.New(),
+		consensus.NoObjection{},
+		parts,
+		prin,
+		wsfs.NewStore(filepath.Join(dataRoot, "workspaces")),
+		profilefs.NewStore(filepath.Join(dataRoot, "profiles"), filepath.Join(templates, "profiles")),
+		fs.NewStore(filepath.Join(dataRoot, "knowledge"), filepath.Join(templates, "knowledge")),
+	)
 }
 
 func repoRoot(t *testing.T) string {

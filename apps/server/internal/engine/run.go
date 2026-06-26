@@ -62,21 +62,6 @@ func (e *Engine) completeRound(ctx context.Context, s meeting.State) (meeting.St
 	return e.startRound(ctx, s)
 }
 
-func (e *Engine) afterConsensus(ctx context.Context, s meeting.State) (meeting.State, error) {
-	if s.ConfirmationMode == meeting.ConfirmationModeSkip {
-		ref := "artifacts/minutes.md"
-		s, err := e.append(ctx, s, eventArtifactProduced("minutes-1", "markdown", ref))
-		if err != nil {
-			return s, err
-		}
-		if err := e.writeArtifactFile(s.ID, ref, []byte(renderMinutes(s))); err != nil {
-			return s, err
-		}
-		return e.append(ctx, s, eventMeetingFinished(meeting.OutcomeCompleted))
-	}
-	return s, errConfirmationNotImplemented
-}
-
 func spokenInRound(s meeting.State) map[string]bool {
 	spoken := make(map[string]bool)
 	for id := range s.RoundResponses[s.CurrentRound] {
@@ -99,6 +84,9 @@ func summarizeRound(s meeting.State) string {
 func (e *Engine) buildPrompt(s meeting.State, participantID string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Topic: %s\nRound: %d\nYou are %s (%s).\n", s.Topic, s.CurrentRound, participantID, s.Participants[participantID].Role)
+	if s.PrincipalFeedback != "" {
+		fmt.Fprintf(&b, "\nPrincipal feedback (address this round):\n%s\n", s.PrincipalFeedback)
+	}
 	if e.Workspace != nil {
 		if data, err := e.Workspace.Read(s.ID, workspace.FileMeeting); err == nil {
 			b.WriteString("\n--- MEETING.md ---\n")
@@ -179,8 +167,28 @@ func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelop
 				return err
 			}
 		}
+	case event.TypeConfirmationPrepared:
+		if e.Workspace != nil {
+			p, _ := decodePayload[event.ConfirmationPreparedPayload](env)
+			body := renderConfirmationBrief(p.Brief, p.Cycle)
+			if err := e.Workspace.Write(s.ID, "confirmation/brief.md", []byte(body)); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+func renderConfirmationBrief(brief event.ConfirmationBrief, cycle int) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Confirmation Brief (cycle %d)\n\n%s\n\n", cycle, brief.ExecutiveSummary)
+	for _, item := range brief.Items {
+		fmt.Fprintf(&b, "## %d. %s\n\n%s\n", item.Index, item.Title, item.Description)
+		if item.Source != "" {
+			fmt.Fprintf(&b, "_Source: %s_\n\n", item.Source)
+		}
+	}
+	return b.String()
 }
 
 func (e *Engine) writeArtifactFile(meetingID, ref string, body []byte) error {

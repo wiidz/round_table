@@ -6,6 +6,7 @@
 |----|------|------|
 | `storage/` | EventStore（memory → sqlite） | memory ✅ |
 | `participant/` | ParticipantPort（stub → LLM） | stub ✅ |
+| `principal/` | Principal Confirmation 关 | stub ✅ |
 | `model/` | Model Provider Adapter | 规划 |
 | `runtime/` | Agent Runtime Adapter | 规划 |
 | `transport/` | HTTP / WebSocket | 规划 Phase 4 |

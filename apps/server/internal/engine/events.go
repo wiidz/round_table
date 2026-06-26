@@ -2,13 +2,10 @@ package engine
 
 import (
 	"encoding/json"
-	"errors"
 
 	"round_table/apps/server/internal/domain/consensus"
 	"round_table/apps/server/internal/domain/event"
 )
-
-var errConfirmationNotImplemented = errors.New("engine: confirmation flow not implemented in v0.1")
 
 func eventMeetingCreated(topic, confirmationMode string, maxRounds int) event.Envelope {
 	payload, _ := json.Marshal(event.MeetingCreatedPayload{
@@ -124,5 +121,52 @@ func eventMeetingFinished(outcome string) event.Envelope {
 		Type:    event.TypeMeetingFinished,
 		Payload: payload,
 		Actor:   event.ActorModerator,
+	}
+}
+
+func eventConfirmationPrepared(cycle int, brief event.ConfirmationBrief) event.Envelope {
+	payload, _ := json.Marshal(event.ConfirmationPreparedPayload{Cycle: cycle, Brief: brief})
+	return event.Envelope{
+		Type:    event.TypeConfirmationPrepared,
+		Payload: payload,
+		Actor:   event.ActorModerator,
+	}
+}
+
+func eventConfirmationPresented(cycle int) event.Envelope {
+	payload, _ := json.Marshal(event.ConfirmationPresentedPayload{Cycle: cycle})
+	return event.Envelope{
+		Type:    event.TypeConfirmationPresented,
+		Payload: payload,
+		Actor:   event.ActorModerator,
+	}
+}
+
+func eventConfirmationApproved(cycle int, notes map[int]string) event.Envelope {
+	payload, _ := json.Marshal(event.ConfirmationApprovedPayload{Cycle: cycle, ItemNotes: notes})
+	return event.Envelope{
+		Type:    event.TypeConfirmationApproved,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
+func eventConfirmationRejected(cycle int, feedback string, notes map[int]string) event.Envelope {
+	payload, _ := json.Marshal(event.ConfirmationRejectedPayload{
+		Cycle: cycle, Feedback: feedback, ItemNotes: notes,
+	})
+	return event.Envelope{
+		Type:    event.TypeConfirmationRejected,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
+func eventConfirmationForced(cycle int, reason string) event.Envelope {
+	payload, _ := json.Marshal(event.ConfirmationForcedPayload{Cycle: cycle, Reason: reason})
+	return event.Envelope{
+		Type:    event.TypeConfirmationForced,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
 	}
 }

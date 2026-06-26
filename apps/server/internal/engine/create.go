@@ -66,7 +66,7 @@ func (e *Engine) CreateMeeting(ctx context.Context, in CreateMeetingInput) (meet
 	return s, nil
 }
 
-// Run drives the meeting from Preparing through Completed (v0.1: skip confirmation auto-finish).
+// Run drives the meeting from Preparing through Completed.
 func (e *Engine) Run(ctx context.Context, meetingID string) (meeting.State, error) {
 	s, err := e.LoadState(ctx, meetingID)
 	if err != nil {
@@ -89,6 +89,8 @@ func (e *Engine) Run(ctx context.Context, meetingID string) (meeting.State, erro
 			s, err = e.advanceRunning(ctx, s)
 		case meeting.StatusConsensus:
 			s, err = e.afterConsensus(ctx, s)
+		case meeting.StatusConfirmation:
+			s, err = e.advanceConfirmation(ctx, s)
 		default:
 			return s, errStatusNotRunnable(s.Status)
 		}
