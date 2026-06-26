@@ -91,13 +91,25 @@ func moderatorSummarizeDeliberationRound(s meeting.State) string {
 	for _, id := range s.RoundOrder {
 		r := s.RoundResponses[s.CurrentRound][id]
 		role := s.Participants[id].Role
-		fmt.Fprintf(&b, "- **%s** (%s): %s\n", id, role, truncateRunes(strings.TrimSpace(r.Content), 300))
+		fmt.Fprintf(&b, "- **%s** (%s)\n", id, role)
+		points := extractKeyPoints(r.Content)
+		if len(points) == 0 {
+			text := strings.TrimSpace(r.Content)
+			if text == "" {
+				b.WriteString("  - （无内容）\n")
+				continue
+			}
+			fmt.Fprintf(&b, "  - %s\n", truncateRunes(text, 500))
+			continue
+		}
+		for _, p := range points {
+			fmt.Fprintf(&b, "  - %s\n", p)
+		}
 	}
 
-	if sum, ok := s.ModeratorSummaries[s.CurrentRound-1]; ok && s.CurrentRound > 1 {
+	if s.CurrentRound > 1 {
 		b.WriteString("\n### 与上轮衔接\n\n")
-		b.WriteString(truncateRunes(sum, 400))
-		b.WriteByte('\n')
+		fmt.Fprintf(&b, "承接 Round %d 讨论；完整发言见上文 Round %d。\n", s.CurrentRound-1, s.CurrentRound-1)
 	}
 
 	b.WriteString("\n### 研讨状态\n\n")
@@ -123,7 +135,7 @@ func extractKeyPoints(content string) []string {
 		var points []string
 		for _, line := range strings.Split(content, "\n") {
 			line = strings.TrimSpace(line)
-			if line == "" {
+			if line == "" || !numberedLine.MatchString(line) {
 				continue
 			}
 			line = numberedLine.ReplaceAllString(line, "")

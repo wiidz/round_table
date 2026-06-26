@@ -88,6 +88,8 @@ make run-discord
 !rt meet -mode decision 是否上线    # 裁决型
 ```
 
-仅已绑定的 Principal 可发起；每个 Discord 频道同时只允许一场会议。进度里程碑会推送到频道。
+仅已绑定的 Principal 可发起；每个 Discord 频道同时只允许一场会议。进度与主持人摘要由主 Bot 推送；各 Participant 发言由其对应 Bot 账号发出（见 `transport.discord.participant_bots`）。
+
+**多 Bot 发言**：在 `server.yaml` 配置 `participant_bots`，在 `.env` 为每个 ID 设置 `DISCORD_BOT_TOKEN_<ID>`（如 `DISCORD_BOT_TOKEN_DESIGNER`）。未配置 token 的 Participant 回退到主 Bot。
 
 结构说明见 [ADR-0008](../../docs/architecture/ADR-0008-project-structure.md)。

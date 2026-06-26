@@ -5,26 +5,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"round_table/apps/server/internal/stream"
 )
 
-const discordStreamMaxLen = 1900
+type pendingTurn struct {
+	speaker string
+	raw     string
+}
 
 // channelStream posts turn headers and formatted LLM output to a Discord channel.
 type channelStream struct {
-	sender    ChannelSender
+	pool      *BotPool
 	channelID string
+	loc       Locale
 	buf       strings.Builder
+	speaker   string
+	pending   pendingTurn
 }
 
 func (s *channelStream) Start(meta stream.Meta) {
 	s.buf.Reset()
-	line := fmt.Sprintf("↳ %s · %s", meta.ParticipantID, meta.Phase)
-	if meta.Detail != "" {
-		line += " · " + meta.Detail
+	s.pending = pendingTurn{}
+	s.speaker = meta.ParticipantID
+	// Moderator readiness/synthesis posts formatted body on End — skip redundant header.
+	if meta.ParticipantID == "moderator" &&
+		(meta.Phase == "deliberation-readiness" || meta.Phase == "deliberation-synthesis") {
+		return
 	}
-	_ = s.sender.Send(context.Background(), s.channelID, line)
+	line := formatStreamStart(streamMeta{
+		ParticipantID: meta.ParticipantID,
+		Phase:         meta.Phase,
+		Detail:        meta.Detail,
+	}, s.loc)
+	sender := s.pool.SenderFor(s.speaker)
+	if sender == nil {
+		return
+	}
+	_ = sender.Send(context.Background(), s.channelID, line)
 }
 
 func (s *channelStream) Delta(delta string) {
@@ -33,32 +52,78 @@ func (s *channelStream) Delta(delta string) {
 
 func (s *channelStream) End() {
 	raw := strings.TrimSpace(s.buf.String())
+	speaker := s.speaker
 	s.buf.Reset()
+	s.speaker = ""
 	if raw == "" {
 		return
 	}
-	body := formatStreamForDiscord(raw)
+	if s.pool != nil && s.pool.HasBot(speaker) {
+		s.pending = pendingTurn{speaker: speaker, raw: raw}
+		return
+	}
+	s.postTurn(speaker, raw, 0, 0)
+}
+
+func (s *channelStream) CompleteTurn(participantID string, tokens int, elapsed time.Duration) {
+	if s.pending.speaker == "" || s.pending.speaker != participantID {
+		return
+	}
+	s.postTurn(s.pending.speaker, s.pending.raw, tokens, elapsed)
+	s.pending = pendingTurn{}
+}
+
+func (s *channelStream) postTurn(speaker, raw string, tokens int, elapsed time.Duration) {
+	body := formatStreamForDiscord(raw, s.loc)
 	if body == "" {
 		body = raw
 	}
-	body = truncateDiscord(body, discordStreamMaxLen)
-	_ = s.sender.Send(context.Background(), s.channelID, body)
+	if footer := formatTurnFooter(tokens, elapsed, s.loc); footer != "" {
+		body += footer
+	}
+	sender := s.pool.SenderFor(speaker)
+	if sender == nil {
+		return
+	}
+	SendLong(sender, context.Background(), s.channelID, body)
 }
 
-func formatStreamForDiscord(raw string) string {
-	if text := formatParticipantStream(raw); text != "" {
+func formatTurnFooter(tokens int, elapsed time.Duration, loc Locale) string {
+	if tokens <= 0 && elapsed <= 0 {
+		return ""
+	}
+	if loc == LocaleZH {
+		if tokens > 0 && elapsed > 0 {
+			return fmt.Sprintf("\n\n_⏱ %s · %d Token_", elapsed.Round(time.Millisecond), tokens)
+		}
+		if elapsed > 0 {
+			return fmt.Sprintf("\n\n_⏱ %s_", elapsed.Round(time.Millisecond))
+		}
+		return fmt.Sprintf("\n\n_%d Token_", tokens)
+	}
+	if tokens > 0 && elapsed > 0 {
+		return fmt.Sprintf("\n\n_⏱ %s · %d tokens_", elapsed.Round(time.Millisecond), tokens)
+	}
+	if elapsed > 0 {
+		return fmt.Sprintf("\n\n_⏱ %s_", elapsed.Round(time.Millisecond))
+	}
+	return fmt.Sprintf("\n\n_%d tokens_", tokens)
+}
+
+func formatStreamForDiscord(raw string, loc Locale) string {
+	if text := formatParticipantStream(raw, loc); text != "" {
 		return text
 	}
-	if text := formatReadinessStream(raw); text != "" {
+	if text := formatReadinessStream(raw, loc); text != "" {
 		return text
 	}
-	if text := formatSynthesisStream(raw); text != "" {
+	if text := formatSynthesisStream(raw, loc); text != "" {
 		return text
 	}
 	return ""
 }
 
-func formatParticipantStream(raw string) string {
+func formatParticipantStream(raw string, loc Locale) string {
 	var part struct {
 		Content      string `json:"content"`
 		Stance       string `json:"stance"`
@@ -70,15 +135,23 @@ func formatParticipantStream(raw string) string {
 	var b strings.Builder
 	b.WriteString(part.Content)
 	if part.Stance != "" && part.Stance != "none" {
-		fmt.Fprintf(&b, "\n\n_立场: %s_", part.Stance)
+		if loc == LocaleZH {
+			fmt.Fprintf(&b, "\n\n_立场：%s_", part.Stance)
+		} else {
+			fmt.Fprintf(&b, "\n\n_Stance: %s_", part.Stance)
+		}
 	}
 	if strings.TrimSpace(part.ObjectReason) != "" {
-		fmt.Fprintf(&b, "\n_反对理由: %s_", strings.TrimSpace(part.ObjectReason))
+		if loc == LocaleZH {
+			fmt.Fprintf(&b, "\n_反对理由：%s_", strings.TrimSpace(part.ObjectReason))
+		} else {
+			fmt.Fprintf(&b, "\n_Objection: %s_", strings.TrimSpace(part.ObjectReason))
+		}
 	}
 	return b.String()
 }
 
-func formatReadinessStream(raw string) string {
+func formatReadinessStream(raw string, loc Locale) string {
 	var ready struct {
 		Ready     bool     `json:"ready"`
 		Rationale string   `json:"rationale"`
@@ -89,15 +162,25 @@ func formatReadinessStream(raw string) string {
 	}
 	var b strings.Builder
 	if ready.Ready {
-		b.WriteString("**研讨就绪** ✓\n")
+		if loc == LocaleZH {
+			b.WriteString("✅ **研讨就绪**\n")
+		} else {
+			b.WriteString("✅ **Ready for synthesis**\n")
+		}
+	} else if loc == LocaleZH {
+		b.WriteString("⏳ **继续研讨**\n")
 	} else {
-		b.WriteString("**继续研讨**\n")
+		b.WriteString("⏳ **Continue deliberation**\n")
 	}
 	if ready.Rationale != "" {
 		fmt.Fprintf(&b, "%s\n", ready.Rationale)
 	}
 	if len(ready.Gaps) > 0 {
-		b.WriteString("\n**待补缺口**\n")
+		if loc == LocaleZH {
+			b.WriteString("\n**📌 待补缺口**\n")
+		} else {
+			b.WriteString("\n**📌 Gaps**\n")
+		}
 		for _, gap := range ready.Gaps {
 			fmt.Fprintf(&b, "- %s\n", gap)
 		}
@@ -105,7 +188,7 @@ func formatReadinessStream(raw string) string {
 	return strings.TrimSpace(b.String())
 }
 
-func formatSynthesisStream(raw string) string {
+func formatSynthesisStream(raw string, loc Locale) string {
 	var syn struct {
 		CoreScheme    []string `json:"core_scheme"`
 		Decisions     []string `json:"decisions"`
@@ -119,13 +202,23 @@ func formatSynthesisStream(raw string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("**设计草案合成**\n")
+	if loc == LocaleZH {
+		b.WriteString("📋 **设计草案合成**\n")
+	} else {
+		b.WriteString("📋 **Design draft synthesis**\n")
+	}
 	if syn.Summary != "" {
 		fmt.Fprintf(&b, "%s\n\n", syn.Summary)
 	}
-	writeBulletSection(&b, "方案要点", syn.CoreScheme)
-	writeBulletSection(&b, "已决事项", syn.Decisions)
-	writeBulletSection(&b, "开放问题", syn.OpenQuestions)
+	if loc == LocaleZH {
+		writeBulletSection(&b, "💡 方案要点", syn.CoreScheme)
+		writeBulletSection(&b, "✅ 已决事项", syn.Decisions)
+		writeBulletSection(&b, "❓ 开放问题", syn.OpenQuestions)
+	} else {
+		writeBulletSection(&b, "💡 Core scheme", syn.CoreScheme)
+		writeBulletSection(&b, "✅ Decisions", syn.Decisions)
+		writeBulletSection(&b, "❓ Open questions", syn.OpenQuestions)
+	}
 	return strings.TrimSpace(b.String())
 }
 
@@ -137,14 +230,4 @@ func writeBulletSection(b *strings.Builder, title string, items []string) {
 	for i, item := range items {
 		fmt.Fprintf(b, "%d. %s\n", i+1, item)
 	}
-}
-
-func truncateDiscord(text string, max int) string {
-	if max <= 0 || len(text) <= max {
-		return text
-	}
-	if max <= 1 {
-		return text[:max]
-	}
-	return text[:max-1] + "…"
 }

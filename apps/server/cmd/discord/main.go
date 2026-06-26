@@ -38,11 +38,26 @@ func main() {
 		log.Fatalf("discord: %v", err)
 	}
 
+	botOpts := discordtransport.Options{
+		AllowDM:    dc.AllowDM,
+		AllowGuild: dc.AllowGuild,
+		GuildID:    dc.GuildID,
+	}
+	pool, err := discordtransport.OpenBotPool(discordtransport.PoolOptions{
+		Default: bot,
+		BotOpts: botOpts,
+		Mapping: discordtransport.ParseParticipantBotMapping(dc.ParticipantBots),
+	})
+	if err != nil {
+		log.Fatalf("discord: participant bots: %v", err)
+	}
+	defer pool.Close()
+
 	meet := &discordtransport.MeetRunner{
 		Cfg:      cfg,
 		Discord:  dc,
 		Registry: reg,
-		Sender:   bot,
+		Bots:     pool,
 	}
 
 	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg, meet)
@@ -51,6 +66,8 @@ func main() {
 	defer stop()
 
 	log.Printf("discord bot connected — prefix=%q bindings=%s", cmd.Prefix, dc.BindingsFile)
+	log.Printf("discord participant bots: %d/%d connected",
+		pool.Count(), len(discordtransport.ParseParticipantBotMapping(dc.ParticipantBots)))
 	log.Printf("try: %sprincipal bind | %smeet 会议主题 | %shelp", cmd.Prefix, cmd.Prefix, cmd.Prefix)
 
 	if err := bot.Run(ctx, cmd.Handle); err != nil {

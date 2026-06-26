@@ -81,6 +81,8 @@ type DiscordTransport struct {
 	MeetConfirmation        string `yaml:"meet_confirmation"`
 	MeetMaxRounds           int    `yaml:"meet_max_rounds"`
 	MeetFreeDialogueQuestions int  `yaml:"meet_free_dialogue_questions"`
+	ParticipantBots         string `yaml:"participant_bots"`
+	Locale                  string `yaml:"locale"`
 }
 
 // Secrets are loaded only from .env / environment — never from YAML.
@@ -161,11 +163,13 @@ func defaults() Config {
 				AllowGuild:                true,
 				CommandPrefix:             "!rt",
 				BindingsFile:              "./data/transport/discord-principal.json",
-				MeetParticipants:          "designer:游戏策划:gameplay,player:玩家代表:experience",
+				MeetParticipants:          "designer:游戏策划:gameplay,player:玩家代表:experience,dev:开发:backend,ops:运维:infra",
 				MeetMode:                  "deliberation",
 				MeetConfirmation:          "skip",
 				MeetMaxRounds:             2,
 				MeetFreeDialogueQuestions: 0,
+				ParticipantBots:           "designer,player,dev,ops",
+				Locale:                    "en",
 			},
 		},
 	}

@@ -10,7 +10,7 @@ import (
 	"round_table/apps/server/internal/adapter/transport"
 )
 
-const maxMessageLen = 2000
+const maxMessageLen = 2000 // Discord API limit (code points); see message.go
 
 // Options configures a single Discord bot connection.
 type Options struct {
@@ -96,13 +96,26 @@ func (b *Bot) Send(_ context.Context, channelID, content string) error {
 	return b.send(channelID, content)
 }
 
-func (b *Bot) send(channelID, content string) error {
-	content = strings.TrimSpace(content)
-	if content == "" {
+// DisplayName returns the connected bot username (may be empty before Open).
+func (b *Bot) DisplayName() string {
+	if b == nil || b.session == nil || b.session.State == nil || b.session.State.User == nil {
+		return ""
+	}
+	return b.session.State.User.Username
+}
+
+// Close disconnects the gateway session.
+func (b *Bot) Close() error {
+	if b == nil || b.session == nil {
 		return nil
 	}
-	if len(content) > maxMessageLen {
-		content = content[:maxMessageLen-1] + "…"
+	return b.session.Close()
+}
+
+func (b *Bot) send(channelID, content string) error {
+	content = clipMessageRunes(content)
+	if content == "" {
+		return nil
 	}
 	_, err := b.session.ChannelMessageSend(channelID, content)
 	if err != nil {

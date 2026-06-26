@@ -125,10 +125,11 @@ func (e *Engine) logLLMDone(phase, participantID, stance string, resp participan
 	if tokens == 0 {
 		e.logf("✓ LLM %s participant=%s stance=%s elapsed=%s",
 			phase, participantID, stance, elapsed.Round(time.Millisecond))
-		return
+	} else {
+		e.logf("✓ LLM %s participant=%s stance=%s tokens=%d elapsed=%s",
+			phase, participantID, stance, tokens, elapsed.Round(time.Millisecond))
 	}
-	e.logf("✓ LLM %s participant=%s stance=%s tokens=%d elapsed=%s",
-		phase, participantID, stance, tokens, elapsed.Round(time.Millisecond))
+	notifyStreamTurnComplete(e.Stream, participantID, tokens, elapsed)
 }
 
 func debateTurnLabel(s meeting.State, participantID string) string {

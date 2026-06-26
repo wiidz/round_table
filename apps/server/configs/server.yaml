@@ -43,8 +43,11 @@ transport:
     guild_id: ""   # optional: restrict bot to one Discord server ID
     command_prefix: "!rt"
     bindings_file: ./data/transport/discord-principal.json
-    meet_participants: "designer:游戏策划:gameplay,player:玩家代表:experience"
+    meet_participants: "designer:游戏策划:gameplay,player:玩家代表:experience,dev:开发:backend,ops:运维:infra"
     meet_mode: deliberation
     meet_confirmation: skip
     meet_max_rounds: 2
     meet_free_dialogue_questions: 0
+    # Participant bots speak as themselves; tokens in .env as DISCORD_BOT_TOKEN_<ID>
+    participant_bots: "designer,player,dev,ops"
+    locale: zh   # en | zh — Discord 进度与摘要文案

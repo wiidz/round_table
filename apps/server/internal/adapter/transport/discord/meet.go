@@ -26,7 +26,7 @@ type MeetRunner struct {
 	Cfg      config.Config
 	Discord  config.DiscordTransport
 	Registry *principalbind.Registry
-	Sender   ChannelSender
+	Bots     *BotPool
 	sessions meetSessions
 }
 
@@ -63,23 +63,31 @@ func (m *meetSessions) active(channelID string) (string, bool) {
 
 // Start launches a meeting asynchronously and returns an immediate ack message.
 func (r *MeetRunner) Start(msg transport.Inbound, parsed meetParseResult) (string, error) {
+	loc := ParseLocale(r.Discord.Locale)
 	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
 	binding, ok := r.Registry.Get(scope)
 	if !ok {
-		return "请先绑定 Principal，再发起会议。", nil
+		return meetNeedBindText(loc), nil
 	}
 	if binding.ExternalID != msg.AuthorID {
-		return "只有本范围的 Principal 可以发起会议。", nil
+		return meetNotScopePrincipalText(loc), nil
 	}
 
 	meetingID := fmt.Sprintf("mtg-dc-%d", time.Now().Unix())
 	if err := r.sessions.tryStart(msg.ChannelID, meetingID); err != nil {
+		if busy := extractBusyMeetingID(err); busy != "" {
+			return meetChannelBusyText(loc, busy), nil
+		}
 		return err.Error(), nil
 	}
 
 	go r.runMeeting(msg.ChannelID, meetingID, binding, parsed)
 
-	return fmt.Sprintf("会议已启动\n- ID: `%s`\n- 主题: %s\n- 模式: %s\n- Principal: %s\n\n进度将推送到本频道。",
+	if loc == LocaleZH {
+		return fmt.Sprintf("🚀 **会议已启动**\n- 🆔 `%s`\n- 📌 主题：%s\n- 🎯 模式：%s\n- 👤 Principal：%s\n\n进度将推送到本频道。",
+			meetingID, parsed.Topic, meetingModeLabel(parsed.Mode, loc), binding.DisplayName), nil
+	}
+	return fmt.Sprintf("🚀 **Meeting started**\n- 🆔 `%s`\n- 📌 Topic: %s\n- 🎯 Mode: %s\n- 👤 Principal: %s\n\nProgress will post here.",
 		meetingID, parsed.Topic, parsed.Mode, binding.DisplayName), nil
 }
 
@@ -87,11 +95,12 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 	defer r.sessions.clear(channelID)
 	ctx := context.Background()
 
-	chProgress := &channelProgress{sender: r.Sender, channelID: channelID}
-	chStream := &channelStream{sender: r.Sender, channelID: channelID}
+	loc := ParseLocale(r.Discord.Locale)
+	chProgress := &channelProgress{pool: r.Bots, channelID: channelID, loc: loc}
+	chStream := &channelStream{pool: r.Bots, channelID: channelID, loc: loc}
 	eng, err := bootstrap.NewEngine(r.Cfg)
 	if err != nil {
-		_ = r.Sender.Send(ctx, channelID, "会议启动失败："+err.Error())
+		_ = r.Bots.Default.Send(ctx, channelID, meetEngineFailedText(loc, err))
 		return
 	}
 	eng.Progress = engine.TeeProgressLogger{
@@ -103,7 +112,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 
 	parts, err := parseParticipants(r.Discord.MeetParticipants)
 	if err != nil {
-		_ = r.Sender.Send(ctx, channelID, "会议配置错误："+err.Error())
+		_ = r.Bots.Default.Send(ctx, channelID, meetConfigErrorText(loc, err))
 		return
 	}
 
@@ -133,7 +142,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		FreeDialogueMaxQuestions: &freePtr,
 		Participants:             parts,
 	}); err != nil {
-		_ = r.Sender.Send(ctx, channelID, "创建会议失败："+err.Error())
+		_ = r.Bots.Default.Send(ctx, channelID, meetCreateFailedText(loc, err))
 		return
 	}
 
@@ -142,37 +151,76 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 
 	final, err := eng.Run(ctx, meetingID)
 	if err != nil {
-		_ = r.Sender.Send(ctx, channelID, fmt.Sprintf("会议 `%s` 失败：%v", meetingID, err))
+		_ = r.Bots.Default.Send(ctx, channelID, meetRunFailedText(loc, meetingID, err))
 		return
 	}
 
-	summary := formatMeetDone(final, r.Cfg.Workspace.Root, meetingID)
-	_ = r.Sender.Send(ctx, channelID, summary)
+	summary := formatMeetDone(final, r.Cfg.Workspace.Root, meetingID, loc)
+	SendLong(r.Bots.Default, ctx, channelID, summary)
 }
 
-func formatMeetDone(s meeting.State, workspaceRoot, meetingID string) string {
+func extractBusyMeetingID(err error) string {
+	if err == nil {
+		return ""
+	}
+	const prefix = "(meeting "
+	msg := err.Error()
+	idx := strings.Index(msg, prefix)
+	if idx < 0 {
+		return ""
+	}
+	rest := msg[idx+len(prefix):]
+	end := strings.IndexByte(rest, ')')
+	if end < 0 {
+		return ""
+	}
+	return rest[:end]
+}
+
+func formatMeetDone(s meeting.State, workspaceRoot, meetingID string, loc Locale) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "**会议结束** `%s`\n", meetingID)
-	fmt.Fprintf(&b, "- 状态: %s\n", s.Status)
+	if loc == LocaleZH {
+		fmt.Fprintf(&b, "🏁 **会议结束** `%s`\n", meetingID)
+		fmt.Fprintf(&b, "- 📊 状态：%s\n", statusLabel(string(s.Status), loc))
+		if s.Outcome != "" {
+			fmt.Fprintf(&b, "- ✅ 结果：%s\n", outcomeLabel(s.Outcome, loc))
+		}
+		if s.IsDeliberation() && s.Consensus != nil {
+			fmt.Fprintf(&b, "- 📝 合成方式：%s\n", resolvedByLabel(s.Consensus.ResolvedBy, loc))
+		} else if s.Consensus != nil {
+			fmt.Fprintf(&b, "- 🤝 共识：%s\n", resolvedByLabel(s.Consensus.ResolvedBy, loc))
+		}
+		if s.IsDeliberation() && len(s.SynthesisOpenQuestions) > 0 {
+			fmt.Fprintf(&b, "- ❓ 开放问题：%d 条\n", len(s.SynthesisOpenQuestions))
+			for i, q := range s.SynthesisOpenQuestions {
+				fmt.Fprintf(&b, "  %d. %s\n", i+1, q)
+			}
+		}
+		fmt.Fprintf(&b, "- 🔄 研讨轮次：%d\n", s.DebateRoundCount())
+		fmt.Fprintf(&b, "- 📁 工作区：`%s/%s`", strings.TrimSuffix(workspaceRoot, "/"), meetingID)
+		if s.TokenUsageTotals.CallCount > 0 {
+			fmt.Fprintf(&b, "\n- 🔢 Token 用量：%d", s.TokenUsageTotals.TotalTokens)
+		}
+		return b.String()
+	}
+
+	fmt.Fprintf(&b, "🏁 **Meeting finished** `%s`\n", meetingID)
+	fmt.Fprintf(&b, "- Status: %s\n", s.Status)
 	if s.Outcome != "" {
-		fmt.Fprintf(&b, "- 结果: %s\n", s.Outcome)
+		fmt.Fprintf(&b, "- Outcome: %s\n", s.Outcome)
 	}
 	if s.IsDeliberation() && s.Consensus != nil {
-		fmt.Fprintf(&b, "- 合成: resolved_by=%s\n", s.Consensus.ResolvedBy)
+		fmt.Fprintf(&b, "- Synthesis: resolved_by=%s\n", s.Consensus.ResolvedBy)
 	} else if s.Consensus != nil {
-		fmt.Fprintf(&b, "- 共识: resolved_by=%s\n", s.Consensus.ResolvedBy)
+		fmt.Fprintf(&b, "- Consensus: resolved_by=%s\n", s.Consensus.ResolvedBy)
 	}
 	if s.IsDeliberation() && len(s.SynthesisOpenQuestions) > 0 {
-		fmt.Fprintf(&b, "- 开放问题: %d 条\n", len(s.SynthesisOpenQuestions))
+		fmt.Fprintf(&b, "- Open questions: %d\n", len(s.SynthesisOpenQuestions))
 		for i, q := range s.SynthesisOpenQuestions {
-			if i >= 5 {
-				fmt.Fprintf(&b, "- … 另有 %d 条\n", len(s.SynthesisOpenQuestions)-5)
-				break
-			}
 			fmt.Fprintf(&b, "  %d. %s\n", i+1, q)
 		}
 	}
-	fmt.Fprintf(&b, "- 辩论轮次: %d\n", s.DebateRoundCount())
+	fmt.Fprintf(&b, "- Debate rounds: %d\n", s.DebateRoundCount())
 	fmt.Fprintf(&b, "- Workspace: `%s/%s`", strings.TrimSuffix(workspaceRoot, "/"), meetingID)
 	if s.TokenUsageTotals.CallCount > 0 {
 		fmt.Fprintf(&b, "\n- Tokens: %d", s.TokenUsageTotals.TotalTokens)

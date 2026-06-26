@@ -82,6 +82,28 @@ func TestSummarizePreMeeting(t *testing.T) {
 	}
 }
 
+func TestModeratorSummarizeDeliberationRound_keyPoints(t *testing.T) {
+	long := strings.Repeat("详细论证内容。", 40) // >300 runes
+	s := meeting.State{
+		CurrentRound: 1,
+		MaxRoundsPerSegment: 2,
+		RoundOrder:   []string{"designer"},
+		Participants: map[string]meeting.ParticipantState{
+			"designer": {Role: "游戏策划"},
+		},
+		RoundResponses: map[int]map[string]meeting.RoundResponse{
+			1: {"designer": {Content: "1. 赛季测试事件\n2. 资源隔离\n\n" + long}},
+		},
+	}
+	out := moderatorSummarizeDeliberationRound(s)
+	if strings.Contains(out, "详细论证内容。") {
+		t.Fatalf("should not paste long body verbatim:\n%s", out)
+	}
+	if !strings.Contains(out, "赛季测试事件") || !strings.Contains(out, "资源隔离") {
+		t.Fatalf("missing key points:\n%s", out)
+	}
+}
+
 func TestExtractKeyPoints(t *testing.T) {
  pts := extractKeyPoints("1. First point here\n2. Second point here")
 	if len(pts) != 2 {

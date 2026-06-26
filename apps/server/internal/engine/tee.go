@@ -1,6 +1,10 @@
 package engine
 
-import "round_table/apps/server/internal/stream"
+import (
+	"time"
+
+	"round_table/apps/server/internal/stream"
+)
 
 // TeeProgressLogger forwards progress lines to multiple loggers.
 type TeeProgressLogger struct {
@@ -40,6 +44,17 @@ func (t TeeStreamLogger) End() {
 	for _, l := range t.Loggers {
 		if l != nil {
 			l.End()
+		}
+	}
+}
+
+func (t TeeStreamLogger) CompleteTurn(participantID string, tokens int, elapsed time.Duration) {
+	for _, l := range t.Loggers {
+		if l == nil {
+			continue
+		}
+		if f, ok := l.(StreamTurnFinisher); ok {
+			f.CompleteTurn(participantID, tokens, elapsed)
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"round_table/apps/server/internal/adapter/transport"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
+	"round_table/apps/server/internal/platform/config"
 )
 
 func TestCommandHandler_principalBind(t *testing.T) {
@@ -14,7 +15,7 @@ func TestCommandHandler_principalBind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewCommandHandler("!rt", reg, nil)
+	h := NewCommandHandler("!rt", reg, &MeetRunner{Discord: config.DiscordTransport{Locale: "zh"}})
 
 	reply, err := h.Handle(context.Background(), transport.Inbound{
 		Platform:   "discord",
@@ -42,6 +43,14 @@ func TestCommandHandler_principalBind(t *testing.T) {
 	})
 	if !strings.Contains(reply3, "你是本范围的 Principal") {
 		t.Fatalf("whoami = %q", reply3)
+	}
+}
+
+func TestCommandHandler_helpEN(t *testing.T) {
+	h := NewCommandHandler("!rt", mustReg(t), &MeetRunner{Discord: config.DiscordTransport{Locale: "en"}})
+	reply, err := h.Handle(context.Background(), transport.Inbound{Content: "!rt help"})
+	if err != nil || !strings.Contains(reply, "RoundTable Discord commands") {
+		t.Fatalf("reply=%q err=%v", reply, err)
 	}
 }
 

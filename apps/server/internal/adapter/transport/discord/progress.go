@@ -10,22 +10,24 @@ const moderatorSummaryPrefix = "◆ moderator summary round="
 
 // channelProgress forwards selected Engine progress lines to a Discord channel.
 type channelProgress struct {
-	sender    ChannelSender
+	pool      *BotPool
 	channelID string
+	loc       Locale
 }
 
 func (p *channelProgress) Logf(format string, args ...any) {
 	line := fmt.Sprintf(format, args...)
-	if round, body, ok := parseModeratorSummaryLine(line); ok {
-		msg := fmt.Sprintf("**第 %d 轮主持人摘要**\n%s", round, body)
-		msg = truncateDiscord(msg, discordStreamMaxLen)
-		_ = p.sender.Send(context.Background(), p.channelID, msg)
+	if strings.HasPrefix(line, moderatorSummaryPrefix) {
 		return
 	}
 	if !shouldPostProgress(line) {
 		return
 	}
-	_ = p.sender.Send(context.Background(), p.channelID, line)
+	sender := p.pool.Default
+	if sender == nil {
+		return
+	}
+	_ = sender.Send(context.Background(), p.channelID, localizeProgressLine(line, p.loc))
 }
 
 func parseModeratorSummaryLine(line string) (round int, body string, ok bool) {
@@ -48,24 +50,31 @@ func parseModeratorSummaryLine(line string) (round int, body string, ok bool) {
 }
 
 func shouldPostProgress(line string) bool {
-	// Posted as a dedicated formatted message via parseModeratorSummaryLine.
 	if strings.HasPrefix(line, moderatorSummaryPrefix) {
 		return false
 	}
-	// Principal / confirmation waits — no Discord action yet.
 	if strings.HasPrefix(line, "… waiting") {
 		return false
 	}
-	// Turn start is posted via channelStream.Start (↳).
 	if strings.HasPrefix(line, "… LLM") {
 		return false
 	}
-	// Summary body follows in a dedicated message.
+	// Token usage is appended to each speaker's own message.
+	if strings.HasPrefix(line, "✓ LLM") {
+		return false
+	}
 	if strings.Contains(line, "generating moderator summary") ||
 		strings.Contains(line, "generating deliberation summary") {
 		return false
 	}
-	for _, mark := range []string{"▶", "■", "★", "◆", "◇", "⏸", "↩", "✓"} {
+	// Internal LLM status — stream output covers readiness/synthesis body.
+	if strings.HasPrefix(line, "◆ LLM") ||
+		strings.HasPrefix(line, "◆ readiness") ||
+		strings.HasPrefix(line, "◆ synthesis readiness round=") ||
+		strings.HasPrefix(line, "◆ synthesis completed (") {
+		return false
+	}
+	for _, mark := range []string{"▶", "■", "★", "◇", "⏸", "↩"} {
 		if strings.Contains(line, mark) {
 			return true
 		}

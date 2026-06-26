@@ -6,9 +6,24 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"round_table/apps/server/internal/stream"
 )
+
+// StreamTurnFinisher receives token usage after a participant stream ends (optional transport hook).
+type StreamTurnFinisher interface {
+	CompleteTurn(participantID string, tokens int, elapsed time.Duration)
+}
+
+func notifyStreamTurnComplete(stream StreamLogger, participantID string, tokens int, elapsed time.Duration) {
+	if stream == nil {
+		return
+	}
+	if f, ok := stream.(StreamTurnFinisher); ok {
+		f.CompleteTurn(participantID, tokens, elapsed)
+	}
+}
 
 // StreamLogger receives labeled LLM token streams (CLI / future WebSocket client).
 type StreamLogger interface {
