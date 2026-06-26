@@ -23,8 +23,9 @@ type meetingBind struct {
 	channelID string
 	authorID  string
 
-	confirmCycle int
-	confirmReply chan confirmReply
+	confirmCycle        int
+	confirmLimitFallback bool
+	confirmReply        chan confirmReply
 
 	pendingRunning prin.RunningIntervention
 	paused         bool
@@ -101,8 +102,11 @@ func (p *ChannelPrincipal) DeliverConfirmationReply(channelID, authorID, content
 		return confirmNotOwnerText(p.Loc), nil
 	}
 
-	resp, err := parseConfirmationReply(content)
+	resp, err := parseConfirmationReplyForBind(content, wait.confirmLimitFallback)
 	if err != nil {
+		if wait.confirmLimitFallback {
+			return confirmLimitParseErrorText(p.Loc, err), nil
+		}
 		return confirmParseErrorText(p.Loc, err), nil
 	}
 
@@ -110,6 +114,9 @@ func (p *ChannelPrincipal) DeliverConfirmationReply(channelID, authorID, content
 	case wait.confirmReply <- confirmReply{resp: resp}:
 	default:
 		return confirmAlreadyAnsweredText(p.Loc), nil
+	}
+	if wait.confirmLimitFallback {
+		return confirmLimitReceivedText(p.Loc, resp.Decision), nil
 	}
 	if resp.Decision == prin.DecisionApproved {
 		return confirmReceivedApproveText(p.Loc), nil
@@ -177,6 +184,7 @@ func (p *ChannelPrincipal) Confirm(ctx context.Context, meetingID string, brief 
 		return prin.Response{}, fmt.Errorf("discord: no channel binding for meeting %s", meetingID)
 	}
 	wait.confirmCycle = cycle
+	wait.confirmLimitFallback = brief.LimitFallback
 	channelID := wait.channelID
 	replyCh := wait.confirmReply
 	p.mu.Unlock()
@@ -195,6 +203,7 @@ func (p *ChannelPrincipal) Confirm(ctx context.Context, meetingID string, brief 
 		p.mu.Lock()
 		if w, ok := p.sessions[meetingID]; ok {
 			w.confirmCycle = 0
+			w.confirmLimitFallback = false
 		}
 		p.mu.Unlock()
 		if r.err != nil {
@@ -248,6 +257,13 @@ func (p *ChannelPrincipal) PausedAction(ctx context.Context, meetingID string, _
 		p.mu.Unlock()
 		return action, nil
 	}
+}
+
+func parseConfirmationReplyForBind(content string, limitFallback bool) (prin.Response, error) {
+	if limitFallback {
+		return parseConfirmationLimitReply(content)
+	}
+	return parseConfirmationReply(content)
 }
 
 func (p *ChannelPrincipal) bindForChannelLocked(channelID string) *meetingBind {

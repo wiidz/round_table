@@ -9,6 +9,9 @@ import (
 )
 
 func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief event.ConfirmationBrief) string {
+	if brief.LimitFallback {
+		return formatConfirmationLimitFallback(loc, meetingID, cycle, brief)
+	}
 	var b strings.Builder
 	if loc == LocaleZH {
 		fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d 轮\n", cycle)
@@ -53,6 +56,102 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 	b.WriteString("**reject** / **2** — resume debate (optional feedback)\n")
 	b.WriteString("Example: `reject need more detail on cooldowns`")
 	return strings.TrimRight(b.String(), "\n")
+}
+
+func formatConfirmationLimitFallback(loc Locale, meetingID string, cycle int, brief event.ConfirmationBrief) string {
+	var b strings.Builder
+	if loc == LocaleZH {
+		fmt.Fprintf(&b, "⚠️ **确认关已达上限** · 第 %d 轮\n", cycle)
+		fmt.Fprintf(&b, "🆔 `%s`\n\n", meetingID)
+		if brief.LimitRejectFeedback != "" {
+			fmt.Fprintf(&b, "你刚才的驳回意见：_%s_\n\n", brief.LimitRejectFeedback)
+		}
+		b.WriteString("已达 `max_confirmation_cycles`，请选择下一步：\n\n")
+		b.WriteString("**1** — **强制批准**（按当前草案归档）\n")
+		b.WriteString("**2** — **继续研讨**（重置确认轮次，追加 1 轮；可附意见如 `2 技能树需重算`）\n")
+		b.WriteString("**3** — **中止会议**（输出部分纪要）\n")
+		return strings.TrimRight(b.String(), "\n")
+	}
+
+	fmt.Fprintf(&b, "⚠️ **Confirmation limit reached** · cycle %d\n", cycle)
+	fmt.Fprintf(&b, "🆔 `%s`\n\n", meetingID)
+	if brief.LimitRejectFeedback != "" {
+		fmt.Fprintf(&b, "Your last rejection: _%s_\n\n", brief.LimitRejectFeedback)
+	}
+	b.WriteString("`max_confirmation_cycles` reached — pick next step:\n\n")
+	b.WriteString("**1** — **Force approve** (archive current draft)\n")
+	b.WriteString("**2** — **Continue debate** (reset confirmation cycles, +1 round)\n")
+	b.WriteString("**3** — **Abort meeting** (partial minutes)\n")
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func parseConfirmationLimitReply(content string) (prin.Response, error) {
+	s := strings.TrimSpace(content)
+	if s == "" {
+		return prin.Response{}, errConfirmReplyEmpty
+	}
+	norm := normalizeASCIIForms(s)
+	lower := strings.ToLower(norm)
+
+	switch {
+	case norm == "1" || lower == "force approve" || lower == "force" || norm == "强制批准" || norm == "批准":
+		return prin.Response{Decision: prin.DecisionLimitForceApprove}, nil
+	case norm == "3" || lower == "abort" || norm == "中止" || norm == "终止" || norm == "中止会议" || norm == "终止会议":
+		return prin.Response{Decision: prin.DecisionLimitAbort}, nil
+	case norm == "2" || lower == "continue" || norm == "继续" || norm == "继续研讨":
+		return prin.Response{Decision: prin.DecisionLimitContinue}, nil
+	}
+
+	for _, prefix := range []string{"2", "继续", "continue"} {
+		if strings.HasPrefix(lower, prefix) && len(s) > len(prefix) {
+			fb := strings.TrimSpace(s[len(prefix):])
+			fb = strings.TrimPrefix(fb, "：")
+			fb = strings.TrimPrefix(fb, ":")
+			fb = strings.TrimSpace(fb)
+			return prin.Response{Decision: prin.DecisionLimitContinue, Feedback: fb}, nil
+		}
+	}
+	for _, prefix := range []string{"3", "中止", "终止", "abort"} {
+		if strings.HasPrefix(lower, prefix) && len(s) > len(prefix) {
+			fb := strings.TrimSpace(s[len(prefix):])
+			fb = strings.TrimPrefix(fb, "：")
+			fb = strings.TrimPrefix(fb, ":")
+			fb = strings.TrimSpace(fb)
+			return prin.Response{Decision: prin.DecisionLimitAbort, Feedback: fb}, nil
+		}
+	}
+
+	return prin.Response{}, errConfirmReplyUnrecognized
+}
+
+func confirmLimitParseErrorText(loc Locale, err error) string {
+	if loc == LocaleZH {
+		return "❌ " + err.Error() + "\n请回复 **1** 强制批准 · **2** 继续研讨 · **3** 中止会议"
+	}
+	return "❌ " + err.Error() + "\nReply **1** force approve · **2** continue · **3** abort"
+}
+
+func confirmLimitReceivedText(loc Locale, decision prin.Decision) string {
+	if loc == LocaleZH {
+		switch decision {
+		case prin.DecisionLimitForceApprove:
+			return "✅ 已选择 **强制批准**，正在归档…"
+		case prin.DecisionLimitContinue:
+			return "↩ 已选择 **继续研讨**，确认轮次已重置，将追加 1 轮…"
+		case prin.DecisionLimitAbort:
+			return "🛑 已选择 **中止会议**…"
+		}
+	}
+	switch decision {
+	case prin.DecisionLimitForceApprove:
+		return "✅ **Force approve** — finishing meeting…"
+	case prin.DecisionLimitContinue:
+		return "↩ **Continue** — cycles reset, adding one round…"
+	case prin.DecisionLimitAbort:
+		return "🛑 **Abort** — stopping meeting…"
+	default:
+		return "✅ Received"
+	}
 }
 
 var confirmApproveExact = map[string]bool{

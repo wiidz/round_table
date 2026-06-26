@@ -14,6 +14,9 @@ type Principal struct {
 	RejectUntilCycle int
 	Feedback         string
 
+	// LimitFallbackDecision is returned when brief.LimitFallback is set (ADR-0004 §6).
+	LimitFallbackDecision principal.Decision
+
 	// ForceConsensus triggers ConsensusForced at the next debate turn boundary (decision mode).
 	ForceConsensus bool
 	// ForceSynthesisWhenRoundGTE triggers SynthesisForced when CurrentRound >= this value (deliberation).
@@ -33,9 +36,17 @@ type Principal struct {
 var _ principal.Port = (*Principal)(nil)
 
 // Confirm implements principal.Port.
-func (p *Principal) Confirm(ctx context.Context, _ string, _ event.ConfirmationBrief, cycle int) (principal.Response, error) {
+func (p *Principal) Confirm(ctx context.Context, _ string, brief event.ConfirmationBrief, cycle int) (principal.Response, error) {
 	if err := ctx.Err(); err != nil {
 		return principal.Response{}, err
+	}
+	if brief.LimitFallback {
+		decision := p.LimitFallbackDecision
+		if decision == "" {
+			decision = principal.DecisionLimitForceApprove
+		}
+		fb := p.Feedback
+		return principal.Response{Decision: decision, Feedback: fb}, nil
 	}
 	if p.RejectUntilCycle > 0 && cycle < p.RejectUntilCycle {
 		fb := p.Feedback

@@ -622,7 +622,11 @@ func applyConfirmationRejected(s State, env event.Envelope) (State, error) {
 		return s, fmt.Errorf("meeting %s: ConfirmationRejected cycle %d, want %d", s.ID, p.Cycle, s.Confirmation.Cycle)
 	}
 
-	s.ConfirmationCycle++
+	if p.ResetCycle {
+		s.ConfirmationCycle = 0
+	} else {
+		s.ConfirmationCycle++
+	}
 	s.PrincipalFeedback = p.Feedback
 	s.Consensus = nil
 	s.Confirmation = nil

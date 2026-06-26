@@ -53,11 +53,11 @@ func (e *Engine) advanceConfirmation(ctx context.Context, s meeting.State) (meet
 		return e.finishMeeting(ctx, s)
 	case principal.DecisionRejected:
 		if s.Confirmation.Cycle >= s.MaxConfirmationCycles {
-			s, err = e.append(ctx, s, eventConfirmationForced(s.Confirmation.Cycle, "max confirmation cycles reached"))
-			if err != nil {
-				return s, err
+			fb := resp.Feedback
+			if fb == "" {
+				fb = "需要修订"
 			}
-			return e.finishMeeting(ctx, s)
+			return e.presentConfirmationLimitFallback(ctx, s, fb)
 		}
 		fb := resp.Feedback
 		if fb == "" {
@@ -73,6 +73,64 @@ func (e *Engine) advanceConfirmation(ctx context.Context, s meeting.State) (meet
 	default:
 		return s, errUnknownPrincipalDecision
 	}
+}
+
+func (e *Engine) presentConfirmationLimitFallback(ctx context.Context, s meeting.State, rejectFeedback string) (meeting.State, error) {
+	brief := s.Confirmation.Brief
+	brief.LimitFallback = true
+	brief.LimitRejectFeedback = rejectFeedback
+
+	e.logf("… confirmation limit reached cycle=%d — awaiting principal fallback", s.Confirmation.Cycle)
+	resp, err := e.Principal.Confirm(ctx, s.ID, brief, s.Confirmation.Cycle)
+	if err != nil {
+		return s, err
+	}
+
+	cycle := s.Confirmation.Cycle
+	switch resp.Decision {
+	case principal.DecisionLimitForceApprove:
+		s, err = e.append(ctx, s, eventConfirmationForced(cycle, "principal force approve at confirmation limit"))
+		if err != nil {
+			return s, err
+		}
+		return e.finishMeeting(ctx, s)
+	case principal.DecisionLimitContinue:
+		fb := rejectFeedback
+		if resp.Feedback != "" {
+			fb = resp.Feedback
+		}
+		if fb == "" {
+			fb = "继续研讨"
+		}
+		s, err = e.append(ctx, s, eventConfirmationRejectedResetCycle(cycle, fb, resp.ItemNotes))
+		if err != nil {
+			return s, err
+		}
+		e.logf("↩ confirmation limit continue — reset cycle, starting round %d", s.CurrentRound+1)
+		return e.startRound(ctx, s)
+	case principal.DecisionLimitAbort:
+		reason := resp.Feedback
+		if reason == "" {
+			reason = "Principal 中止会议（确认关上限）"
+		}
+		return e.abortMeeting(ctx, s, reason)
+	default:
+		return s, errUnknownPrincipalDecision
+	}
+}
+
+func (e *Engine) abortMeeting(ctx context.Context, s meeting.State, reason string) (meeting.State, error) {
+	ref := "artifacts/minutes.md"
+	var err error
+	s, err = e.append(ctx, s, eventArtifactProduced("minutes-1", "markdown", ref))
+	if err != nil {
+		return s, err
+	}
+	if err := e.writeArtifactFile(s.ID, ref, []byte(renderMinutes(s))); err != nil {
+		return s, err
+	}
+	_ = reason
+	return e.append(ctx, s, eventMeetingFinished(meeting.OutcomeAborted))
 }
 
 func (e *Engine) finishMeeting(ctx context.Context, s meeting.State) (meeting.State, error) {

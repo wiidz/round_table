@@ -101,7 +101,11 @@ func (e *Engine) logProgress(env event.Envelope, s meeting.State) {
 		e.logf("★ confirmation approved cycle=%d", p.Cycle)
 	case event.TypeConfirmationRejected:
 		p, _ := decodePayload[event.ConfirmationRejectedPayload](env)
-		e.logf("↩ confirmation rejected cycle=%d — adding one round", p.Cycle)
+		if p.ResetCycle {
+			e.logf("↩ confirmation limit continue cycle=%d — reset cycles", p.Cycle)
+		} else {
+			e.logf("↩ confirmation rejected cycle=%d — adding one round", p.Cycle)
+		}
 	case event.TypeConfirmationForced:
 		p, _ := decodePayload[event.ConfirmationForcedPayload](env)
 		e.logf("★ confirmation forced cycle=%d (%s)", p.Cycle, p.Reason)

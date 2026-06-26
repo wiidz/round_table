@@ -10,6 +10,41 @@ import (
 	"round_table/apps/server/internal/domain/event"
 )
 
+func TestParseConfirmationLimitReply(t *testing.T) {
+	cases := []struct {
+		in       string
+		decision prin.Decision
+		feedback string
+	}{
+		{"1", prin.DecisionLimitForceApprove, ""},
+		{"2", prin.DecisionLimitContinue, ""},
+		{"3", prin.DecisionLimitAbort, ""},
+		{"2 技能树需重算", prin.DecisionLimitContinue, "技能树需重算"},
+		{"强制批准", prin.DecisionLimitForceApprove, ""},
+	}
+	for _, tc := range cases {
+		got, err := parseConfirmationLimitReply(tc.in)
+		if err != nil {
+			t.Fatalf("in=%q err=%v", tc.in, err)
+		}
+		if got.Decision != tc.decision || got.Feedback != tc.feedback {
+			t.Fatalf("in=%q got=%+v", tc.in, got)
+		}
+	}
+}
+
+func TestFormatConfirmationLimitFallback_zh(t *testing.T) {
+	got := formatConfirmationLimitFallback(LocaleZH, "mtg-1", 3, event.ConfirmationBrief{
+		LimitFallback:       true,
+		LimitRejectFeedback: "还需改数值",
+	})
+	for _, want := range []string{"确认关已达上限", "强制批准", "继续研讨", "中止会议", "**1**", "**2**", "**3**"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %q in %q", want, got)
+		}
+	}
+}
+
 func TestParseConfirmationReply(t *testing.T) {
 	cases := []struct {
 		in       string

@@ -170,8 +170,10 @@ type ConfirmationItem struct {
 
 // ConfirmationBrief is presented to the Principal for review.
 type ConfirmationBrief struct {
-	ExecutiveSummary string             `json:"executive_summary"`
-	Items            []ConfirmationItem `json:"items"`
+	ExecutiveSummary    string             `json:"executive_summary"`
+	Items               []ConfirmationItem `json:"items"`
+	LimitFallback       bool               `json:"limit_fallback,omitempty"`
+	LimitRejectFeedback string             `json:"limit_reject_feedback,omitempty"`
 }
 
 // ConfirmationPreparedPayload is the v1 payload for ConfirmationPrepared.
@@ -193,9 +195,10 @@ type ConfirmationApprovedPayload struct {
 
 // ConfirmationRejectedPayload is the v1 payload for ConfirmationRejected.
 type ConfirmationRejectedPayload struct {
-	Cycle     int            `json:"cycle"`
-	Feedback  string         `json:"feedback"`
-	ItemNotes map[int]string `json:"item_notes,omitempty"`
+	Cycle      int            `json:"cycle"`
+	Feedback   string         `json:"feedback"`
+	ItemNotes  map[int]string `json:"item_notes,omitempty"`
+	ResetCycle bool           `json:"reset_cycle,omitempty"`
 }
 
 // ConfirmationSkippedPayload is the v1 payload for ConfirmationSkipped.

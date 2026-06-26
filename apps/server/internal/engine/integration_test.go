@@ -11,6 +11,7 @@ import (
 	"round_table/apps/server/internal/adapter/knowledge/fs"
 	"round_table/apps/server/internal/adapter/model"
 	"round_table/apps/server/internal/adapter/participant/stub"
+	prin "round_table/apps/server/internal/adapter/principal"
 	prinstub "round_table/apps/server/internal/adapter/principal/stub"
 	profilefs "round_table/apps/server/internal/adapter/profile/fs"
 	"round_table/apps/server/internal/adapter/storage/memory"
@@ -471,6 +472,64 @@ func TestEngine_Integration_confirmationRejectThenApprove(t *testing.T) {
 	}
 	if len(final.Minutes.Rounds) < 3 {
 		t.Fatalf("expected >=3 rounds after reject (pre-meeting + round 1 + round 2), got %d", len(final.Minutes.Rounds))
+	}
+}
+
+func TestEngine_Integration_confirmationLimitForceApprove(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	maxCycles := 1
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{
+		RejectUntilCycle:      2,
+		LimitFallbackDecision: prin.DecisionLimitForceApprove,
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:             "mtg-int-limit-force",
+		Topic:                 "上限强制批准",
+		ConfirmationMode:        meeting.ConfirmationModeRequired,
+		MaxConfirmationCycles:   &maxCycles,
+		Participants:            []engine.ParticipantInput{{ID: "p1", Role: "Expert"}},
+	}
+
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted || final.Outcome != meeting.OutcomeCompleted {
+		t.Fatalf("status=%s outcome=%s", final.Status, final.Outcome)
+	}
+}
+
+func TestEngine_Integration_confirmationLimitAbort(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	maxCycles := 1
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{
+		RejectUntilCycle:      2,
+		LimitFallbackDecision: prin.DecisionLimitAbort,
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:           "mtg-int-limit-abort",
+		Topic:               "上限中止",
+		ConfirmationMode:    meeting.ConfirmationModeRequired,
+		MaxConfirmationCycles: &maxCycles,
+		Participants:        []engine.ParticipantInput{{ID: "p1", Role: "Expert"}},
+	}
+
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Outcome != meeting.OutcomeAborted {
+		t.Fatalf("outcome = %s", final.Outcome)
 	}
 }
 

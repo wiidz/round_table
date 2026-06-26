@@ -300,6 +300,47 @@ func TestFold_confirmationRejected_addsOneRound(t *testing.T) {
 	}
 }
 
+func TestFold_confirmationRejected_resetCycle(t *testing.T) {
+	t.Parallel()
+
+	order := []string{"p1"}
+	base := []event.Envelope{
+		env(1, event.TypeMeetingCreated, mustPayload(t, event.MeetingCreatedPayload{Topic: "x"}), event.ActorPrincipal),
+		env(2, event.TypeParticipantInvited, mustPayload(t, event.ParticipantInvitedPayload{
+			ParticipantID: "p1", Role: "Expert",
+		}), event.ActorModerator),
+	}
+	base = append(base, preMeetingEvents(3, order)...)
+	base = append(base,
+		env(7, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: order}), event.ActorModerator),
+		env(8, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
+			ParticipantID: "p1", RoundNumber: 1, Content: "v1", Stance: event.StanceAgree,
+		}), event.ActorParticipant),
+		env(9, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{RoundNumber: 1, Summary: "s1"}), event.ActorModerator),
+		env(10, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{
+			Strategy: "no_objection", ResolvedBy: "strategy",
+		}), event.ActorModerator),
+		env(11, event.TypeConfirmationPrepared, mustPayload(t, event.ConfirmationPreparedPayload{
+			Cycle: 3, Brief: event.ConfirmationBrief{ExecutiveSummary: "brief"},
+		}), event.ActorModerator),
+		env(12, event.TypeConfirmationPresented, mustPayload(t, event.ConfirmationPresentedPayload{Cycle: 3}), event.ActorModerator),
+		env(13, event.TypeConfirmationRejected, mustPayload(t, event.ConfirmationRejectedPayload{
+			Cycle: 3, Feedback: "继续研讨", ResetCycle: true,
+		}), event.ActorPrincipal),
+	)
+
+	s, err := Fold("mtg-1", base)
+	if err != nil {
+		t.Fatalf("Fold: %v", err)
+	}
+	if s.ConfirmationCycle != 0 {
+		t.Fatalf("confirmation cycle = %d, want 0 after reset", s.ConfirmationCycle)
+	}
+	if s.Status != StatusRunning {
+		t.Fatalf("status = %s", s.Status)
+	}
+}
+
 func TestFold_consensusVetoed(t *testing.T) {
 	t.Parallel()
 

@@ -26,6 +26,7 @@ type CreateMeetingInput struct {
 	MaxRoundsPerSegment        int
 	MinRoundsBeforeSynthesis   *int // nil = default (2)
 	FreeDialogueMaxQuestions   *int // nil = default (1); explicit 0 disables
+	MaxConfirmationCycles    *int // nil = default (3)
 	Agenda                     []event.AgendaItem
 	Participants             []ParticipantInput
 }
@@ -68,6 +69,11 @@ func (e *Engine) CreateMeeting(ctx context.Context, in CreateMeetingInput) (meet
 		minRoundsBeforeSynthesis = 2
 	}
 
+	maxConfirmationCycles := 0
+	if in.MaxConfirmationCycles != nil {
+		maxConfirmationCycles = *in.MaxConfirmationCycles
+	}
+
 	meetMode := in.MeetingMode
 	if meetMode == "" {
 		meetMode = meeting.MeetingModeDecision
@@ -81,6 +87,7 @@ func (e *Engine) CreateMeeting(ctx context.Context, in CreateMeetingInput) (meet
 		MaxRoundsPerSegment:      in.MaxRoundsPerSegment,
 		MinRoundsBeforeSynthesis: minRoundsBeforeSynthesis,
 		FreeDialogueMaxQuestions: freeQuestions,
+		MaxConfirmationCycles:    maxConfirmationCycles,
 		Agenda:                   in.Agenda,
 	}))
 	if err != nil {

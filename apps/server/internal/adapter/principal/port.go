@@ -13,6 +13,11 @@ type Decision string
 const (
 	DecisionApproved Decision = "approved"
 	DecisionRejected Decision = "rejected"
+
+	// Limit fallback choices (ADR-0004 §6) when max_confirmation_cycles is reached.
+	DecisionLimitForceApprove Decision = "limit_force_approve"
+	DecisionLimitContinue     Decision = "limit_continue"
+	DecisionLimitAbort        Decision = "limit_abort"
 )
 
 // Response is the Principal's answer to a Confirmation Brief.

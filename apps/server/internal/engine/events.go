@@ -16,6 +16,7 @@ type meetingCreatedParams struct {
 	MaxRoundsPerSegment      int
 	MinRoundsBeforeSynthesis int
 	FreeDialogueMaxQuestions int
+	MaxConfirmationCycles    int
 	Agenda                   []event.AgendaItem
 }
 
@@ -29,7 +30,8 @@ func eventMeetingCreated(p meetingCreatedParams) event.Envelope {
 		Agenda:                   p.Agenda,
 		ConfirmationMode:         p.ConfirmationMode,
 		MaxRoundsPerSegment:      p.MaxRoundsPerSegment,
-		MinRoundsBeforeSynthesis: &minRounds,
+		MinRoundsBeforeSynthesis:   &minRounds,
+		MaxConfirmationCycles:      p.MaxConfirmationCycles,
 		FreeDialogueMaxQuestions: &q,
 	})
 	return event.Envelope{
@@ -322,6 +324,17 @@ func eventConfirmationApproved(cycle int, notes map[int]string) event.Envelope {
 func eventConfirmationRejected(cycle int, feedback string, notes map[int]string) event.Envelope {
 	payload, _ := json.Marshal(event.ConfirmationRejectedPayload{
 		Cycle: cycle, Feedback: feedback, ItemNotes: notes,
+	})
+	return event.Envelope{
+		Type:    event.TypeConfirmationRejected,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
+func eventConfirmationRejectedResetCycle(cycle int, feedback string, notes map[int]string) event.Envelope {
+	payload, _ := json.Marshal(event.ConfirmationRejectedPayload{
+		Cycle: cycle, Feedback: feedback, ItemNotes: notes, ResetCycle: true,
 	})
 	return event.Envelope{
 		Type:    event.TypeConfirmationRejected,
