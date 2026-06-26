@@ -7,8 +7,9 @@ const (
 	PhasePreMeeting         = "Phase: pre-meeting"
 	PhaseDebate             = "Phase: debate"
 	PhaseDeliberation       = "Phase: deliberation"
-	PhaseFreeDialogueAsk    = "Phase: free-dialogue-ask"
-	PhaseFreeDialogueAnswer = "Phase: free-dialogue-answer"
+	PhaseFreeDialogueAsk        = "Phase: free-dialogue-ask"
+	PhaseFreeDialogueAnswer     = "Phase: free-dialogue-answer"
+	PhaseDeliberationSynthesis  = "Phase: deliberation-synthesis"
 )
 
 func isPreMeetingPhase(prompt string) bool {

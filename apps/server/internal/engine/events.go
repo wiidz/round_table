@@ -174,11 +174,12 @@ func eventModeratorDecision(strategy string) event.Envelope {
 	}
 }
 
-func eventSynthesisCompleted(summary string, openQuestions []string, resolvedBy string) event.Envelope {
+func eventSynthesisCompleted(summary string, openQuestions []string, resolvedBy string, usage *event.TokenUsage) event.Envelope {
 	payload, _ := json.Marshal(event.SynthesisCompletedPayload{
 		Summary:       summary,
 		OpenQuestions: openQuestions,
 		ResolvedBy:    resolvedBy,
+		TokenUsage:    usage,
 	})
 	return event.Envelope{
 		Type:    event.TypeSynthesisCompleted,

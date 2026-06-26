@@ -9,33 +9,53 @@ import (
 )
 
 var (
-	openQuestionSectionRe = regexp.MustCompile(`(?i)^(\*{0,2}\s*待决问题\s*\*{0,2}\s*[:：]?|\d+[.)]\s*待决问题)`)
-	openQuestionLineRe    = regexp.MustCompile(`[？?]|是否|能否|要不要|该不该`)
+	openQuestionSectionRe = regexp.MustCompile(`(?i)^(\*{0,2}\s*(待决问题|开放问题|未决事项)\s*\*{0,2}\s*[:：]?|\d+[.)]\s*(待决问题|开放问题|问题\d*))`)
+	openQuestionLineRe    = regexp.MustCompile(`[？?]|是否|能否|要不要|该不该|如何设计`)
 	bulletLineRe          = regexp.MustCompile(`^(\s*[-*•]|\s*\d+[.)])\s+`)
+	openQuestionPrefixRe  = regexp.MustCompile(`^([①②③④⑤⑥⑦⑧⑨⑩]|Q\d*|Q|问题\d*)\s*[:：]?\s*`)
+	participantMetaRe     = regexp.MustCompile(`^[\(*（]*[^)）]*[\)）]\s*[:：]\s*`)
+	perspectiveOpenerRe   = regexp.MustCompile(`^从.{1,12}角度`)
+	sectionLabelRe        = regexp.MustCompile(`^(\d+[.)]\s*)?(\*{1,2})?[^*]{1,40}(\*{1,2})?\s*[:：]\s*`)
+	weakDecisionSuffixRe  = regexp.MustCompile(`(：|\)|）)\s*支持[。.]?$`)
+	freeDialogueAnswerRe  = regexp.MustCompile(`^A\s*[:：]\s*`)
 )
 
-var openQuestionSkipPrefixes = []string{
-	"待决问题", "待决意见", "待决：", "开放问题", "未决事项",
-	"从工程角度", "从运营角度", "基于上一轮", "**待决",
-}
-
-var resolvedLineMarkers = []string{
-	"最终倾向", "请按此锁定", "明确坚持", "正式确认", "资源系统确认",
-	"初期不上", "初期禁止", "预留接口但初期", "综合结论",
-	"我明确坚持", "锁定资源规格",
-}
-
+// Generic deliberation phrasing — not tied to any domain or participant role.
 var decisionLineMarkers = []string{
-	"最终倾向", "请按此锁定", "正式确认", "资源系统确认", "明确坚持",
-	"初期不上", "初期禁止", "预留接口但初期禁止", "综合结论",
-	"我明确坚持——", "锁定资源规格", "建议走保守",
+	"最终倾向", "最终结论", "正式确认", "综合结论", "明确结论",
+	"确定采用", "决定采用", "达成共识", "一致同意", "一致支持",
+	"强烈支持", "推荐采用", "统一为", "统一限制为", "明确为",
+	"请按此锁定", "我明确坚持", "已采纳", "最终方案",
+	"必须与", "我认同", "技术上可行", "可复用现有", "不再采用", "不采用",
+}
+
+var revisionAnchorMarkers = []string{
+	"收束", "修订", "调整如下", "细化方案", "更新方案", "更新框架",
+	"基于上一轮反馈", "基于上一轮", "收束核心", "收束框架",
+}
+
+var decisionSplitMarkers = []string{
+	"，但需确认", "，需确认", "；需确认", "，尚需确认", "，待确认",
+}
+
+var introNoiseMarkers = []string{
+	"结合前几轮", "基于上一轮", "基于讨论", "我建议进一步",
+	"待决问题", "开放问题", "未决事项",
+}
+
+var deliberationStopTokens = map[string]bool{
+	"如果": true, "是否": true, "能否": true, "或者": true, "以及": true,
+	"需要": true, "建议": true, "可以": true, "进行": true, "一个": true,
 }
 
 func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []string) {
-	openQuestions = collectDeliberationOpenQuestions(s)
-	decisions := collectDeliberationDecisions(s)
+	decisions, spillover := collectDeliberationDecisions(s)
+	openQuestions = collectDeliberationOpenQuestions(s, decisions, spillover)
 	coreScheme := summarizeCoreScheme(s)
+	return assembleDesignDraft(s, coreScheme, decisions, openQuestions), openQuestions
+}
 
+func assembleDesignDraft(s meeting.State, coreScheme string, decisions, openQuestions []string) string {
 	var b strings.Builder
 	b.WriteString("# 方案草案\n\n")
 	writeDeliberationExecutiveSummary(&b, s, coreScheme, decisions, openQuestions)
@@ -70,7 +90,7 @@ func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []
 		b.WriteString("\n\n")
 	}
 
-	return strings.TrimSpace(b.String()), openQuestions
+	return strings.TrimSpace(b.String())
 }
 
 func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, coreScheme string, decisions, openQuestions []string) {
@@ -110,11 +130,36 @@ func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, core
 }
 
 func summarizeCoreScheme(s meeting.State) string {
-	// Prefer latest moderator summary bullets; fallback to last round designer/key points.
-	if mod, ok := s.ModeratorSummaries[s.CurrentRound]; ok {
-		points := extractSchemePoints(mod)
-		if len(points) > 0 {
-			return formatBulletList(points, 6)
+	var bestPoints []string
+	bestScore := -1
+
+	for round := s.CurrentRound; round >= 1; round-- {
+		for idx, id := range s.RoundOrder {
+			r, ok := s.RoundResponses[round][id]
+			if !ok {
+				continue
+			}
+			points := extractSchemePoints(r.Content)
+			if len(points) < 2 {
+				continue
+			}
+			score := schemeSourceScore(round, s.CurrentRound, idx, len(s.RoundOrder), r.Content)
+			if score > bestScore {
+				bestScore = score
+				bestPoints = points
+			}
+		}
+	}
+	if len(bestPoints) >= 2 {
+		return formatBulletList(bestPoints, 6)
+	}
+
+	for round := s.CurrentRound; round >= 1; round-- {
+		if mod, ok := s.ModeratorSummaries[round]; ok {
+			points := extractSchemePoints(mod)
+			if len(points) >= 2 {
+				return formatBulletList(points, 6)
+			}
 		}
 	}
 	for round := s.CurrentRound; round >= 1; round-- {
@@ -124,7 +169,7 @@ func summarizeCoreScheme(s meeting.State) string {
 				continue
 			}
 			points := extractSchemePoints(r.Content)
-			if len(points) >= 2 {
+			if len(points) > 0 {
 				return formatBulletList(points, 5)
 			}
 		}
@@ -132,11 +177,32 @@ func summarizeCoreScheme(s meeting.State) string {
 	return ""
 }
 
+func schemeSourceScore(round, currentRound, speakerIdx, speakerCount int, content string) int {
+	score := (speakerCount - speakerIdx) * 5
+	if contentHasRevisionAnchor(content) {
+		return 1000 + round*100 + score
+	}
+	// Without explicit revision language, prefer earlier substantive proposals.
+	return (currentRound - round + 1) * 50 + score
+}
+
+func contentHasRevisionAnchor(text string) bool {
+	for _, m := range revisionAnchorMarkers {
+		if strings.Contains(text, m) {
+			return true
+		}
+	}
+	return false
+}
+
 func extractSchemePoints(text string) []string {
 	var out []string
 	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "——") || strings.HasPrefix(line, "--") {
 			continue
 		}
 		if !bulletLineRe.MatchString(line) && !numberedLine.MatchString(line) {
@@ -153,7 +219,7 @@ func extractSchemePoints(text string) []string {
 		if len([]rune(line)) < 8 {
 			continue
 		}
-		if isOpenQuestionLine(line) || isResolvedLine(line) {
+		if isOpenQuestionLine(line) || isDecisionLine(line) || isIntroNoiseLine(line) {
 			continue
 		}
 		out = append(out, truncateRunes(line, 160))
@@ -172,35 +238,57 @@ func formatBulletList(items []string, max int) string {
 	return strings.TrimSpace(b.String())
 }
 
-func collectDeliberationOpenQuestions(s meeting.State) []string {
+func collectDeliberationOpenQuestions(s meeting.State, decisions, spillover []string) []string {
+	sources := deliberationTextSources(s)
+
+	seen := make(map[string]bool)
+	var out []string
+	addQuestion := func(q string) {
+		q = strings.TrimSpace(q)
+		if q == "" {
+			return
+		}
+		key := normalizeQuestionKey(q)
+		if key == "" || seen[key] || overlapsDecision(q, decisions) || overlapsOpenQuestion(q, out) {
+			return
+		}
+		if isTentativeStatementNotQuestion(q) || isSuggestionNotQuestion(q) {
+			return
+		}
+		seen[key] = true
+		out = append(out, q)
+	}
+
+	for _, q := range spillover {
+		addQuestion(q)
+	}
+	for _, src := range sources {
+		for _, q := range extractOpenQuestionsFromText(src) {
+			addQuestion(q)
+		}
+	}
+	if len(out) > 8 {
+		out = out[:8]
+	}
+	return out
+}
+
+func deliberationTextSources(s meeting.State) []string {
 	var sources []string
 	if s.FreeDialogueSummary != "" {
 		sources = append(sources, s.FreeDialogueSummary)
 	}
 	for round := s.CurrentRound; round >= 1; round-- {
+		if mod, ok := s.ModeratorSummaries[round]; ok {
+			sources = append(sources, mod)
+		}
 		for _, id := range s.RoundOrder {
 			if r, ok := s.RoundResponses[round][id]; ok {
 				sources = append(sources, r.Content)
 			}
 		}
 	}
-
-	seen := make(map[string]bool)
-	var out []string
-	for _, src := range sources {
-		for _, q := range extractOpenQuestionsFromText(src) {
-			key := normalizeQuestionKey(q)
-			if key == "" || seen[key] {
-				continue
-			}
-			seen[key] = true
-			out = append(out, q)
-		}
-	}
-	if len(out) > 12 {
-		out = out[:12]
-	}
-	return out
+	return sources
 }
 
 func extractOpenQuestionsFromText(text string) []string {
@@ -210,10 +298,15 @@ func extractOpenQuestionsFromText(text string) []string {
 
 	flushLine := func(line string) {
 		line = cleanOpenQuestionLine(line)
-		if line == "" || !isOpenQuestionLine(line) || isResolvedLine(line) || isOpenQuestionNoise(line) {
+		line = openQuestionPrefixRe.ReplaceAllString(line, "")
+		line = strings.TrimSpace(line)
+		if line == "" || !isOpenQuestionLine(line) || isDecisionLine(line) || isOpenQuestionNoise(line) {
 			return
 		}
-		out = append(out, truncateRunes(line, 220))
+		if isOpenQuestionParagraphNoise(line) {
+			return
+		}
+		out = append(out, truncateRunes(line, 160))
 	}
 
 	for _, raw := range lines {
@@ -247,63 +340,96 @@ func extractOpenQuestionsFromText(text string) []string {
 	return out
 }
 
-func collectDeliberationDecisions(s meeting.State) []string {
-	var sources []string
-	if s.FreeDialogueSummary != "" {
-		sources = append(sources, s.FreeDialogueSummary)
-	}
-	for round := s.CurrentRound; round >= 1; round-- {
-		for _, id := range s.RoundOrder {
-			if r, ok := s.RoundResponses[round][id]; ok {
-				sources = append(sources, r.Content)
-			}
+func collectDeliberationDecisions(s meeting.State) (decisions []string, spilloverQuestions []string) {
+	sources := deliberationTextSources(s)
+
+	seen := make(map[string]bool)
+	addDecision := func(line string) {
+		decision, trailing := finalizeDecisionLine(line)
+		if decision == "" {
+			return
+		}
+		key := normalizeQuestionKey(decision)
+		if key == "" || seen[key] {
+			return
+		}
+		seen[key] = true
+		decisions = append(decisions, decision)
+		if trailing != "" {
+			spilloverQuestions = append(spilloverQuestions, trailing)
 		}
 	}
 
-	seen := make(map[string]bool)
-	var out []string
 	for _, src := range sources {
+		revisionAnchor := contentHasRevisionAnchor(src)
 		for _, line := range strings.Split(src, "\n") {
 			line = strings.TrimSpace(line)
-			if line == "" || isOpenQuestionLine(line) {
-				continue
-			}
-			if !isDecisionLine(line) {
-				continue
-			}
-			line = cleanOpenQuestionLine(line)
 			if line == "" {
 				continue
 			}
-			key := normalizeQuestionKey(line)
-			if seen[key] {
-				continue
+			line = freeDialogueAnswerRe.ReplaceAllString(line, "")
+			if isDecisionLine(line) {
+				addDecision(line)
+			} else if revisionAnchor && isRevisionDecisionLine(line) {
+				addDecision(line)
 			}
-			seen[key] = true
-			out = append(out, truncateRunes(line, 200))
 		}
 	}
-	if len(out) > 10 {
-		out = out[:10]
+	if len(decisions) > 10 {
+		decisions = decisions[:10]
 	}
-	return out
+	return decisions, spilloverQuestions
+}
+
+func finalizeDecisionLine(line string) (decision string, trailingQuestion string) {
+	line = extractDecisionText(line)
+	if line == "" {
+		return "", ""
+	}
+	for _, marker := range decisionSplitMarkers {
+		if idx := strings.Index(line, marker); idx > 0 {
+			decision = strings.TrimSpace(line[:idx])
+			trailingQuestion = strings.TrimSpace(line[idx+len(marker):])
+			trailingQuestion = strings.TrimLeft(trailingQuestion, "：:")
+			if trailingQuestion != "" && !strings.HasSuffix(trailingQuestion, "？") && !strings.HasSuffix(trailingQuestion, "?") {
+				trailingQuestion += "？"
+			}
+			return truncateRunes(decision, 200), truncateRunes(trailingQuestion, 160)
+		}
+	}
+	if qIdx := strings.IndexAny(line, "？?"); qIdx > 0 {
+		head := strings.TrimSpace(strings.TrimRight(line[:qIdx], "，,；;"))
+		if isDecisionLine(head) || strings.Contains(head, "已采纳") || strings.Contains(head, "暂定") || strings.Contains(head, "必须与") {
+			return truncateRunes(head, 200), truncateRunes(strings.TrimSpace(line[qIdx:]), 160)
+		}
+	}
+	return truncateRunes(line, 200), ""
+}
+
+func extractDecisionText(line string) string {
+	line = cleanOpenQuestionLine(line)
+	line = openQuestionPrefixRe.ReplaceAllString(line, "")
+	line = participantMetaRe.ReplaceAllString(line, "")
+	line = strings.TrimSpace(line)
+	if line == "" || (isOpenQuestionLine(line) && !isDecisionLine(line)) {
+		return ""
+	}
+	// Strip short section labels before the actual decision, e.g. "2. **议题 B**：强烈支持方案 A".
+	if m := sectionLabelRe.FindStringIndex(line); m != nil && m[1] < 40 {
+		rest := strings.TrimSpace(line[m[1]:])
+		if rest != "" && isDecisionLine(rest) {
+			line = rest
+		}
+	}
+	return line
 }
 
 func isOpenQuestionLine(line string) bool {
 	if openQuestionLineRe.MatchString(line) {
 		return true
 	}
-	for _, p := range openQuestionSkipPrefixes {
+	for _, p := range introNoiseMarkers {
 		if strings.HasPrefix(line, p) && strings.ContainsAny(line, "？?") {
-			return true
-		}
-	}
-	return false
-}
-
-func isResolvedLine(line string) bool {
-	for _, m := range resolvedLineMarkers {
-		if strings.Contains(line, m) {
 			return true
 		}
 	}
@@ -316,24 +442,210 @@ func isDecisionLine(line string) bool {
 			return true
 		}
 	}
+	if strings.Contains(line, "明确为") && !strings.ContainsAny(line, "？?") {
+		return true
+	}
+	if strings.ContainsAny(line, "？?") {
+		return false
+	}
+	if strings.Contains(line, "已采纳") || strings.Contains(line, "最终方案") {
+		return true
+	}
+	if strings.Contains(line, "暂定") && strings.Contains(line, "支持") {
+		return true
+	}
+	if strings.Contains(line, "采纳") {
+		return true
+	}
+	if weakDecisionSuffixRe.MatchString(strings.TrimSpace(line)) {
+		return true
+	}
+	return false
+}
+
+func isIntroNoiseLine(line string) bool {
+	for _, p := range introNoiseMarkers {
+		if strings.Contains(line, p) {
+			return true
+		}
+	}
+	if participantMetaRe.MatchString(line) {
+		return true
+	}
+	if perspectiveOpenerRe.MatchString(line) {
+		return true
+	}
+	if strings.HasSuffix(line, "：") && !strings.Contains(line, "明确为") && len([]rune(line)) < 24 {
+		return true
+	}
 	return false
 }
 
 func isOpenQuestionNoise(line string) bool {
 	trimmed := strings.TrimSpace(line)
-	if trimmed == "" || trimmed == "待决问题：" || trimmed == "**待决问题：**" {
+	if trimmed == "" {
 		return true
 	}
-	for _, p := range openQuestionSkipPrefixes {
+	for _, label := range []string{"待决问题", "开放问题", "未决事项"} {
+		if trimmed == label+"：" || trimmed == "**"+label+"：**" {
+			return true
+		}
+	}
+	if perspectiveOpenerRe.MatchString(trimmed) {
+		return true
+	}
+	for _, p := range introNoiseMarkers {
 		if trimmed == p || trimmed == p+"：" || trimmed == p+":" {
 			return true
 		}
 	}
-	// Section headers without substance
 	if strings.HasSuffix(trimmed, "：") && !strings.ContainsAny(trimmed, "？?") && len([]rune(trimmed)) < 20 {
 		return true
 	}
-	if strings.Contains(trimmed, "待决问题列表") {
+	if strings.Contains(trimmed, "待决问题列表") || strings.Contains(trimmed, "开放问题列表") {
+		return true
+	}
+	return false
+}
+
+func isOpenQuestionParagraphNoise(line string) bool {
+	runes := len([]rune(line))
+	if runes <= 120 {
+		return false
+	}
+	if strings.Count(line, "。") >= 2 || strings.Count(line, "；") >= 2 {
+		return true
+	}
+	trimmed := strings.TrimSpace(line)
+	if runes > 160 && !strings.HasSuffix(trimmed, "？") && !strings.HasSuffix(trimmed, "?") {
+		return true
+	}
+	return false
+}
+
+func overlapsDecision(question string, decisions []string) bool {
+	qKey := normalizeQuestionKey(question)
+	if qKey == "" {
+		return false
+	}
+	for _, d := range decisions {
+		dk := normalizeQuestionKey(d)
+		if dk == "" {
+			continue
+		}
+		if strings.Contains(qKey, dk) || strings.Contains(dk, qKey) {
+			return true
+		}
+		if deliberationTokenOverlap(question, d) >= 2 {
+			return true
+		}
+	}
+	return false
+}
+
+func deliberationTokenOverlap(a, b string) int {
+	ka := chineseKeywords(a)
+	count := 0
+	for k := range chineseKeywords(b) {
+		if ka[k] {
+			count++
+		}
+	}
+	return count
+}
+
+func chineseKeywords(s string) map[string]bool {
+	runes := []rune(s)
+	seen := make(map[string]bool)
+	for i := 0; i < len(runes); i++ {
+		if !isHan(runes[i]) {
+			continue
+		}
+		for n := 2; n <= 3 && i+n <= len(runes); n++ {
+			chunk := runes[i : i+n]
+			if !allHan(chunk) {
+				break
+			}
+			kw := string(chunk)
+			if deliberationStopTokens[kw] {
+				continue
+			}
+			seen[kw] = true
+		}
+	}
+	return seen
+}
+
+func isHan(r rune) bool {
+	return r >= 0x4E00 && r <= 0x9FFF
+}
+
+func allHan(runes []rune) bool {
+	for _, r := range runes {
+		if !isHan(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func isRevisionDecisionLine(line string) bool {
+	if strings.ContainsAny(line, "？?") {
+		return false
+	}
+	if !bulletLineRe.MatchString(line) && !numberedLine.MatchString(line) {
+		return false
+	}
+	cleaned := cleanOpenQuestionLine(line)
+	cleaned = openQuestionPrefixRe.ReplaceAllString(cleaned, "")
+	cleaned = strings.TrimSpace(cleaned)
+	if len([]rune(cleaned)) < 12 {
+		return false
+	}
+	if isOpenQuestionLine(cleaned) || isIntroNoiseLine(cleaned) {
+		return false
+	}
+	for _, p := range []string{"待决问题", "开放问题", "补充以下", "补充几点", "针对待决"} {
+		if strings.Contains(cleaned, p) {
+			return false
+		}
+	}
+	return true
+}
+
+func overlapsOpenQuestion(candidate string, existing []string) bool {
+	for _, e := range existing {
+		if normalizeQuestionKey(candidate) == normalizeQuestionKey(e) {
+			return true
+		}
+		if deliberationTokenOverlap(candidate, e) >= 3 {
+			return true
+		}
+	}
+	return false
+}
+
+func isSuggestionNotQuestion(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if strings.ContainsAny(trimmed, "？?") {
+		return false
+	}
+	if strings.Contains(trimmed, "希望") && strings.Contains(trimmed, "评估") {
+		return true
+	}
+	if strings.HasPrefix(trimmed, "建议") && !strings.Contains(trimmed, "是否") {
+		return true
+	}
+	return false
+}
+
+func isTentativeStatementNotQuestion(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if !strings.Contains(trimmed, "倾向") {
+		return false
+	}
+	// "我倾向 X，但需评估" — not a focused open question.
+	if !strings.ContainsAny(trimmed, "？?") && strings.Contains(trimmed, "但需") {
 		return true
 	}
 	return false

@@ -60,6 +60,10 @@ func repairMalformedJSON(raw string) string {
 	case strings.HasSuffix(raw, "」"):
 		raw = raw[:len(raw)-len("」")] + `"`
 	}
+	// content-only object missing closing brace (e.g. free-dialogue answer ending with 特色。」)
+	if strings.HasPrefix(raw, "{") && strings.Contains(raw, `"content"`) && !strings.HasSuffix(raw, "}") {
+		raw += "}"
+	}
 	// content-only object: {"content":"..."} with missing closing quote before }
 	if strings.HasSuffix(raw, "}") && strings.Contains(raw, `"content"`) {
 		if !strings.HasSuffix(raw, `"}`) && !strings.Contains(raw, `","`) {
@@ -104,9 +108,12 @@ func extractContentLoose(raw string) (string, bool) {
 	if close > valueStart {
 		return unescapeJSONString(strings.TrimSpace(raw[valueStart:close])), true
 	}
-	// Trailing 」} or bare } (after repair pass may still miss edge cases)
-	if strings.HasSuffix(trimmed, "}") {
-		end := strings.LastIndex(trimmed, "}")
+	// Trailing 」 or 」} (after repair pass may still miss edge cases)
+	if strings.HasSuffix(trimmed, "}") || strings.HasSuffix(trimmed, "」") {
+		end := len(trimmed)
+		if strings.HasSuffix(trimmed, "}") {
+			end = strings.LastIndex(trimmed, "}")
+		}
 		if end > valueStart {
 			content := strings.TrimSpace(raw[valueStart:end])
 			content = strings.TrimSuffix(content, "」")

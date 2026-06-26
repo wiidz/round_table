@@ -57,9 +57,12 @@ func (e *Engine) continueAfterDeliberationRound(ctx context.Context, s meeting.S
 }
 
 func (e *Engine) completeDeliberation(ctx context.Context, s meeting.State, resolvedBy string) (meeting.State, error) {
-	summary, openQuestions := moderatorSynthesizeFinal(s)
+	summary, openQuestions, usage, err := e.synthesizeDeliberationFinal(ctx, s)
+	if err != nil {
+		return s, err
+	}
 	e.logf("◆ synthesis completed (%d open questions)", len(openQuestions))
-	return e.append(ctx, s, eventSynthesisCompleted(summary, openQuestions, resolvedBy))
+	return e.append(ctx, s, eventSynthesisCompleted(summary, openQuestions, resolvedBy, usage))
 }
 
 func (e *Engine) buildDeliberationPrompt(s meeting.State, participantID string) string {

@@ -448,6 +448,9 @@ func applySynthesisCompleted(s State, env event.Envelope) (State, error) {
 	}
 	s.SynthesisSummary = p.Summary
 	s.SynthesisOpenQuestions = append([]string(nil), p.OpenQuestions...)
+	if p.TokenUsage != nil {
+		s = recordTokenUsage(s, *p.TokenUsage)
+	}
 	resolvedBy := p.ResolvedBy
 	if resolvedBy == "" {
 		resolvedBy = "synthesis"

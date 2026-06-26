@@ -113,9 +113,10 @@ type ConsensusReachedPayload struct {
 
 // SynthesisCompletedPayload is the v1 payload for SynthesisCompleted (deliberation mode).
 type SynthesisCompletedPayload struct {
-	Summary       string   `json:"summary"`
-	OpenQuestions []string `json:"open_questions,omitempty"`
-	ResolvedBy    string   `json:"resolved_by,omitempty"` // synthesis | max_rounds
+	Summary       string      `json:"summary"`
+	OpenQuestions []string    `json:"open_questions,omitempty"`
+	ResolvedBy    string      `json:"resolved_by,omitempty"` // synthesis | max_rounds
+	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
 }
 
 // ConsensusVetoedPayload is the v1 payload for ConsensusVetoed.

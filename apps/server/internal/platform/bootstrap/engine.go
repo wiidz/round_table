@@ -44,6 +44,8 @@ func NewEngine(cfg config.Config) (*engine.Engine, error) {
 		prof,
 		know,
 	)
+	eng.Model = modelClient
+	eng.ModelName = cfg.Model.DefaultModel
 	eng.Progress = engine.StdProgressLogger{}
 	eng.Stream = engine.StdStreamLogger{}
 	return eng, nil

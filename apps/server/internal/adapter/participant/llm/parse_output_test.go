@@ -47,6 +47,20 @@ func TestParseOutput_validJSON(t *testing.T) {
 	}
 }
 
+func TestParseOutput_trailingCornerQuoteNoBrace(t *testing.T) {
+	raw := `{"content":"我更倾向于「几乎不可见，只有特定天赋或技能才能察觉」的设计。隐身状态的核心爽感在于「未知的威胁」，如果轻微但普遍可见的淡影永久存在，对面就能持续追踪位置，隐身就退化成了加速buff，偷袭的威慑力和惊喜感会大幅下降。不过，我完全理解PVP需要反制空间——建议将「反制」放在主动预判层面：例如敌方可以通过使用侦测技能（如猎人标记、法师透视光环）短暂暴露影舞者，或者通过观察环境异动（如草丛晃动、音效提示）来推测位置，而不是默认给所有人一个永久标记。这样既保留了刺客偷袭的高光时刻，也让高水平的对手有机会通过技能交换和局势阅读来对抗，竞技深度体现在「技能博弈」而非「常驻视野压制」。后续运营活动可以侧重「隐身刺杀主题」的限时模式（如暗影狩猎），验证这类设计的实际体验。若测试数据表明隐身过于强势，再考虑加入更轻微的视觉反馈作为后续平衡手段，而非首发就弱化特色。」`
+	out, err := parseOutput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsSubstring(out.Content, "几乎不可见") {
+		t.Fatalf("content = %q", out.Content)
+	}
+	if strings.HasSuffix(out.Content, "」") {
+		t.Fatalf("content should not end with corner quote: %q", out.Content)
+	}
+}
+
 func TestParseOutput_trailingCornerQuote(t *testing.T) {
 	raw := `{"content":"好问题。针对分身置换的延迟补偿，我们采用确定性帧同步 + 客户端预测 + 服务器回滚的组合方案。不会因分身数量影响同步质量。」}`
 	out, err := parseOutput(raw)

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"round_table/apps/server/internal/adapter/knowledge"
+	"round_table/apps/server/internal/adapter/model"
 	"round_table/apps/server/internal/adapter/participant"
 	"round_table/apps/server/internal/adapter/principal"
 	"round_table/apps/server/internal/adapter/profile"
@@ -19,6 +20,8 @@ type Engine struct {
 	Workspace   workspace.Port
 	Profile     profile.Port
 	Knowledge   knowledge.Port
+	Model       model.Port // optional; enables LLM deliberation synthesis
+	ModelName   string
 	Progress    ProgressLogger
 	Stream      StreamLogger
 }
