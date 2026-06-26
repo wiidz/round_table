@@ -116,6 +116,95 @@ func TestSynthesizeDeliberationFinal_llmPath(t *testing.T) {
 	}
 }
 
+func TestSplitTentativeDecisions(t *testing.T) {
+	decisions := []string{
+		"付费点限定为纯外观",
+		"暗能上限是否扩展至7点留待讨论，designer倾向否",
+	}
+	open := []string{"斩杀系数待确认"}
+	firm, merged := splitTentativeDecisions(decisions, open)
+	if len(firm) != 1 || !strings.Contains(firm[0], "纯外观") {
+		t.Fatalf("firm = %v", firm)
+	}
+	if len(merged) != 2 {
+		t.Fatalf("open = %v", merged)
+	}
+}
+
+func TestDedupeDecisionsAgainstCoreScheme(t *testing.T) {
+	core := []string{
+		"职业定位：高机动、高伤害、低容错纯刺客，放弃控制/辅助路线，聚焦爆发体验。",
+		"核心资源：暗影能量，上限100点，脱战每秒自然回复5点。",
+		"隐身设计：半透明轮廓+攻击显形，攻击出手瞬间立即显形。",
+		"残影机制：释放技能后原地留下持续1.5秒的残影，最多同时存在1个。",
+	}
+	decisions := []string{
+		"职业定位：高机动、高伤害、低容错纯刺客，放弃控制/辅助路线。",
+		"能量溢出处理：溢出化为增伤buff——5%暴击率持续3秒",
+		"禁止残影穿越地形：残影生成时进行碰撞检测",
+		"隐身方案：半透明轮廓+攻击显形",
+	}
+	got := dedupeDecisionsAgainstCoreScheme(core, decisions)
+	if len(got) != 2 {
+		t.Fatalf("deduped = %d items: %v", len(got), got)
+	}
+	for _, want := range []string{"增伤buff", "穿越地形"} {
+		found := false
+		for _, g := range got {
+			if strings.Contains(g, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing %q in %v", want, got)
+		}
+	}
+}
+
+func TestDedupeDecisionsAgainstCoreScheme_incrementalFallback(t *testing.T) {
+	core := []string{
+		"简化操作模式（可选）：放宽影步判定范围30%、加长换位前摇至0.35秒，但降低换位伤害系数。",
+		"影步对Boss完全禁用换位，仅打断读条。",
+	}
+	decisions := []string{
+		"简化操作模式：默认关闭，玩家可随时切换，伤害降低约20%",
+		"不开放玩家自定义前摇时长，内测后通过配置表热更新",
+		"Boss禁用换位，仅打断读条",
+	}
+	got := dedupeDecisionsAgainstCoreScheme(core, decisions)
+	if len(got) == 0 {
+		t.Fatalf("expected incremental fallback, got none")
+	}
+	if len(got) >= len(decisions) {
+		t.Fatalf("expected dedupe, got all: %v", got)
+	}
+	hasCustomPref := false
+	hasBoss := false
+	for _, g := range got {
+		if strings.Contains(g, "前摇") {
+			hasCustomPref = true
+		}
+		if strings.Contains(g, "Boss") {
+			hasBoss = true
+		}
+	}
+	if !hasCustomPref {
+		t.Fatalf("expected incremental preheat decision in %v", got)
+	}
+	if hasBoss {
+		t.Fatalf("Boss duplicate should be removed: %v", got)
+	}
+}
+
+func TestDedupeDecisionsAgainstCoreScheme_emptyCore(t *testing.T) {
+	decisions := []string{"采用方案 A"}
+	got := dedupeDecisionsAgainstCoreScheme(nil, decisions)
+	if len(got) != 1 {
+		t.Fatalf("got %v", got)
+	}
+}
+
 func TestSynthesizeDeliberationFinal_llmErrorFallsBack(t *testing.T) {
 	e := &Engine{
 		Model: synthesisFakeModel{err: context.DeadlineExceeded},

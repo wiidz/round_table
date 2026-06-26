@@ -75,6 +75,31 @@ func TestParseOutput_trailingCornerQuote(t *testing.T) {
 	}
 }
 
+func TestParseOutput_prettyPrintedWithSpacedStance(t *testing.T) {
+	raw := `{"content":"维护公平声誉。", "stance": "none", "object_reason": ""}`
+	out, err := parseOutput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Content != "维护公平声誉。" {
+		t.Fatalf("content = %q", out.Content)
+	}
+}
+
+func TestParseOutput_trailingJSONCommaLeak(t *testing.T) {
+	raw := `{"content":"维护公平声誉。",}`
+	out, err := parseOutput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.Content, `",`) || strings.HasSuffix(out.Content, `"`) {
+		t.Fatalf("content leaked JSON syntax: %q", out.Content)
+	}
+	if out.Content != "维护公平声誉。" {
+		t.Fatalf("content = %q", out.Content)
+	}
+}
+
 func containsSubstring(s, sub string) bool {
 	return len(sub) == 0 || (len(s) >= len(sub) && stringIndex(s, sub) >= 0)
 }

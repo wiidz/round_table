@@ -18,8 +18,8 @@ const synthesisSchema = `Respond ONLY with a JSON object (no markdown fences).
 Do NOT use ASCII double quotes (") inside string values — use 「」 for emphasis if needed.
 {
   "core_scheme": ["3-6 bullets summarizing the latest substantive proposal, not engineering feasibility alone"],
-  "decisions": ["explicit agreements and adopted choices from the discussion"],
-  "open_questions": ["unresolved questions only, no duplicates, max 8 items"]
+  "decisions": ["incremental agreements ONLY — trade-offs, rejected alternatives, free-dialogue outcomes; do NOT restate core_scheme bullets"],
+  "open_questions": ["unresolved or disputed items, including anything still needing confirmation, max 8 items"]
 }`
 
 type synthesisLLMOutput struct {
@@ -81,9 +81,13 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 		return summary, openQuestions, tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage), nil
 	}
 
-	coreScheme := formatBulletList(normalizeSynthesisStrings(out.CoreScheme, 6), 6)
-	decisions := normalizeSynthesisStrings(out.Decisions, 10)
-	openQuestions = normalizeSynthesisStrings(out.OpenQuestions, 8)
+	coreItems := normalizeSynthesisStrings(out.CoreScheme, 6)
+	decisions, openQuestions := splitTentativeDecisions(
+		normalizeSynthesisStrings(out.Decisions, 10),
+		normalizeSynthesisStrings(out.OpenQuestions, 8),
+	)
+	decisions = dedupeDecisionsAgainstCoreScheme(coreItems, decisions)
+	coreScheme := formatBulletList(coreItems, 6)
 	summary = assembleDesignDraft(s, coreScheme, decisions, openQuestions)
 
 	usage = tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage)
@@ -95,9 +99,10 @@ func (e *Engine) buildModeratorSynthesisSystem() (string, error) {
 	b.WriteString("You are the RoundTable Moderator synthesizing a deliberation meeting into a design draft.\n")
 	b.WriteString("Output JSON only. Write content in Chinese (简体中文).\n\n")
 	b.WriteString("Rules:\n")
-	b.WriteString("- core_scheme: latest agreed proposal; prefer later-round revisions over early drafts.\n")
-	b.WriteString("- decisions: include free-dialogue answers and multi-party consensus; exclude pure suggestions still under debate.\n")
-	b.WriteString("- open_questions: focused unresolved items only; exclude topics already decided.\n")
+	b.WriteString("- core_scheme: design snapshot — what the final scheme looks like (定位, resources, mechanics, skills).\n")
+	b.WriteString("- decisions: incremental agreements ONLY — trade-offs, rejected alternatives, free-dialogue outcomes, numeric lock-ins. Do NOT repeat core_scheme bullets.\n")
+	b.WriteString("- decisions: exclude suggestions still debated and items with 留待讨论/待确认/未表态.\n")
+	b.WriteString("- open_questions: unresolved, disputed, or needs-confirmation items; move tentative decisions here.\n")
 	b.WriteString("- Do not invent facts absent from the meeting record.\n\n")
 	if e.Profile != nil {
 		if data, err := e.Profile.ReadModerator(profile.FileAgents); err == nil {
@@ -179,6 +184,39 @@ func parseSynthesisOutput(raw string) (synthesisLLMOutput, error) {
 
 func synthesisOutputNonEmpty(out synthesisLLMOutput) bool {
 	return len(out.CoreScheme)+len(out.Decisions)+len(out.OpenQuestions) > 0
+}
+
+var tentativeDecisionMarkers = []string{
+	"留待讨论", "待讨论", "待确认", "需确认", "尚需确认", "待最终确认",
+	"未明确表态", "未表态", "需讨论定夺", "需讨论",
+}
+
+func splitTentativeDecisions(decisions, openQuestions []string) ([]string, []string) {
+	seen := make(map[string]bool)
+	for _, q := range openQuestions {
+		seen[normalizeQuestionKey(q)] = true
+	}
+	var firm, open []string
+	open = append(open, openQuestions...)
+	for _, d := range decisions {
+		tentative := false
+		for _, m := range tentativeDecisionMarkers {
+			if strings.Contains(d, m) {
+				tentative = true
+				break
+			}
+		}
+		if tentative {
+			key := normalizeQuestionKey(d)
+			if key != "" && !seen[key] {
+				seen[key] = true
+				open = append(open, d)
+			}
+			continue
+		}
+		firm = append(firm, d)
+	}
+	return firm, open
 }
 
 func normalizeSynthesisStrings(items []string, max int) []string {

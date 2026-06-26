@@ -52,6 +52,7 @@ func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []
 	decisions, spillover := collectDeliberationDecisions(s)
 	openQuestions = collectDeliberationOpenQuestions(s, decisions, spillover)
 	coreScheme := summarizeCoreScheme(s)
+	decisions = dedupeDecisionsAgainstCoreScheme(schemeBulletsFromText(coreScheme), decisions)
 	return assembleDesignDraft(s, coreScheme, decisions, openQuestions), openQuestions
 }
 
@@ -110,7 +111,11 @@ func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, core
 
 	b.WriteString("\n### 已决要点\n\n")
 	if len(decisions) == 0 {
-		b.WriteString("- （讨论中未形成明确决议表述 — 见各轮发言）\n")
+		if strings.TrimSpace(coreScheme) != "" {
+			b.WriteString("- （与核心方案一致，无额外增量决议 — 见各轮发言与自由对话）\n")
+		} else {
+			b.WriteString("- （讨论中未形成明确决议表述 — 见各轮发言）\n")
+		}
 	} else {
 		for _, d := range decisions {
 			fmt.Fprintf(b, "- %s\n", d)
@@ -127,6 +132,113 @@ func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, core
 	}
 
 	b.WriteString("\n> 完整发言与 Q&A 见下方「详细记录」。\n")
+}
+
+func schemeBulletsFromText(scheme string) []string {
+	var items []string
+	for _, line := range strings.Split(scheme, "\n") {
+		line = strings.TrimSpace(line)
+		line = strings.TrimPrefix(line, "- ")
+		line = strings.TrimSpace(line)
+		if line != "" {
+			items = append(items, line)
+		}
+	}
+	return items
+}
+
+func dedupeDecisionsAgainstCoreScheme(coreItems, decisions []string) []string {
+	if len(coreItems) == 0 || len(decisions) == 0 {
+		return decisions
+	}
+	strict := filterDecisionsAgainstCore(coreItems, decisions, strictCoreOverlapMin)
+	if len(strict) > 0 {
+		return strict
+	}
+	var incremental []string
+	for _, d := range decisions {
+		if !isIncrementalDecision(d) {
+			continue
+		}
+		if coreSchemeNearDuplicateOfAny(d, coreItems) {
+			continue
+		}
+		incremental = append(incremental, d)
+	}
+	return incremental
+}
+
+const strictCoreOverlapMin = 4
+
+var incrementalDecisionMarkers = []string{
+	"否决", "不采用", "而非", "拒绝", "改为", "放弃", "禁止",
+	"默认关闭", "不开放", "不单独", "不继承", "不对玩家", "不对 Boss",
+	"内测", "热更新", "完全禁用", "可选", "分层", "折中",
+	"不建议", "坚决反对", "维护公平", "纯外观", "不付费",
+}
+
+func filterDecisionsAgainstCore(coreItems, decisions []string, minOverlap int) []string {
+	var out []string
+	for _, d := range decisions {
+		if overlapsCoreScheme(d, coreItems, minOverlap) {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+func overlapsCoreScheme(decision string, coreItems []string, minOverlap int) bool {
+	dKey := normalizeQuestionKey(decision)
+	if dKey == "" {
+		return false
+	}
+	for _, c := range coreItems {
+		if coreSchemeNearDuplicate(decision, c) {
+			return true
+		}
+		if deliberationTokenOverlap(decision, c) >= minOverlap {
+			return true
+		}
+	}
+	return false
+}
+
+func coreSchemeNearDuplicateOfAny(decision string, coreItems []string) bool {
+	for _, c := range coreItems {
+		if coreSchemeNearDuplicate(decision, c) {
+			return true
+		}
+	}
+	return false
+}
+
+func coreSchemeNearDuplicate(decision, core string) bool {
+	dk := normalizeQuestionKey(decision)
+	ck := normalizeQuestionKey(core)
+	if dk == "" || ck == "" {
+		return false
+	}
+	if dk == ck {
+		return true
+	}
+	shorter, longer := dk, ck
+	if len(shorter) > len(longer) {
+		shorter, longer = longer, shorter
+	}
+	if len(shorter) >= 24 && strings.Contains(longer, shorter) {
+		return true
+	}
+	return false
+}
+
+func isIncrementalDecision(d string) bool {
+	for _, m := range incrementalDecisionMarkers {
+		if strings.Contains(d, m) {
+			return true
+		}
+	}
+	return false
 }
 
 func summarizeCoreScheme(s meeting.State) string {

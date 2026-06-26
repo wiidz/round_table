@@ -54,7 +54,30 @@ v0.2 可扩展 `review`、`retrospective` 等，仍走同一编排。
 
 **不**对 deliberation 运行 `ConsensusStrategy.Evaluate`。
 
-### 4. SynthesisCompleted 事件
+### 4. 方案合成（v0.1.1）
+
+达 `max_rounds` 后，Moderator 将全量会议记录合成为 `design-draft`：
+
+```
+completeDeliberation
+  → synthesizeDeliberationFinal
+       ├─ Engine.Model 可用 → LLM 合成（Phase: deliberation-synthesis）
+       │     读 Pre-meeting / 各轮 transcript / Moderator 摘要 / 自由对话
+       │     输出 JSON：core_scheme[]、decisions[]、open_questions[]
+       │     → assembleDesignDraft → artifacts/design-draft.md
+       │     API 失败或 JSON 无效 → 回退规则合成
+       └─ Model == nil（测试 stub）→ 规则合成 moderatorSynthesizeFinal
+  → SynthesisCompleted（含 TokenUsage）
+```
+
+| 路径 | 用途 |
+|------|------|
+| **LLM 合成** | 生产默认；Moderator 读 `AGENTS.md`，流式输出 + token 记录 |
+| **规则合成** | fallback；marker + 启发式，无 API 依赖（单测 / integration） |
+
+`decisions` 仅含已收敛共识；含「留待讨论 / 待确认 / 未表态」的条目归入 `open_questions`。
+
+### 5. SynthesisCompleted 事件
 
 新增 `SynthesisCompleted`（与 `ConsensusReached` 并列），payload：
 
@@ -66,7 +89,7 @@ v0.2 可扩展 `review`、`retrospective` 等，仍走同一编排。
 
 `ConsensusState` 在 deliberation 下 `strategy=deliberation`，`resolved_by` 取自 payload。
 
-### 5. Goal 默认值
+### 6. Goal 默认值
 
 | Mode | 默认 Goal |
 |------|-----------|
@@ -88,9 +111,11 @@ v0.2 可扩展 `review`、`retrospective` 等，仍走同一编排。
 ## 实现范围（v0.1）
 
 - [x] `MeetingCreated.meeting_mode`
-- [x] Engine deliberation 分支 + 规则合成（非 LLM 二次调用）
+- [x] Engine deliberation 分支 + Workspace 产物
+- [x] LLM 合成主路径 + 规则 fallback（`deliberation_synthesis_llm.go`）
 - [x] Workspace：`artifacts/design-draft.md`、`artifacts/open-questions.md`
 - [x] `meet -mode deliberation` + `game-class-design` 场景模板
+- [x] `SynthesisCompleted` 携带 `TokenUsage`
 - [ ] v0.2：合成就绪检测、Agenda 子项驱动合成结构
 
 ---

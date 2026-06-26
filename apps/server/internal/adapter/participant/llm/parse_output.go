@@ -10,6 +10,7 @@ import (
 var (
 	reStance       = regexp.MustCompile(`"stance"\s*:\s*"(agree|object|abstain|none)"`)
 	reObjectReason = regexp.MustCompile(`"object_reason"\s*:\s*"((?:\\.|[^"\\])*)"`)
+	reContentEnd   = regexp.MustCompile(`"\s*,\s*"(?:stance|object_reason)"`)
 )
 
 func parseOutput(raw string) (llmOutput, error) {
@@ -18,18 +19,20 @@ func parseOutput(raw string) (llmOutput, error) {
 
 	var out llmOutput
 	if err := json.Unmarshal([]byte(raw), &out); err == nil && out.Content != "" {
+		out.Content = finalizeContent(out.Content)
 		return out, nil
 	}
 	start := strings.Index(raw, "{")
 	end := strings.LastIndex(raw, "}")
 	if start >= 0 && end > start {
 		if err := json.Unmarshal([]byte(raw[start:end+1]), &out); err == nil && out.Content != "" {
+			out.Content = finalizeContent(out.Content)
 			return out, nil
 		}
 	}
 
 	if content, ok := extractContentLoose(raw); ok && content != "" {
-		out.Content = content
+		out.Content = finalizeContent(content)
 		if m := reStance.FindStringSubmatch(raw); len(m) > 1 {
 			out.Stance = m[1]
 		}
@@ -97,15 +100,23 @@ func extractContentLoose(raw string) (string, bool) {
 		valueStart = keyPos + strings.Index(raw[keyPos:], `: "`) + len(`: "`)
 	}
 
-	for _, delim := range []string{`","stance"`, `","object_reason"`, `,"stance"`, `,"object_reason"`} {
+	if loc := reContentEnd.FindStringIndex(raw[valueStart:]); loc != nil {
+		return unescapeJSONString(strings.TrimSpace(raw[valueStart : valueStart+loc[0]])), true
+	}
+
+	for _, delim := range []string{
+		`","stance"`, `","object_reason"`,
+		`", "stance"`, `", "object_reason"`,
+		`,"stance"`, `,"object_reason"`,
+	} {
 		if pos := strings.Index(raw[valueStart:], delim); pos >= 0 {
-			return strings.TrimSpace(raw[valueStart : valueStart+pos]), true
+			return unescapeJSONString(strings.TrimSpace(raw[valueStart : valueStart+pos])), true
 		}
 	}
 
 	trimmed := strings.TrimSpace(raw)
 	close := strings.LastIndex(trimmed, `"}`)
-	if close > valueStart {
+	if close > valueStart && !strings.Contains(raw[valueStart:close], `", "stance"`) && !strings.Contains(raw[valueStart:close], `","stance"`) {
 		return unescapeJSONString(strings.TrimSpace(raw[valueStart:close])), true
 	}
 	// Trailing 」 or 」} (after repair pass may still miss edge cases)
@@ -124,6 +135,27 @@ func extractContentLoose(raw string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// finalizeContent strips JSON syntax leaked into parsed content values.
+func finalizeContent(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimSuffix(s, "」")
+	for {
+		prev := s
+		s = strings.TrimSpace(s)
+		for _, suffix := range []string{`", "stance"`, `","stance"`, `", "object_reason"`, `","object_reason"`, `",`} {
+			if strings.HasSuffix(s, suffix) {
+				s = strings.TrimSuffix(s, suffix)
+				break
+			}
+		}
+		s = strings.TrimSuffix(strings.TrimSpace(s), `"`)
+		if s == prev {
+			break
+		}
+	}
+	return strings.TrimSpace(s)
 }
 
 func unescapeJSONString(s string) string {
