@@ -52,7 +52,12 @@ func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []
 	decisions, spillover := collectDeliberationDecisions(s)
 	openQuestions = collectDeliberationOpenQuestions(s, decisions, spillover)
 	coreScheme := summarizeCoreScheme(s)
-	decisions = dedupeDecisionsAgainstCoreScheme(schemeBulletsFromText(coreScheme), decisions)
+	coreBullets := schemeBulletsFromText(coreScheme)
+	decisions = dedupeDecisionsAgainstCoreScheme(coreBullets, decisions)
+	if hasAgendaForSynthesis(s) {
+		out := ruleBasedAgendaSynthesis(s, coreBullets, decisions, openQuestions)
+		return assembleDesignDraftFromAgenda(s, out)
+	}
 	return assembleDesignDraft(s, coreScheme, decisions, openQuestions), openQuestions
 }
 

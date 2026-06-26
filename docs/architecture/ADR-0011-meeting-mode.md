@@ -166,7 +166,7 @@ completeDeliberation
 | **design-draft** | Executive Summary 按 Agenda 分节（替代单一「核心方案」） |
 | **readiness** | 判定 gaps 时参考各 agenda 覆盖度 |
 | **无 Agenda** | 保持 v0.1.1 扁平 `core_scheme` 路径（向后兼容） |
-| **规则 fallback** | 仍用扁平结构（无 LLM 时不强行拆 agenda） |
+| **规则 fallback** | 有 Agenda 时按标题/token 重叠分节；无 Agenda 时扁平结构 |
 
 CLI：`-agenda "id:Title,id2:Title2"`；`make meet-game-class` 带默认四议程。
 

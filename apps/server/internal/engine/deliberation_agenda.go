@@ -306,3 +306,86 @@ func agendaReadinessSchemaHint(s meeting.State) string {
 	}
 	return fmt.Sprintf("\nWhen judging gaps, reference agenda coverage (%s). A missing agenda item with blocking conflict should yield ready=false.\n", strings.Join(ids, ", "))
 }
+
+func ruleBasedAgendaSynthesis(s meeting.State, coreBullets, decisions, openQuestions []string) synthesisAgendaOutput {
+	var out synthesisAgendaOutput
+	assignedDecisions := make(map[int]bool)
+	assignedOpen := make(map[int]bool)
+	assignedCore := make(map[int]bool)
+
+	for _, item := range s.Agenda {
+		sec := synthesisAgendaSection{AgendaID: agendaItemID(item)}
+		for i, b := range coreBullets {
+			if assignedCore[i] {
+				continue
+			}
+			if textMatchesAgendaItem(b, item) {
+				sec.Summary = append(sec.Summary, b)
+				assignedCore[i] = true
+			}
+		}
+		for i, d := range decisions {
+			if assignedDecisions[i] {
+				continue
+			}
+			if textMatchesAgendaItem(d, item) {
+				sec.Decisions = append(sec.Decisions, d)
+				assignedDecisions[i] = true
+			}
+		}
+		for i, q := range openQuestions {
+			if assignedOpen[i] {
+				continue
+			}
+			if textMatchesAgendaItem(q, item) {
+				sec.OpenQuestions = append(sec.OpenQuestions, q)
+				assignedOpen[i] = true
+			}
+		}
+		sec.Summary = normalizeSynthesisStrings(sec.Summary, 6)
+		sec.Decisions = normalizeSynthesisStrings(sec.Decisions, 8)
+		sec.OpenQuestions = normalizeSynthesisStrings(sec.OpenQuestions, 6)
+		out.Sections = append(out.Sections, sec)
+	}
+
+	for i, d := range decisions {
+		if !assignedDecisions[i] {
+			out.CrossCutting.Decisions = append(out.CrossCutting.Decisions, d)
+		}
+	}
+	for i, q := range openQuestions {
+		if !assignedOpen[i] {
+			out.CrossCutting.OpenQuestions = append(out.CrossCutting.OpenQuestions, q)
+		}
+	}
+	for i, b := range coreBullets {
+		if !assignedCore[i] {
+			out.CrossCutting.Decisions = append(out.CrossCutting.Decisions, b)
+		}
+	}
+	out.CrossCutting.Decisions = normalizeSynthesisStrings(out.CrossCutting.Decisions, 8)
+	out.CrossCutting.OpenQuestions = normalizeSynthesisStrings(out.CrossCutting.OpenQuestions, 8)
+	return out
+}
+
+func textMatchesAgendaItem(text string, item event.AgendaItem) bool {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return false
+	}
+	if item.ID != "" && strings.Contains(strings.ToLower(text), strings.ToLower(item.ID)) {
+		return true
+	}
+	if deliberationTokenOverlap(text, item.Title) >= 2 {
+		return true
+	}
+	for _, part := range strings.FieldsFunc(item.Title, func(r rune) bool {
+		return r == '与' || r == '及' || r == '、' || r == '/' || r == ' '
+	}) {
+		part = strings.TrimSpace(part)
+		if len([]rune(part)) >= 2 && strings.Contains(text, part) {
+			return true
+		}
+	}
+	return false
+}
