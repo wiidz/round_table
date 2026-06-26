@@ -19,9 +19,11 @@ func (e *Engine) LoadState(ctx context.Context, meetingID string) (meeting.State
 type CreateMeetingInput struct {
 	MeetingID           string
 	Topic               string
+	Goal                string
 	ConfirmationMode    string
-	MaxRoundsPerSegment int
-	Participants        []ParticipantInput
+	MaxRoundsPerSegment      int
+	FreeDialogueMaxQuestions *int // nil = default (1); explicit 0 disables
+	Participants             []ParticipantInput
 }
 
 // ParticipantInput registers one expert for the meeting.
@@ -49,7 +51,12 @@ func (e *Engine) CreateMeeting(ctx context.Context, in CreateMeetingInput) (meet
 		mode = meeting.ConfirmationModeSkip
 	}
 
-	s, err := e.append(ctx, meeting.NewState(in.MeetingID), eventMeetingCreated(in.Topic, mode, in.MaxRoundsPerSegment))
+	freeQuestions := 1
+	if in.FreeDialogueMaxQuestions != nil {
+		freeQuestions = *in.FreeDialogueMaxQuestions
+	}
+
+	s, err := e.append(ctx, meeting.NewState(in.MeetingID), eventMeetingCreated(in.Topic, in.Goal, mode, in.MaxRoundsPerSegment, freeQuestions))
 	if err != nil {
 		return s, err
 	}
@@ -86,7 +93,11 @@ func (e *Engine) Run(ctx context.Context, meetingID string) (meeting.State, erro
 		case meeting.StatusPreparing:
 			s, err = e.startRound(ctx, s)
 		case meeting.StatusRunning:
-			s, err = e.advanceRunning(ctx, s)
+			if s.InFreeDialogue {
+				s, err = e.advanceFreeDialogue(ctx, s)
+			} else {
+				s, err = e.advanceRunning(ctx, s)
+			}
 		case meeting.StatusConsensus:
 			s, err = e.afterConsensus(ctx, s)
 		case meeting.StatusConfirmation:

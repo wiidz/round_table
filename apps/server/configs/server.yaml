@@ -9,6 +9,7 @@ meeting:
   max_rounds_per_segment: 5
   max_confirmation_cycles: 3
   confirmation_mode: required
+  free_dialogue_max_questions: 1
 
 model:
   provider: deepseek

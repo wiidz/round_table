@@ -25,6 +25,7 @@ func saveEnvFile(path string, cfg Config) error {
 		{"OPENAI_API_KEY", cfg.Secrets.OpenAIAPIKey},
 		{"ANTHROPIC_API_KEY", cfg.Secrets.AnthropicAPIKey},
 		{"DEEPSEEK_API_KEY", cfg.Secrets.DeepSeekAPIKey},
+		{"DEEPSEEK_MODEL_NAME", cfg.Model.DefaultModel},
 	}
 
 	existing, _ := os.ReadFile(path)

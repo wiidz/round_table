@@ -21,6 +21,9 @@ func (NoObjection) Evaluate(ctx Context) (Result, error) {
 		if r.Stance == event.StanceObject {
 			return Result{Reached: false, ResolvedBy: "strategy"}, nil
 		}
+		if r.Stance == event.StanceNone || r.Stance == "" {
+			return Result{Reached: false, ResolvedBy: "strategy"}, nil
+		}
 	}
 	return Result{Reached: true, ResolvedBy: "strategy"}, nil
 }

@@ -8,15 +8,6 @@ import (
 	"round_table/apps/server/internal/domain/event"
 )
 
-func mustPayload(t *testing.T, v any) []byte {
-	t.Helper()
-	b, err := json.Marshal(v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
-}
-
 func env(seq int, typ event.Type, payload []byte, actor event.Actor) event.Envelope {
 	return event.Envelope{
 		ID:         "evt",
@@ -28,6 +19,41 @@ func env(seq int, typ event.Type, payload []byte, actor event.Actor) event.Envel
 		OccurredAt: time.Now(),
 		Actor:      actor,
 	}
+}
+
+func preMeetingEvents(startSeq int, order []string) []event.Envelope {
+	must := func(v any) []byte {
+		b, err := json.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		return b
+	}
+	var out []event.Envelope
+	seq := startSeq
+	out = append(out, env(seq, event.TypeRoundStarted, must(event.RoundStartedPayload{
+		RoundNumber: 0, Order: order,
+	}), event.ActorModerator))
+	seq++
+	for _, id := range order {
+		out = append(out, env(seq, event.TypeParticipantResponded, must(event.ParticipantRespondedPayload{
+			ParticipantID: id, RoundNumber: 0, Content: "initial view", Stance: event.StanceNone,
+		}), event.ActorParticipant))
+		seq++
+	}
+	out = append(out, env(seq, event.TypeRoundCompleted, must(event.RoundCompletedPayload{
+		RoundNumber: 0, Summary: "pre-meeting done",
+	}), event.ActorModerator))
+	return out
+}
+
+func mustPayload(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
 
 func TestApply_MeetingCreated(t *testing.T) {
@@ -69,6 +95,26 @@ func TestApply_MeetingCreated_defaults(t *testing.T) {
 	if s.ConfirmationMode != ConfirmationModeRequired {
 		t.Fatalf("confirmation_mode = %q", s.ConfirmationMode)
 	}
+	if s.FreeDialogueMaxQuestions != defaultFreeDialogueMaxQuestions {
+		t.Fatalf("free_dialogue_max_questions default = %d", s.FreeDialogueMaxQuestions)
+	}
+}
+
+func TestApply_MeetingCreated_freeDialogueDisabled(t *testing.T) {
+	t.Parallel()
+
+	zero := 0
+	payload := mustPayload(t, event.MeetingCreatedPayload{
+		Topic:                    "t",
+		FreeDialogueMaxQuestions: &zero,
+	})
+	s, err := Apply(NewState("mtg-1"), env(1, event.TypeMeetingCreated, payload, event.ActorPrincipal))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.FreeDialogueMaxQuestions != 0 {
+		t.Fatalf("free_dialogue_max_questions = %d, want 0", s.FreeDialogueMaxQuestions)
+	}
 }
 
 func TestApply_MeetingCreated_twiceRejected(t *testing.T) {
@@ -102,38 +148,37 @@ func TestFold_happyPathWithConfirmation(t *testing.T) {
 		env(3, event.TypeParticipantInvited, mustPayload(t, event.ParticipantInvitedPayload{
 			ParticipantID: "p2", Role: "Programmer",
 		}), event.ActorModerator),
-		env(4, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{
+	}
+	events = append(events, preMeetingEvents(4, order)...)
+	events = append(events,
+		env(8, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{
 			RoundNumber: 1, Order: order,
 		}), event.ActorModerator),
-		env(5, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
+		env(9, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
 			ParticipantID: "p1", RoundNumber: 1, Content: "方案 A", Stance: event.StanceAgree,
 		}), event.ActorParticipant),
-		env(6, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
+		env(10, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
 			ParticipantID: "p2", RoundNumber: 1, Content: "同意", Stance: event.StanceAgree,
 		}), event.ActorParticipant),
-		env(7, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{
+		env(11, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{
 			RoundNumber: 1, Summary: "达成一致",
 		}), event.ActorModerator),
-		env(8, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{
+		env(12, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{
 			Strategy: "no_objection", ResolvedBy: "strategy",
 		}), event.ActorModerator),
-		env(9, event.TypeConfirmationPrepared, mustPayload(t, event.ConfirmationPreparedPayload{
+		env(13, event.TypeConfirmationPrepared, mustPayload(t, event.ConfirmationPreparedPayload{
 			Cycle: 1,
 			Brief: event.ConfirmationBrief{
 				ExecutiveSummary: "采用方案 A",
 				Items:            []event.ConfirmationItem{{Index: 1, Title: "架构", Description: "方案 A"}},
 			},
 		}), event.ActorModerator),
-		env(10, event.TypeConfirmationPresented, mustPayload(t, event.ConfirmationPresentedPayload{Cycle: 1}), event.ActorModerator),
-		env(11, event.TypeConfirmationApproved, mustPayload(t, event.ConfirmationApprovedPayload{Cycle: 1}), event.ActorPrincipal),
-		env(12, event.TypeMeetingFinished, mustPayload(t, event.MeetingFinishedPayload{}), event.ActorModerator),
-		env(13, event.TypeArtifactProduced, mustPayload(t, event.ArtifactProducedPayload{
-			ArtifactID: "art-1", Type: "markdown", Ref: "out.md",
-		}), event.ActorModerator),
-	}
+		env(14, event.TypeConfirmationPresented, mustPayload(t, event.ConfirmationPresentedPayload{Cycle: 1}), event.ActorModerator),
+		env(15, event.TypeConfirmationApproved, mustPayload(t, event.ConfirmationApprovedPayload{Cycle: 1}), event.ActorPrincipal),
+		env(16, event.TypeMeetingFinished, mustPayload(t, event.MeetingFinishedPayload{}), event.ActorModerator),
+	)
 
-	// Artifact after Completed should fail — rebuild without post-complete artifact
-	events = events[:12]
+	events = events[:16]
 
 	s, err := Fold("mtg-1", events)
 	if err != nil {
@@ -148,7 +193,7 @@ func TestFold_happyPathWithConfirmation(t *testing.T) {
 	if s.Confirmation == nil || !s.Confirmation.Approved {
 		t.Fatal("expected approved confirmation")
 	}
-	if len(s.Minutes.Rounds) != 1 {
+	if len(s.Minutes.Rounds) != 2 {
 		t.Fatalf("round summaries = %d", len(s.Minutes.Rounds))
 	}
 	if len(s.Participants) != 2 {
@@ -166,20 +211,23 @@ func TestFold_skipConfirmation(t *testing.T) {
 		env(2, event.TypeParticipantInvited, mustPayload(t, event.ParticipantInvitedPayload{
 			ParticipantID: "p1", Role: "Expert",
 		}), event.ActorModerator),
-		env(3, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{
+	}
+	events = append(events, preMeetingEvents(3, []string{"p1"})...)
+	events = append(events,
+		env(7, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{
 			RoundNumber: 1, Order: []string{"p1"},
 		}), event.ActorModerator),
-		env(4, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
+		env(8, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
 			ParticipantID: "p1", RoundNumber: 1, Content: "ok", Stance: event.StanceAgree,
 		}), event.ActorParticipant),
-		env(5, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{
+		env(9, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{
 			RoundNumber: 1, Summary: "done",
 		}), event.ActorModerator),
-		env(6, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{
+		env(10, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{
 			Strategy: "no_objection", ResolvedBy: "strategy",
 		}), event.ActorModerator),
-		env(7, event.TypeMeetingFinished, mustPayload(t, event.MeetingFinishedPayload{}), event.ActorModerator),
-	}
+		env(11, event.TypeMeetingFinished, mustPayload(t, event.MeetingFinishedPayload{}), event.ActorModerator),
+	)
 
 	s, err := Fold("mtg-1", events)
 	if err != nil {
@@ -199,22 +247,25 @@ func TestFold_confirmationRejected_resetsRound(t *testing.T) {
 		env(2, event.TypeParticipantInvited, mustPayload(t, event.ParticipantInvitedPayload{
 			ParticipantID: "p1", Role: "Expert",
 		}), event.ActorModerator),
-		env(3, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: order}), event.ActorModerator),
-		env(4, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
+	}
+	base = append(base, preMeetingEvents(3, order)...)
+	base = append(base,
+		env(7, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: order}), event.ActorModerator),
+		env(8, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
 			ParticipantID: "p1", RoundNumber: 1, Content: "v1", Stance: event.StanceAgree,
 		}), event.ActorParticipant),
-		env(5, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{RoundNumber: 1, Summary: "s1"}), event.ActorModerator),
-		env(6, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{
+		env(9, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{RoundNumber: 1, Summary: "s1"}), event.ActorModerator),
+		env(10, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{
 			Strategy: "no_objection", ResolvedBy: "strategy",
 		}), event.ActorModerator),
-		env(7, event.TypeConfirmationPrepared, mustPayload(t, event.ConfirmationPreparedPayload{
+		env(11, event.TypeConfirmationPrepared, mustPayload(t, event.ConfirmationPreparedPayload{
 			Cycle: 1, Brief: event.ConfirmationBrief{ExecutiveSummary: "brief"},
 		}), event.ActorModerator),
-		env(8, event.TypeConfirmationPresented, mustPayload(t, event.ConfirmationPresentedPayload{Cycle: 1}), event.ActorModerator),
-		env(9, event.TypeConfirmationRejected, mustPayload(t, event.ConfirmationRejectedPayload{
+		env(12, event.TypeConfirmationPresented, mustPayload(t, event.ConfirmationPresentedPayload{Cycle: 1}), event.ActorModerator),
+		env(13, event.TypeConfirmationRejected, mustPayload(t, event.ConfirmationRejectedPayload{
 			Cycle: 1, Feedback: "需要更多细节",
 		}), event.ActorPrincipal),
-	}
+	)
 
 	s, err := Fold("mtg-1", base)
 	if err != nil {
@@ -235,7 +286,7 @@ func TestFold_confirmationRejected_resetsRound(t *testing.T) {
 
 	// Second segment round 1
 	next := append(base,
-		env(10, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: order}), event.ActorModerator),
+		env(14, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: order}), event.ActorModerator),
 	)
 	s, err = Fold("mtg-1", next)
 	if err != nil {
@@ -252,14 +303,17 @@ func TestFold_consensusVetoed(t *testing.T) {
 	events := []event.Envelope{
 		env(1, event.TypeMeetingCreated, mustPayload(t, event.MeetingCreatedPayload{Topic: "x"}), event.ActorPrincipal),
 		env(2, event.TypeParticipantInvited, mustPayload(t, event.ParticipantInvitedPayload{ParticipantID: "p1", Role: "E"}), event.ActorModerator),
-		env(3, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: []string{"p1"}}), event.ActorModerator),
-		env(4, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
+	}
+	events = append(events, preMeetingEvents(3, []string{"p1"})...)
+	events = append(events,
+		env(7, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: []string{"p1"}}), event.ActorModerator),
+		env(8, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
 			ParticipantID: "p1", RoundNumber: 1, Content: "c", Stance: event.StanceAgree,
 		}), event.ActorParticipant),
-		env(5, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{RoundNumber: 1, Summary: "s"}), event.ActorModerator),
-		env(6, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{Strategy: "no_objection", ResolvedBy: "strategy"}), event.ActorModerator),
-		env(7, event.TypeConsensusVetoed, mustPayload(t, event.ConsensusVetoedPayload{Reason: "再讨论"}), event.ActorPrincipal),
-	}
+		env(9, event.TypeRoundCompleted, mustPayload(t, event.RoundCompletedPayload{RoundNumber: 1, Summary: "s"}), event.ActorModerator),
+		env(10, event.TypeConsensusReached, mustPayload(t, event.ConsensusReachedPayload{Strategy: "no_objection", ResolvedBy: "strategy"}), event.ActorModerator),
+		env(11, event.TypeConsensusVetoed, mustPayload(t, event.ConsensusVetoedPayload{Reason: "再讨论"}), event.ActorPrincipal),
+	)
 
 	s, err := Fold("mtg-1", events)
 	if err != nil {
@@ -279,13 +333,16 @@ func TestFold_pauseResume(t *testing.T) {
 	events := []event.Envelope{
 		env(1, event.TypeMeetingCreated, mustPayload(t, event.MeetingCreatedPayload{Topic: "x"}), event.ActorPrincipal),
 		env(2, event.TypeParticipantInvited, mustPayload(t, event.ParticipantInvitedPayload{ParticipantID: "p1", Role: "E"}), event.ActorModerator),
-		env(3, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: []string{"p1"}}), event.ActorModerator),
-		env(4, event.TypeMeetingPaused, mustPayload(t, event.MeetingPausedPayload{Reason: "break"}), event.ActorPrincipal),
-		env(5, event.TypeMeetingResumed, nil, event.ActorPrincipal),
-		env(6, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
+	}
+	events = append(events, preMeetingEvents(3, []string{"p1"})...)
+	events = append(events,
+		env(7, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: []string{"p1"}}), event.ActorModerator),
+		env(8, event.TypeMeetingPaused, mustPayload(t, event.MeetingPausedPayload{Reason: "break"}), event.ActorPrincipal),
+		env(9, event.TypeMeetingResumed, nil, event.ActorPrincipal),
+		env(10, event.TypeParticipantResponded, mustPayload(t, event.ParticipantRespondedPayload{
 			ParticipantID: "p1", RoundNumber: 1, Content: "c", Stance: event.StanceAgree,
 		}), event.ActorParticipant),
-	}
+	)
 
 	s, err := Fold("mtg-1", events)
 	if err != nil {
@@ -311,10 +368,11 @@ func TestApply_participantResponded_duplicate(t *testing.T) {
 	t.Parallel()
 
 	s := State{
-		ID:           "mtg-1",
-		Status:       StatusRunning,
-		CurrentRound: 1,
-		RoundOrder:   []string{"p1"},
+		ID:                  "mtg-1",
+		Status:              StatusRunning,
+		CurrentRound:        1,
+		PreMeetingCompleted: true,
+		RoundOrder:          []string{"p1"},
 		RoundResponses: map[int]map[string]RoundResponse{
 			1: {"p1": {Content: "already", Stance: event.StanceAgree}},
 		},
@@ -358,10 +416,11 @@ func TestApply_multiRoundIncrement(t *testing.T) {
 	t.Parallel()
 
 	s := State{
-		ID:           "mtg-1",
-		Status:       StatusRunning,
-		CurrentRound: 1,
-		Participants: map[string]ParticipantState{"p1": {ID: "p1"}},
+		ID:                  "mtg-1",
+		Status:              StatusRunning,
+		CurrentRound:        1,
+		PreMeetingCompleted: true,
+		Participants:        map[string]ParticipantState{"p1": {ID: "p1"}},
 		RoundOrder:   []string{"p1"},
 		RoundResponses: map[int]map[string]RoundResponse{
 			1: {"p1": {Stance: event.StanceObject, Content: "no"}},
@@ -384,5 +443,25 @@ func TestApply_multiRoundIncrement(t *testing.T) {
 	}
 	if s.CurrentRound != 2 {
 		t.Fatalf("round = %d", s.CurrentRound)
+	}
+}
+
+func TestApply_moderatorSummarized_currentRound(t *testing.T) {
+	t.Parallel()
+
+	s := State{
+		ID:                  "mtg-1",
+		Status:              StatusRunning,
+		CurrentRound:        1,
+		PreMeetingCompleted: true,
+	}
+	s, err := Apply(s, env(1, event.TypeModeratorSummarized, mustPayload(t, event.ModeratorSummarizedPayload{
+		RoundNumber: 1, Summary: "summary",
+	}), event.ActorModerator))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.ModeratorSummaries[1] != "summary" {
+		t.Fatalf("got %q", s.ModeratorSummaries[1])
 	}
 }

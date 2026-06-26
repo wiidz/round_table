@@ -27,9 +27,10 @@ type Server struct {
 }
 
 type Meeting struct {
-	MaxRoundsPerSegment   int    `yaml:"max_rounds_per_segment"`
-	MaxConfirmationCycles int    `yaml:"max_confirmation_cycles"`
-	ConfirmationMode      string `yaml:"confirmation_mode"`
+	MaxRoundsPerSegment      int    `yaml:"max_rounds_per_segment"`
+	MaxConfirmationCycles    int    `yaml:"max_confirmation_cycles"`
+	ConfirmationMode         string `yaml:"confirmation_mode"`
+	FreeDialogueMaxQuestions int    `yaml:"free_dialogue_max_questions"`
 }
 
 type Model struct {
@@ -101,9 +102,10 @@ func defaults() Config {
 			WriteTimeoutSec: 30,
 		},
 		Meeting: Meeting{
-			MaxRoundsPerSegment:   5,
-			MaxConfirmationCycles: 3,
-			ConfirmationMode:      "required",
+			MaxRoundsPerSegment:      5,
+			MaxConfirmationCycles:    3,
+			ConfirmationMode:         "required",
+			FreeDialogueMaxQuestions: 1,
 		},
 		Model: Model{
 			Provider:     "deepseek",
@@ -137,10 +139,12 @@ func applyEnv(cfg *Config) {
 
 	overrideInt(&cfg.Meeting.MaxRoundsPerSegment, "ROUND_TABLE_MAX_ROUNDS_PER_SEGMENT")
 	overrideInt(&cfg.Meeting.MaxConfirmationCycles, "ROUND_TABLE_MAX_CONFIRMATION_CYCLES")
+	overrideInt(&cfg.Meeting.FreeDialogueMaxQuestions, "ROUND_TABLE_FREE_DIALOGUE_MAX_QUESTIONS")
 	overrideString(&cfg.Meeting.ConfirmationMode, "ROUND_TABLE_CONFIRMATION_MODE")
 
 	overrideString(&cfg.Model.Provider, "ROUND_TABLE_MODEL_PROVIDER")
 	overrideString(&cfg.Model.BaseURL, "ROUND_TABLE_MODEL_BASE_URL")
+	overrideString(&cfg.Model.DefaultModel, "DEEPSEEK_MODEL_NAME")
 	overrideString(&cfg.Model.DefaultModel, "ROUND_TABLE_MODEL_DEFAULT_MODEL")
 	overrideInt(&cfg.Model.TimeoutSec, "ROUND_TABLE_MODEL_TIMEOUT_SEC")
 

@@ -1,6 +1,10 @@
 package meeting
 
-import "round_table/apps/server/internal/domain/event"
+import (
+	"time"
+
+	"round_table/apps/server/internal/domain/event"
+)
 
 // Status is the Meeting lifecycle state.
 type Status string
@@ -27,12 +31,30 @@ type State struct {
 	ConfirmationMode      string
 	MaxConfirmationCycles int
 
+	StartedAt             time.Time
+	Goal                  string
 	Participants     map[string]ParticipantState
 	ParticipantOrder []string
 
 	CurrentRound     int
 	RoundOrder       []string
 	RoundResponses   map[int]map[string]RoundResponse
+	PreMeetingCompleted bool
+	PreMeetingSummary   string
+	ModeratorSummaries  map[int]string
+
+	FreeDialogueMaxQuestions int
+	FreeDialogueCompleted    bool
+	FreeDialogueSummary      string
+	FreeDialogueExchanges    []FreeDialogueExchange
+	InFreeDialogue           bool
+	FreeDialogueQuestionIndex int
+	FreeDialogueAskerIndex    int
+	PendingFreeDialogue      *PendingFreeDialogue
+
+	TokenUsageLog    []TokenUsageRecord
+	TokenUsageTotals TokenUsageTotals
+
 	RunningSegment   int
 	ConfirmationCycle int
 	PrincipalFeedback string
@@ -59,4 +81,15 @@ func NewState(id string) State {
 
 func (s State) isTerminal() bool {
 	return s.Status == StatusCompleted || s.Status == StatusArchived
+}
+
+// DebateRoundCount returns completed debate rounds (1+), excluding pre-meeting round 0.
+func (s State) DebateRoundCount() int {
+	n := 0
+	for _, r := range s.Minutes.Rounds {
+		if r.RoundNumber > 0 {
+			n++
+		}
+	}
+	return n
 }

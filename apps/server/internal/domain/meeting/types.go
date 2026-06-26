@@ -25,6 +25,44 @@ type RoundResponse struct {
 	ObjectReason string
 }
 
+// FreeDialogueExchange is one ask/answer pair after Round 1.
+type FreeDialogueExchange struct {
+	QuestionIndex int
+	AskerID       string
+	AnswererID    string
+	Question      string
+	Answer        string
+}
+
+// PendingFreeDialogue tracks an unanswered question in free dialogue.
+type PendingFreeDialogue struct {
+	AskerID       string
+	AnswererID    string
+	QuestionIndex int
+	Question      string
+}
+
+// TokenUsageRecord is one LLM call in the meeting.
+type TokenUsageRecord struct {
+	Turn             int
+	Phase            string
+	ParticipantID    string
+	Model            string
+	RoundNumber      int
+	QuestionIndex    int
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
+}
+
+// TokenUsageTotals aggregates all LLM calls in the meeting.
+type TokenUsageTotals struct {
+	CallCount        int
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
+}
+
 // ConsensusState is set when Consensus is reached.
 type ConsensusState struct {
 	Strategy   string

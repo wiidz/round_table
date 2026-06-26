@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	defaultMaxRoundsPerSegment   = 5
-	defaultMaxConfirmationCycles = 3
-	defaultConsensusStrategy     = "no_objection"
+	defaultMaxRoundsPerSegment      = 5
+	defaultMaxConfirmationCycles    = 3
+	defaultConsensusStrategy        = "no_objection"
+	defaultFreeDialogueMaxQuestions = 1
 )
 
 // Apply folds one event into state. Returns error if transition is illegal.
@@ -30,6 +31,16 @@ func Apply(s State, env event.Envelope) (State, error) {
 		return applyParticipantResponded(s, env)
 	case event.TypeRoundCompleted:
 		return applyRoundCompleted(s, env)
+	case event.TypeModeratorSummarized:
+		return applyModeratorSummarized(s, env)
+	case event.TypeFreeDialogueStarted:
+		return applyFreeDialogueStarted(s, env)
+	case event.TypeFreeDialogueQuestion:
+		return applyFreeDialogueQuestionAsked(s, env)
+	case event.TypeFreeDialogueAnswer:
+		return applyFreeDialogueAnswered(s, env)
+	case event.TypeFreeDialogueCompleted:
+		return applyFreeDialogueCompleted(s, env)
 	case event.TypeConsensusReached:
 		return applyConsensusReached(s, env)
 	case event.TypeConsensusVetoed:
@@ -110,8 +121,22 @@ func applyMeetingCreated(s State, env event.Envelope) (State, error) {
 	if s.MaxConfirmationCycles <= 0 {
 		s.MaxConfirmationCycles = defaultMaxConfirmationCycles
 	}
+	if p.FreeDialogueMaxQuestions != nil {
+		s.FreeDialogueMaxQuestions = *p.FreeDialogueMaxQuestions
+	} else {
+		s.FreeDialogueMaxQuestions = defaultFreeDialogueMaxQuestions
+	}
+	s.StartedAt = env.OccurredAt
+	s.Goal = p.Goal
+	if s.Goal == "" {
+		s.Goal = defaultMeetingGoal(s.Topic)
+	}
 	s.Status = StatusPreparing
 	return s, nil
+}
+
+func defaultMeetingGoal(topic string) string {
+	return "围绕「" + topic + "」达成可执行的共识，并明确后续行动项。"
 }
 
 func applyParticipantInvited(s State, env event.Envelope) (State, error) {
@@ -149,13 +174,16 @@ func applyRoundStarted(s State, env event.Envelope) (State, error) {
 	if err != nil {
 		return s, err
 	}
-	if p.RoundNumber <= 0 {
+	if p.RoundNumber < 0 {
 		return s, fmt.Errorf("meeting %s: RoundStarted invalid round_number %d", s.ID, p.RoundNumber)
 	}
 	if len(p.Order) == 0 {
 		return s, fmt.Errorf("meeting %s: RoundStarted empty order", s.ID)
 	}
-	expected := s.CurrentRound + 1
+	expected, err := expectedRoundStart(s)
+	if err != nil {
+		return s, err
+	}
 	if p.RoundNumber != expected {
 		return s, fmt.Errorf("meeting %s: RoundStarted round %d, want %d", s.ID, p.RoundNumber, expected)
 	}
@@ -194,13 +222,22 @@ func applyParticipantResponded(s State, env event.Envelope) (State, error) {
 	if _, dup := responses[p.ParticipantID]; dup {
 		return s, fmt.Errorf("meeting %s: participant %s already responded in round %d", s.ID, p.ParticipantID, p.RoundNumber)
 	}
-	if p.Stance == event.StanceObject && p.ObjectReason == "" {
+	if p.RoundNumber == 0 {
+		if p.Stance != "" && p.Stance != event.StanceNone {
+			return s, fmt.Errorf("meeting %s: pre-meeting round 0 requires stance none", s.ID)
+		}
+	} else if p.Stance == event.StanceNone || p.Stance == "" {
+		return s, fmt.Errorf("meeting %s: debate round %d requires agree, object, or abstain", s.ID, p.RoundNumber)
+	} else if p.Stance == event.StanceObject && p.ObjectReason == "" {
 		return s, fmt.Errorf("meeting %s: object stance requires object_reason", s.ID)
 	}
 	responses[p.ParticipantID] = RoundResponse{
 		Content:      p.Content,
 		Stance:       p.Stance,
 		ObjectReason: p.ObjectReason,
+	}
+	if p.TokenUsage != nil {
+		s = recordTokenUsage(s, *p.TokenUsage)
 	}
 	return s, nil
 }
@@ -220,7 +257,149 @@ func applyRoundCompleted(s State, env event.Envelope) (State, error) {
 		RoundNumber: p.RoundNumber,
 		Summary:     p.Summary,
 	})
+	if p.RoundNumber == 0 {
+		s.PreMeetingCompleted = true
+		s.PreMeetingSummary = p.Summary
+	}
 	return s, nil
+}
+
+func applyModeratorSummarized(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning {
+		return s, fmt.Errorf("meeting %s: ModeratorSummarized not allowed in status %s", s.ID, s.Status)
+	}
+	p, err := decodePayload[event.ModeratorSummarizedPayload](s, env, "ModeratorSummarized")
+	if err != nil {
+		return s, err
+	}
+	if p.RoundNumber <= 0 || p.RoundNumber > s.CurrentRound {
+		return s, fmt.Errorf("meeting %s: ModeratorSummarized invalid round %d for current %d", s.ID, p.RoundNumber, s.CurrentRound)
+	}
+	if s.ModeratorSummaries == nil {
+		s.ModeratorSummaries = make(map[int]string)
+	}
+	s.ModeratorSummaries[p.RoundNumber] = p.Summary
+	return s, nil
+}
+
+func applyFreeDialogueStarted(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning {
+		return s, fmt.Errorf("meeting %s: FreeDialogueStarted not allowed in status %s", s.ID, s.Status)
+	}
+	if s.CurrentRound != 1 {
+		return s, fmt.Errorf("meeting %s: FreeDialogueStarted only after round 1, current %d", s.ID, s.CurrentRound)
+	}
+	if s.FreeDialogueCompleted || s.InFreeDialogue {
+		return s, fmt.Errorf("meeting %s: FreeDialogueStarted already started or completed", s.ID)
+	}
+	p, err := decodePayload[event.FreeDialogueStartedPayload](s, env, "FreeDialogueStarted")
+	if err != nil {
+		return s, err
+	}
+	if p.AfterRound != 1 {
+		return s, fmt.Errorf("meeting %s: FreeDialogueStarted after_round %d, want 1", s.ID, p.AfterRound)
+	}
+	if p.MaxQuestions <= 0 {
+		return s, fmt.Errorf("meeting %s: FreeDialogueStarted max_questions must be positive", s.ID)
+	}
+	s.InFreeDialogue = true
+	s.FreeDialogueQuestionIndex = 0
+	s.FreeDialogueAskerIndex = 0
+	s.FreeDialogueMaxQuestions = p.MaxQuestions
+	return s, nil
+}
+
+func applyFreeDialogueQuestionAsked(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning || !s.InFreeDialogue {
+		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked not in free dialogue", s.ID)
+	}
+	if s.PendingFreeDialogue != nil {
+		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked while answer pending", s.ID)
+	}
+	p, err := decodePayload[event.FreeDialogueQuestionAskedPayload](s, env, "FreeDialogueQuestionAsked")
+	if err != nil {
+		return s, err
+	}
+	if p.QuestionIndex != s.FreeDialogueQuestionIndex {
+		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked index %d, want %d", s.ID, p.QuestionIndex, s.FreeDialogueQuestionIndex)
+	}
+	if !participantInOrder(s.ParticipantOrder, p.AskerID) || !participantInOrder(s.ParticipantOrder, p.AnswererID) {
+		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked unknown participant", s.ID)
+	}
+	if p.Content == "" {
+		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked empty content", s.ID)
+	}
+	s.PendingFreeDialogue = &PendingFreeDialogue{
+		AskerID:       p.AskerID,
+		AnswererID:    p.AnswererID,
+		QuestionIndex: p.QuestionIndex,
+		Question:      p.Content,
+	}
+	if p.TokenUsage != nil {
+		s = recordTokenUsage(s, *p.TokenUsage)
+	}
+	return s, nil
+}
+
+func applyFreeDialogueAnswered(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning || !s.InFreeDialogue {
+		return s, fmt.Errorf("meeting %s: FreeDialogueAnswered not in free dialogue", s.ID)
+	}
+	if s.PendingFreeDialogue == nil {
+		return s, fmt.Errorf("meeting %s: FreeDialogueAnswered without pending question", s.ID)
+	}
+	p, err := decodePayload[event.FreeDialogueAnsweredPayload](s, env, "FreeDialogueAnswered")
+	if err != nil {
+		return s, err
+	}
+	pending := s.PendingFreeDialogue
+	if p.AskerID != pending.AskerID || p.AnswererID != pending.AnswererID || p.QuestionIndex != pending.QuestionIndex {
+		return s, fmt.Errorf("meeting %s: FreeDialogueAnswered mismatch with pending question", s.ID)
+	}
+	if p.Answer == "" {
+		return s, fmt.Errorf("meeting %s: FreeDialogueAnswered empty answer", s.ID)
+	}
+	s.FreeDialogueExchanges = append(s.FreeDialogueExchanges, FreeDialogueExchange{
+		QuestionIndex: p.QuestionIndex,
+		AskerID:       p.AskerID,
+		AnswererID:    p.AnswererID,
+		Question:      p.Question,
+		Answer:        p.Answer,
+	})
+	s.PendingFreeDialogue = nil
+	s.FreeDialogueQuestionIndex++
+	s.FreeDialogueAskerIndex = (s.FreeDialogueAskerIndex + 1) % len(s.ParticipantOrder)
+	if p.TokenUsage != nil {
+		s = recordTokenUsage(s, *p.TokenUsage)
+	}
+	return s, nil
+}
+
+func applyFreeDialogueCompleted(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning || !s.InFreeDialogue {
+		return s, fmt.Errorf("meeting %s: FreeDialogueCompleted not in free dialogue", s.ID)
+	}
+	if s.PendingFreeDialogue != nil {
+		return s, fmt.Errorf("meeting %s: FreeDialogueCompleted with pending question", s.ID)
+	}
+	p, err := decodePayload[event.FreeDialogueCompletedPayload](s, env, "FreeDialogueCompleted")
+	if err != nil {
+		return s, err
+	}
+	if p.AfterRound != 1 {
+		return s, fmt.Errorf("meeting %s: FreeDialogueCompleted after_round %d, want 1", s.ID, p.AfterRound)
+	}
+	s.InFreeDialogue = false
+	s.FreeDialogueCompleted = true
+	s.FreeDialogueSummary = p.Summary
+	return s, nil
+}
+
+func expectedRoundStart(s State) (int, error) {
+	if !s.PreMeetingCompleted {
+		return 0, nil
+	}
+	return s.CurrentRound + 1, nil
 }
 
 func applyConsensusReached(s State, env event.Envelope) (State, error) {
@@ -473,4 +652,27 @@ func participantInOrder(order []string, id string) bool {
 		}
 	}
 	return false
+}
+
+func recordTokenUsage(s State, u event.TokenUsage) State {
+	if u.TotalTokens == 0 && u.PromptTokens == 0 && u.CompletionTokens == 0 {
+		return s
+	}
+	turn := len(s.TokenUsageLog) + 1
+	s.TokenUsageLog = append(s.TokenUsageLog, TokenUsageRecord{
+		Turn:             turn,
+		Phase:            u.Phase,
+		ParticipantID:    u.ParticipantID,
+		Model:            u.Model,
+		RoundNumber:      u.RoundNumber,
+		QuestionIndex:    u.QuestionIndex,
+		PromptTokens:     u.PromptTokens,
+		CompletionTokens: u.CompletionTokens,
+		TotalTokens:      u.TotalTokens,
+	})
+	s.TokenUsageTotals.CallCount++
+	s.TokenUsageTotals.PromptTokens += u.PromptTokens
+	s.TokenUsageTotals.CompletionTokens += u.CompletionTokens
+	s.TokenUsageTotals.TotalTokens += u.TotalTokens
+	return s
 }

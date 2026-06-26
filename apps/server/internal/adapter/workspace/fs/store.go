@@ -26,14 +26,14 @@ func (s *Store) EnsureMeeting(meetingID, topic string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	for _, sub := range []string{workspace.DirArtifacts, workspace.DirRounds} {
+	for _, sub := range []string{workspace.DirArtifacts, workspace.DirRounds, "pre-meeting", "moderator"} {
 		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
 			return err
 		}
 	}
 	meetingFile := filepath.Join(dir, workspace.FileMeeting)
 	if _, err := os.Stat(meetingFile); os.IsNotExist(err) {
-		body := fmt.Sprintf("# Meeting\n\n%s\n", topic)
+		body := "# 会议简报 · Meeting Brief\n\n_初始化中…_\n"
 		return os.WriteFile(meetingFile, []byte(body), 0o644)
 	}
 	return nil

@@ -2,7 +2,6 @@ package llm
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -11,8 +10,21 @@ import (
 	"round_table/apps/server/internal/adapter/profile"
 )
 
-const responseSchema = `Respond ONLY with a JSON object (no markdown fences):
+const responseSchema = `Respond ONLY with a JSON object (no markdown fences).
+Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
 {"content":"<your spoken contribution>","stance":"agree|object|abstain","object_reason":"<required when stance is object, else empty string>"}`
+
+const preMeetingSchema = `Respond ONLY with a JSON object (no markdown fences).
+Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+{"content":"<your preliminary perspectives and evaluation angles>","stance":"none","object_reason":""}`
+
+const freeDialogueAskSchema = `Respond ONLY with a JSON object (no markdown fences).
+Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+{"content":"<your question to the other participant>"}`
+
+const freeDialogueAnswerSchema = `Respond ONLY with a JSON object (no markdown fences).
+Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+{"content":"<your answer to the question>"}`
 
 // Participant invokes an LLM with profile identity files (SOUL, AGENTS).
 type Participant struct {
@@ -43,11 +55,21 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 		modelName = "deepseek-chat"
 	}
 
+	schema := responseSchema
+	switch {
+	case isPreMeetingPrompt(prompt):
+		schema = preMeetingSchema
+	case isFreeDialogueAskPrompt(prompt):
+		schema = freeDialogueAskSchema
+	case isFreeDialogueAnswerPrompt(prompt):
+		schema = freeDialogueAnswerSchema
+	}
+
 	raw, err := p.Model.Complete(ctx, model.Request{
 		Model: modelName,
 		Messages: []model.Message{
 			{Role: "system", Content: system},
-			{Role: "user", Content: prompt + "\n\n" + responseSchema},
+			{Role: "user", Content: prompt + "\n\n" + schema},
 		},
 		Temperature: 0.7,
 	})
@@ -55,12 +77,17 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 		return participant.Response{}, err
 	}
 
-	out, err := parseOutput(raw)
+	out, err := parseOutput(raw.Content)
 	if err != nil {
 		return participant.Response{}, fmt.Errorf("llm participant: parse response: %w", err)
 	}
 	stance := strings.ToLower(strings.TrimSpace(out.Stance))
-	if stance == "" {
+	switch {
+	case isPreMeetingPrompt(prompt):
+		stance = "none"
+	case isFreeDialogueAskPrompt(prompt), isFreeDialogueAnswerPrompt(prompt):
+		stance = "none"
+	case stance == "" || stance == "none":
 		stance = "agree"
 	}
 	return participant.Response{
@@ -68,6 +95,8 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 		Content:       strings.TrimSpace(out.Content),
 		Stance:        stance,
 		ObjectReason:  strings.TrimSpace(out.ObjectReason),
+		Model:         modelName,
+		Usage:         raw.Usage,
 	}, nil
 }
 
@@ -89,23 +118,29 @@ func (p *Participant) buildSystem(participantID string) (string, error) {
 	return b.String(), nil
 }
 
-func parseOutput(raw string) (llmOutput, error) {
-	raw = strings.TrimSpace(raw)
-	raw = strings.TrimPrefix(raw, "```json")
-	raw = strings.TrimPrefix(raw, "```")
-	raw = strings.TrimSuffix(raw, "```")
-	raw = strings.TrimSpace(raw)
-
-	var out llmOutput
-	if err := json.Unmarshal([]byte(raw), &out); err == nil && out.Content != "" {
-		return out, nil
-	}
-	start := strings.Index(raw, "{")
-	end := strings.LastIndex(raw, "}")
-	if start >= 0 && end > start {
-		if err := json.Unmarshal([]byte(raw[start:end+1]), &out); err == nil && out.Content != "" {
-			return out, nil
+func isPreMeetingPrompt(prompt string) bool {
+	for _, line := range strings.Split(prompt, "\n") {
+		if strings.TrimSpace(line) == "Phase: pre-meeting" {
+			return true
 		}
 	}
-	return llmOutput{}, fmt.Errorf("invalid JSON: %q", raw)
+	return false
+}
+
+func isFreeDialogueAskPrompt(prompt string) bool {
+	for _, line := range strings.Split(prompt, "\n") {
+		if strings.TrimSpace(line) == "Phase: free-dialogue-ask" {
+			return true
+		}
+	}
+	return false
+}
+
+func isFreeDialogueAnswerPrompt(prompt string) bool {
+	for _, line := range strings.Split(prompt, "\n") {
+		if strings.TrimSpace(line) == "Phase: free-dialogue-answer" {
+			return true
+		}
+	}
+	return false
 }

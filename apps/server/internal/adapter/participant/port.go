@@ -1,6 +1,10 @@
 package participant
 
-import "context"
+import (
+	"context"
+
+	"round_table/apps/server/internal/adapter/model"
+)
 
 // Response is a participant's turn output (ADR-0003).
 type Response struct {
@@ -8,6 +12,8 @@ type Response struct {
 	Content       string
 	Stance        string // agree | object | abstain | none
 	ObjectReason  string
+	Model         string
+	Usage         model.Usage
 }
 
 // Port invokes a participant when invited by the Moderator.

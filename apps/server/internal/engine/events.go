@@ -7,11 +7,14 @@ import (
 	"round_table/apps/server/internal/domain/event"
 )
 
-func eventMeetingCreated(topic, confirmationMode string, maxRounds int) event.Envelope {
+func eventMeetingCreated(topic, goal, confirmationMode string, maxRounds, freeDialogueMaxQuestions int) event.Envelope {
+	q := freeDialogueMaxQuestions
 	payload, _ := json.Marshal(event.MeetingCreatedPayload{
-		Topic:               topic,
-		ConfirmationMode:    confirmationMode,
-		MaxRoundsPerSegment: maxRounds,
+		Topic:                    topic,
+		Goal:                     goal,
+		ConfirmationMode:         confirmationMode,
+		MaxRoundsPerSegment:      maxRounds,
+		FreeDialogueMaxQuestions: &q,
 	})
 	return event.Envelope{
 		Type:    event.TypeMeetingCreated,
@@ -46,13 +49,14 @@ func eventRoundStarted(roundNumber int, order []string) event.Envelope {
 	}
 }
 
-func eventParticipantResponded(id string, round int, content string, stance event.Stance, objectReason string) event.Envelope {
+func eventParticipantResponded(id string, round int, content string, stance event.Stance, objectReason string, usage *event.TokenUsage) event.Envelope {
 	payload, _ := json.Marshal(event.ParticipantRespondedPayload{
 		ParticipantID: id,
 		RoundNumber:   round,
 		Content:       content,
 		Stance:        stance,
 		ObjectReason:  objectReason,
+		TokenUsage:    usage,
 	})
 	return event.Envelope{
 		Type:    event.TypeParticipantResponded,
@@ -68,6 +72,73 @@ func eventRoundCompleted(roundNumber int, summary string) event.Envelope {
 	})
 	return event.Envelope{
 		Type:    event.TypeRoundCompleted,
+		Payload: payload,
+		Actor:   event.ActorModerator,
+	}
+}
+
+func eventModeratorSummarized(roundNumber int, summary string) event.Envelope {
+	payload, _ := json.Marshal(event.ModeratorSummarizedPayload{
+		RoundNumber: roundNumber,
+		Summary:     summary,
+	})
+	return event.Envelope{
+		Type:    event.TypeModeratorSummarized,
+		Payload: payload,
+		Actor:   event.ActorModerator,
+	}
+}
+
+func eventFreeDialogueStarted(afterRound, maxQuestions int) event.Envelope {
+	payload, _ := json.Marshal(event.FreeDialogueStartedPayload{
+		AfterRound:   afterRound,
+		MaxQuestions: maxQuestions,
+	})
+	return event.Envelope{
+		Type:    event.TypeFreeDialogueStarted,
+		Payload: payload,
+		Actor:   event.ActorModerator,
+	}
+}
+
+func eventFreeDialogueQuestionAsked(askerID, answererID string, questionIndex int, content string, usage *event.TokenUsage) event.Envelope {
+	payload, _ := json.Marshal(event.FreeDialogueQuestionAskedPayload{
+		AskerID:       askerID,
+		AnswererID:    answererID,
+		QuestionIndex: questionIndex,
+		Content:       content,
+		TokenUsage:    usage,
+	})
+	return event.Envelope{
+		Type:    event.TypeFreeDialogueQuestion,
+		Payload: payload,
+		Actor:   event.ActorParticipant,
+	}
+}
+
+func eventFreeDialogueAnswered(askerID, answererID string, questionIndex int, question, answer string, usage *event.TokenUsage) event.Envelope {
+	payload, _ := json.Marshal(event.FreeDialogueAnsweredPayload{
+		AskerID:       askerID,
+		AnswererID:    answererID,
+		QuestionIndex: questionIndex,
+		Question:      question,
+		Answer:        answer,
+		TokenUsage:    usage,
+	})
+	return event.Envelope{
+		Type:    event.TypeFreeDialogueAnswer,
+		Payload: payload,
+		Actor:   event.ActorParticipant,
+	}
+}
+
+func eventFreeDialogueCompleted(afterRound int, summary string) event.Envelope {
+	payload, _ := json.Marshal(event.FreeDialogueCompletedPayload{
+		AfterRound: afterRound,
+		Summary:    summary,
+	})
+	return event.Envelope{
+		Type:    event.TypeFreeDialogueCompleted,
 		Payload: payload,
 		Actor:   event.ActorModerator,
 	}

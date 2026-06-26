@@ -33,6 +33,11 @@ func TestClient_Complete(t *testing.T) {
 			}{{Message: struct {
 				Content string `json:"content"`
 			}{Content: "hello"}}},
+			Usage: &struct {
+				PromptTokens     int `json:"prompt_tokens"`
+				CompletionTokens int `json:"completion_tokens"`
+				TotalTokens      int `json:"total_tokens"`
+			}{PromptTokens: 11, CompletionTokens: 3, TotalTokens: 14},
 		})
 	}))
 	defer srv.Close()
@@ -47,8 +52,11 @@ func TestClient_Complete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "hello" {
-		t.Fatalf("got %q", got)
+	if got.Content != "hello" {
+		t.Fatalf("content = %q", got.Content)
+	}
+	if got.Usage.TotalTokens != 14 {
+		t.Fatalf("usage total = %d", got.Usage.TotalTokens)
 	}
 }
 

@@ -17,7 +17,7 @@ func TestStore_EnsureMeetingAndReadWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "Design API") {
+	if !strings.Contains(string(data), "会议简报") && !strings.Contains(string(data), "Meeting Brief") {
 		t.Fatalf("MEETING.md: %s", data)
 	}
 

@@ -9,7 +9,6 @@ import (
 
 	"round_table/apps/server/internal/adapter/knowledge"
 	"round_table/apps/server/internal/adapter/workspace"
-	"round_table/apps/server/internal/domain/consensus"
 	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
 	"round_table/apps/server/internal/scheduler"
@@ -17,7 +16,13 @@ import (
 
 func (e *Engine) startRound(ctx context.Context, s meeting.State) (meeting.State, error) {
 	order := append([]string(nil), s.ParticipantOrder...)
-	return e.append(ctx, s, eventRoundStarted(s.CurrentRound+1, order))
+	var roundNum int
+	if !s.PreMeetingCompleted {
+		roundNum = 0
+	} else {
+		roundNum = s.CurrentRound + 1
+	}
+	return e.append(ctx, s, eventRoundStarted(roundNum, order))
 }
 
 func (e *Engine) advanceRunning(ctx context.Context, s meeting.State) (meeting.State, error) {
@@ -29,37 +34,53 @@ func (e *Engine) advanceRunning(ctx context.Context, s meeting.State) (meeting.S
 }
 
 func (e *Engine) inviteSpeak(ctx context.Context, s meeting.State, participantID string) (meeting.State, error) {
-	prompt := e.buildPrompt(s, participantID)
+	var prompt string
+	if s.CurrentRound == 0 {
+		prompt = e.buildPreMeetingPrompt(s, participantID)
+	} else {
+		prompt = e.buildPrompt(s, participantID)
+	}
 	resp, err := e.Participant.Respond(ctx, s.ID, participantID, prompt)
 	if err != nil {
 		return s, err
 	}
 	stance := event.Stance(resp.Stance)
-	if stance == "" {
+	if s.CurrentRound == 0 {
+		stance = event.StanceNone
+	} else if stance == "" {
 		stance = event.StanceAgree
 	}
-	return e.append(ctx, s, eventParticipantResponded(participantID, s.CurrentRound, resp.Content, stance, resp.ObjectReason))
+	phase := PhaseDebate
+	if s.CurrentRound == 0 {
+		phase = PhasePreMeeting
+	}
+	return e.append(ctx, s, eventParticipantResponded(
+		participantID, s.CurrentRound, resp.Content, stance, resp.ObjectReason,
+		tokenUsageFromResponse(phase, participantID, s.CurrentRound, 0, resp),
+	))
 }
 
 func (e *Engine) completeRound(ctx context.Context, s meeting.State) (meeting.State, error) {
-	summary := summarizeRound(s)
+	var summary string
+	if s.CurrentRound == 0 {
+		summary = summarizePreMeeting(s)
+	} else {
+		summary = summarizeRound(s)
+	}
 	s, err := e.append(ctx, s, eventRoundCompleted(s.CurrentRound, summary))
 	if err != nil {
 		return s, err
 	}
 
-	result, err := e.Strategy.Evaluate(consensus.Context{Meeting: s})
-	if err != nil {
-		return s, err
-	}
-	if result.Reached {
-		return e.append(ctx, s, eventConsensusReached(s.ConsensusStrategy, result))
+	if s.CurrentRound == 0 {
+		return e.startRound(ctx, s)
 	}
 
-	if s.CurrentRound >= s.MaxRoundsPerSegment {
-		return e.append(ctx, s, eventModeratorDecision(s.ConsensusStrategy))
+	if s.CurrentRound == 1 && !s.FreeDialogueCompleted && s.FreeDialogueMaxQuestions > 0 && len(s.ParticipantOrder) >= 2 {
+		return e.startFreeDialogue(ctx, s)
 	}
-	return e.startRound(ctx, s)
+
+	return e.continueAfterDebateRound(ctx, s)
 }
 
 func spokenInRound(s meeting.State) map[string]bool {
@@ -81,11 +102,32 @@ func summarizeRound(s meeting.State) string {
 	return b.String()
 }
 
+func (e *Engine) buildPreMeetingPrompt(s meeting.State, participantID string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Topic: %s\n%s\nPre-meeting (Round 0)\nYou are %s (%s).\n", s.Topic, PhasePreMeeting, participantID, s.Participants[participantID].Role)
+	b.WriteString("\nThis is a private pre-meeting turn. Other participants cannot see your response yet.\n")
+	b.WriteString("Share 2–4 initial perspectives or angles you will use to evaluate this topic.\n")
+	b.WriteString("Do not react to others — they have not spoken yet.\n")
+	if e.Workspace != nil {
+		if data, err := e.Workspace.Read(s.ID, workspace.FileMeeting); err == nil {
+			b.WriteString("\n--- MEETING.md ---\n")
+			b.Write(data)
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
+}
+
 func (e *Engine) buildPrompt(s meeting.State, participantID string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Topic: %s\nRound: %d\nYou are %s (%s).\n", s.Topic, s.CurrentRound, participantID, s.Participants[participantID].Role)
+	fmt.Fprintf(&b, "Topic: %s\n%s\nRound: %d\nYou are %s (%s).\n", s.Topic, PhaseDebate, s.CurrentRound, participantID, s.Participants[participantID].Role)
 	if s.PrincipalFeedback != "" {
 		fmt.Fprintf(&b, "\nPrincipal feedback (address this round):\n%s\n", s.PrincipalFeedback)
+	}
+	if ctx := formatDiscussionContext(s, participantID); ctx != "" {
+		b.WriteString("\n--- Discussion so far ---\n")
+		b.WriteString(ctx)
+		b.WriteByte('\n')
 	}
 	if e.Workspace != nil {
 		if data, err := e.Workspace.Read(s.ID, workspace.FileMeeting); err == nil {
@@ -137,12 +179,22 @@ func (e *Engine) nextSequence(ctx context.Context, meetingID string) (int, error
 	return len(events) + 1, nil
 }
 
+func (e *Engine) writeMeetingDoc(s meeting.State) error {
+	if e.Workspace == nil {
+		return nil
+	}
+	return e.Workspace.Write(s.ID, workspace.FileMeeting, []byte(renderMeetingDoc(s)))
+}
+
 func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelope) error {
 	_ = ctx
 	switch env.Type {
 	case event.TypeMeetingCreated:
 		if e.Workspace != nil {
-			return e.Workspace.EnsureMeeting(s.ID, s.Topic)
+			if err := e.Workspace.EnsureMeeting(s.ID, s.Topic); err != nil {
+				return err
+			}
+			return e.writeMeetingDoc(s)
 		}
 	case event.TypeParticipantInvited:
 		if e.Profile != nil {
@@ -155,12 +207,47 @@ func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelop
 			p, _ := decodePayload[event.ParticipantInvitedPayload](env)
 			_ = e.Knowledge.Ensure(knowledge.ScopeParticipant, p.ParticipantID)
 		}
+		return e.writeMeetingDoc(s)
+	case event.TypeParticipantResponded, event.TypeFreeDialogueQuestion, event.TypeFreeDialogueAnswer, event.TypeMeetingFinished:
+		if err := e.projectTokenUsage(s); err != nil {
+			return err
+		}
+		if env.Type == event.TypeMeetingFinished {
+			return e.writeMeetingDoc(s)
+		}
+	case event.TypeRoundStarted:
+		return e.writeMeetingDoc(s)
 	case event.TypeRoundCompleted:
 		p, _ := decodePayload[event.RoundCompletedPayload](env)
 		if e.Workspace != nil {
 			name := fmt.Sprintf("rounds/round-%03d.md", p.RoundNumber)
-			body := fmt.Sprintf("# Round %d\n\n%s\n", p.RoundNumber, p.Summary)
+			title := fmt.Sprintf("# Round %d\n\n", p.RoundNumber)
+			if p.RoundNumber == 0 {
+				name = "pre-meeting/perspectives.md"
+				title = "# Pre-meeting (Round 0)\n\n"
+			}
+			body := title + p.Summary + "\n"
 			if err := e.Workspace.Write(s.ID, name, []byte(body)); err != nil {
+				return err
+			}
+			if err := e.Workspace.Write(s.ID, workspace.FileMinutes, []byte(renderMinutes(s))); err != nil {
+				return err
+			}
+		}
+	case event.TypeModeratorSummarized:
+		p, _ := decodePayload[event.ModeratorSummarizedPayload](env)
+		if e.Workspace != nil {
+			name := fmt.Sprintf("moderator/round-%03d-summary.md", p.RoundNumber)
+			body := fmt.Sprintf("# Moderator Summary — Round %d\n\n%s\n", p.RoundNumber, p.Summary)
+			if err := e.Workspace.Write(s.ID, name, []byte(body)); err != nil {
+				return err
+			}
+		}
+	case event.TypeFreeDialogueCompleted:
+		p, _ := decodePayload[event.FreeDialogueCompletedPayload](env)
+		if e.Workspace != nil {
+			body := fmt.Sprintf("# Free Dialogue — after Round %d\n\n%s\n", p.AfterRound, p.Summary)
+			if err := e.Workspace.Write(s.ID, "free-dialogue/after-round-001.md", []byte(body)); err != nil {
 				return err
 			}
 			if err := e.Workspace.Write(s.ID, workspace.FileMinutes, []byte(renderMinutes(s))); err != nil {
@@ -198,14 +285,37 @@ func (e *Engine) writeArtifactFile(meetingID, ref string, body []byte) error {
 	return e.Workspace.Write(meetingID, ref, body)
 }
 
+func (e *Engine) projectTokenUsage(s meeting.State) error {
+	if e.Workspace == nil {
+		return nil
+	}
+	return writeTokenUsageFiles(s, func(name string, body []byte) error {
+		return e.Workspace.Write(s.ID, name, body)
+	})
+}
+
 func renderMinutes(s meeting.State) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Minutes\n\n**Topic:** %s\n\n", s.Topic)
 	for _, r := range s.Minutes.Rounds {
+		if r.RoundNumber == 0 {
+			fmt.Fprintf(&b, "## Pre-meeting (Round 0)\n\n%s\n\n", r.Summary)
+			continue
+		}
 		fmt.Fprintf(&b, "## Round %d\n\n%s\n\n", r.RoundNumber, r.Summary)
+		if r.RoundNumber == 1 && s.FreeDialogueCompleted && s.FreeDialogueSummary != "" {
+			fmt.Fprintf(&b, "### Free dialogue\n\n%s\n\n", s.FreeDialogueSummary)
+		}
+		if sum, ok := s.ModeratorSummaries[r.RoundNumber]; ok {
+			fmt.Fprintf(&b, "### Moderator summary\n\n%s\n\n", sum)
+		}
 	}
 	if s.Consensus != nil {
 		fmt.Fprintf(&b, "## Consensus\n\nStrategy: %s (resolved by %s)\n", s.Consensus.Strategy, s.Consensus.ResolvedBy)
+	}
+	if s.TokenUsageTotals.CallCount > 0 {
+		fmt.Fprintf(&b, "\n## Token usage\n\nTotal tokens: **%d** (%d LLM calls — see `usage/summary.md`)\n",
+			s.TokenUsageTotals.TotalTokens, s.TokenUsageTotals.CallCount)
 	}
 	return b.String()
 }

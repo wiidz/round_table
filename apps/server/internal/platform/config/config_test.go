@@ -73,6 +73,33 @@ secrets:
 	}
 }
 
+func TestLoadModelNameFromEnv(t *testing.T) {
+	dir := t.TempDir()
+	configsDir := filepath.Join(dir, "configs")
+	if err := os.MkdirAll(configsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configsDir, "server.yaml"), []byte("model:\n  default_model: deepseek-chat\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("DEEPSEEK_MODEL_NAME=deepseek-v4-flash\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("ROUND_TABLE_ROOT", dir)
+	t.Setenv("DEEPSEEK_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("ROUND_TABLE_DATABASE_DSN", "")
+	t.Setenv("DEEPSEEK_MODEL_NAME", "")
+	t.Setenv("ROUND_TABLE_MODEL_DEFAULT_MODEL", "")
+
+	cfg := Load()
+	if cfg.Model.DefaultModel != "deepseek-v4-flash" {
+		t.Fatalf("model from .env: got %q want deepseek-v4-flash", cfg.Model.DefaultModel)
+	}
+}
+
 func TestSaveEnvPreservesComments(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")

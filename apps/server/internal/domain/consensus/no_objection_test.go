@@ -29,6 +29,17 @@ func TestNoObjection_objectBlocks(t *testing.T) {
 	}
 }
 
+func TestNoObjection_noneBlocks(t *testing.T) {
+	s := meetingWithResponses(map[string]string{"p1": "none", "p2": "agree"})
+	res, err := NoObjection{}.Evaluate(Context{Meeting: s})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Reached {
+		t.Fatal("expected no consensus when stance is none")
+	}
+}
+
 func TestNoObjection_incompleteRound(t *testing.T) {
 	s := meetingWithResponses(map[string]string{"p1": "agree"})
 	s.RoundOrder = []string{"p1", "p2"}

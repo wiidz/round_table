@@ -3,17 +3,31 @@ package event
 // MeetingCreatedPayload is the v1 payload for MeetingCreated.
 type MeetingCreatedPayload struct {
 	Topic                 string       `json:"topic"`
+	Goal                  string       `json:"goal,omitempty"`
 	Agenda                []AgendaItem `json:"agenda,omitempty"`
 	ConsensusStrategy     string       `json:"consensus_strategy,omitempty"`
 	ConfirmationMode      string       `json:"confirmation_mode"`
-	MaxRoundsPerSegment   int          `json:"max_rounds_per_segment"`
-	MaxConfirmationCycles int          `json:"max_confirmation_cycles"`
+	MaxRoundsPerSegment      int          `json:"max_rounds_per_segment"`
+	MaxConfirmationCycles    int          `json:"max_confirmation_cycles"`
+	FreeDialogueMaxQuestions *int         `json:"free_dialogue_max_questions,omitempty"`
 }
 
 // AgendaItem is a discussion objective entry.
 type AgendaItem struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
+}
+
+// TokenUsage records LLM token consumption for one participant turn.
+type TokenUsage struct {
+	Model            string `json:"model,omitempty"`
+	Phase            string `json:"phase"`
+	ParticipantID    string `json:"participant_id"`
+	RoundNumber      int    `json:"round_number,omitempty"`
+	QuestionIndex    int    `json:"question_index,omitempty"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	TotalTokens      int    `json:"total_tokens"`
 }
 
 // ParticipantInvitedPayload is the v1 payload for ParticipantInvited.
@@ -35,14 +49,52 @@ type ParticipantRespondedPayload struct {
 	ParticipantID string `json:"participant_id"`
 	RoundNumber   int    `json:"round_number"`
 	Content       string `json:"content"`
-	Stance        Stance `json:"stance"`
-	ObjectReason  string `json:"object_reason,omitempty"`
+	Stance        Stance     `json:"stance"`
+	ObjectReason  string     `json:"object_reason,omitempty"`
+	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
 }
 
 // RoundCompletedPayload is the v1 payload for RoundCompleted.
 type RoundCompletedPayload struct {
 	RoundNumber int    `json:"round_number"`
 	Summary     string `json:"summary"`
+}
+
+// ModeratorSummarizedPayload is the v1 payload for ModeratorSummarized.
+type ModeratorSummarizedPayload struct {
+	RoundNumber int    `json:"round_number"`
+	Summary     string `json:"summary"`
+}
+
+// FreeDialogueStartedPayload marks Q&A after a debate round (fixed after Round 1).
+type FreeDialogueStartedPayload struct {
+	AfterRound   int `json:"after_round"`
+	MaxQuestions int `json:"max_questions"`
+}
+
+// FreeDialogueQuestionAskedPayload records a question in free dialogue.
+type FreeDialogueQuestionAskedPayload struct {
+	AskerID       string `json:"asker_id"`
+	AnswererID    string `json:"answerer_id"`
+	QuestionIndex int        `json:"question_index"`
+	Content       string     `json:"content"`
+	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
+}
+
+// FreeDialogueAnsweredPayload records an answer in free dialogue.
+type FreeDialogueAnsweredPayload struct {
+	AskerID       string `json:"asker_id"`
+	AnswererID    string `json:"answerer_id"`
+	QuestionIndex int    `json:"question_index"`
+	Question      string     `json:"question"`
+	Answer        string     `json:"answer"`
+	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
+}
+
+// FreeDialogueCompletedPayload closes the free dialogue segment.
+type FreeDialogueCompletedPayload struct {
+	AfterRound int    `json:"after_round"`
+	Summary    string `json:"summary"`
 }
 
 // DissentingOpinion records minority objection when consensus still passes.
