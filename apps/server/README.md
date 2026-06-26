@@ -91,4 +91,6 @@ make run-discord
 
 绑定数据：`data/transport/discord-principal.json`。每频道同时一场会；进度与 Brief 由主 Bot 推送，Participant 发言由对应 Bot 发出。
 
+**Docker 部署**：见 [deploy/README.md](../../deploy/README.md)。
+
 结构说明见 [ADR-0008](../../docs/architecture/ADR-0008-project-structure.md)。

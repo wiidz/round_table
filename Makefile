@@ -11,7 +11,7 @@ export GOPROXY := https://goproxy.cn,direct
 SCENARIO_GAME_CLASS := data/_templates/scenarios/game-class-design
 TOPIC_GAME_CLASS    := 设计新职业「影舞者」的核心技能与定位
 
-.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord
+.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord docker-build docker-up docker-down docker-logs
 
 SCENARIO_3ROUND := data/_templates/scenarios/3-round-debate
 TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 撤销）并批准进入开发？
@@ -77,3 +77,19 @@ tidy:
 ## clean: remove compiled binaries
 clean:
 	rm -rf $(BIN_DIR)
+
+## docker-build: build server image (Discord + HTTP binaries)
+docker-build:
+	docker compose build discord
+
+## docker-up: start Discord bot in background
+docker-up:
+	docker compose up -d discord
+
+## docker-down: stop compose services
+docker-down:
+	docker compose down
+
+## docker-logs: follow Discord bot logs
+docker-logs:
+	docker compose logs -f discord

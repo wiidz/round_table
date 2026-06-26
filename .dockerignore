@@ -1,0 +1,35 @@
+# Git & IDE
+.git
+.gitignore
+.idea
+.vscode
+.cursor
+*.swp
+
+# Build artifacts
+bin/
+tmp/
+*.test
+*.out
+
+# Local secrets (mount via env_file at runtime)
+.env
+apps/server/.env
+apps/server/configs/local.yaml
+
+# Runtime data (use Docker volumes)
+data/workspaces/
+data/profiles/
+data/knowledge/
+data/transport/
+*.db
+
+# Frontend (not in server image yet)
+apps/web/
+node_modules/
+
+# Docs & misc (keep image lean)
+docs/
+agent-transcripts/
+*.md
+!data/_templates/**/*.md

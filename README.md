@@ -85,6 +85,14 @@ make meet-3round   # 三轮辩论场景（DeepSeek）
 make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y"'
 ```
 
+**Ubuntu 服务器 Docker 部署**（Discord Bot + 持久化卷）见 [deploy/README.md](./deploy/README.md)。
+
+```bash
+cp deploy/.env.example .env   # 填入 DEEPSEEK_API_KEY、DISCORD_BOT_TOKEN
+make docker-build && make docker-up
+make docker-logs
+```
+
 结构说明见 [ADR-0008](./docs/architecture/ADR-0008-project-structure.md)。数据目录见 [data/README.md](./data/README.md)。
 
 ---
@@ -101,6 +109,7 @@ make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y
 | [domain/](./docs/domain/README.md) | 领域概念（Meeting、Principal、Moderator…） |
 | [adapters/discord-transport.md](./docs/adapters/discord-transport.md) | Discord 指令与频道行为 |
 | [roadmap.md](./docs/roadmap.md) | 产品路线图（P0–P4） |
+| [deploy/README.md](./deploy/README.md) | Ubuntu Docker 部署 |
 | [flow/](./docs/flow/context_diagram.md) | 状态机与上下文图 |
 | [architecture/](./docs/architecture/README.md) | 架构决策记录（ADR） |
 
