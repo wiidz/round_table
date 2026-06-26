@@ -71,6 +71,13 @@ func (e *Engine) logProgress(env event.Envelope, s meeting.State) {
 	case event.TypeModeratorSummarized:
 		p, _ := decodePayload[event.ModeratorSummarizedPayload](env)
 		e.logf("◆ moderator summary written for round %d", p.RoundNumber)
+	case event.TypeDeliberationReadinessChecked:
+		p, _ := decodePayload[event.DeliberationReadinessCheckedPayload](env)
+		if p.Ready {
+			e.logf("◆ synthesis readiness round=%d ready=true (%s)", p.RoundNumber, p.Rationale)
+		} else {
+			e.logf("◆ synthesis readiness round=%d ready=false (%s)", p.RoundNumber, p.Rationale)
+		}
 	case event.TypeConsensusReached:
 		p, _ := decodePayload[event.ConsensusReachedPayload](env)
 		e.logf("★ consensus reached strategy=%s resolved_by=%s", p.Strategy, p.ResolvedBy)

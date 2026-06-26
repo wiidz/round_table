@@ -49,9 +49,38 @@ func (e *Engine) continueAfterDeliberationRound(ctx context.Context, s meeting.S
 		return s, err
 	}
 
-	if s.CurrentRound >= s.MaxRoundsPerSegment {
-		e.logf("◇ max deliberation rounds reached (%d) — synthesizing design draft", s.MaxRoundsPerSegment)
-		return e.completeDeliberation(ctx, s, "max_rounds")
+	atMax := s.CurrentRound >= s.MaxRoundsPerSegment
+	ready := false
+
+	if s.CurrentRound >= s.MinRoundsBeforeSynthesis {
+		result, assessErr := e.assessDeliberationReadiness(ctx, s)
+		if assessErr != nil {
+			return s, assessErr
+		}
+		ready = result.Ready
+		s, err = e.append(ctx, s, eventDeliberationReadinessChecked(
+			s.CurrentRound, result.Ready, result.Rationale, result.Gaps, result.Usage,
+		))
+		if err != nil {
+			return s, err
+		}
+		if ready {
+			e.logf("◇ synthesis readiness: ready (%s)", result.Rationale)
+		} else if len(result.Gaps) > 0 {
+			e.logf("◇ synthesis readiness: not ready — %s", strings.Join(result.Gaps, "; "))
+		} else {
+			e.logf("◇ synthesis readiness: not ready (%s)", result.Rationale)
+		}
+	}
+
+	if ready || atMax {
+		resolvedBy := synthesisResolvedBy(s.CurrentRound, s.MaxRoundsPerSegment, ready)
+		if atMax && !ready {
+			e.logf("◇ max deliberation rounds reached (%d) — synthesizing design draft", s.MaxRoundsPerSegment)
+		} else if ready {
+			e.logf("◇ deliberation ready at round %d — synthesizing design draft", s.CurrentRound)
+		}
+		return e.completeDeliberation(ctx, s, resolvedBy)
 	}
 	return e.startRound(ctx, s)
 }

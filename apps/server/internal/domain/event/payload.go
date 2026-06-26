@@ -8,9 +8,10 @@ type MeetingCreatedPayload struct {
 	Agenda                   []AgendaItem `json:"agenda,omitempty"`
 	ConsensusStrategy     string       `json:"consensus_strategy,omitempty"`
 	ConfirmationMode      string       `json:"confirmation_mode"`
-	MaxRoundsPerSegment      int          `json:"max_rounds_per_segment"`
-	MaxConfirmationCycles    int          `json:"max_confirmation_cycles"`
-	FreeDialogueMaxQuestions *int         `json:"free_dialogue_max_questions,omitempty"`
+	MaxRoundsPerSegment        int          `json:"max_rounds_per_segment"`
+	MinRoundsBeforeSynthesis   *int         `json:"min_rounds_before_synthesis,omitempty"`
+	MaxConfirmationCycles      int          `json:"max_confirmation_cycles"`
+	FreeDialogueMaxQuestions   *int         `json:"free_dialogue_max_questions,omitempty"`
 }
 
 // AgendaItem is a discussion objective entry.
@@ -67,6 +68,15 @@ type ModeratorSummarizedPayload struct {
 	Summary     string `json:"summary"`
 }
 
+// DeliberationReadinessCheckedPayload records Moderator synthesis-readiness judgment (deliberation mode).
+type DeliberationReadinessCheckedPayload struct {
+	RoundNumber int         `json:"round_number"`
+	Ready       bool        `json:"ready"`
+	Rationale   string      `json:"rationale,omitempty"`
+	Gaps        []string    `json:"gaps,omitempty"`
+	TokenUsage  *TokenUsage `json:"token_usage,omitempty"`
+}
+
 // FreeDialogueStartedPayload marks Q&A after a debate round (fixed after Round 1).
 type FreeDialogueStartedPayload struct {
 	AfterRound   int `json:"after_round"`
@@ -115,7 +125,7 @@ type ConsensusReachedPayload struct {
 type SynthesisCompletedPayload struct {
 	Summary       string      `json:"summary"`
 	OpenQuestions []string    `json:"open_questions,omitempty"`
-	ResolvedBy    string      `json:"resolved_by,omitempty"` // synthesis | max_rounds
+	ResolvedBy    string      `json:"resolved_by,omitempty"` // readiness | synthesis | max_rounds
 	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
 }
 

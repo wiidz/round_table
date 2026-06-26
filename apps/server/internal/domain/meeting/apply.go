@@ -11,7 +11,8 @@ const (
 	defaultMaxRoundsPerSegment      = 5
 	defaultMaxConfirmationCycles    = 3
 	defaultConsensusStrategy        = "no_objection"
-	defaultFreeDialogueMaxQuestions = 1
+	defaultFreeDialogueMaxQuestions   = 1
+	defaultMinRoundsBeforeSynthesis   = 2
 )
 
 // Apply folds one event into state. Returns error if transition is illegal.
@@ -33,6 +34,8 @@ func Apply(s State, env event.Envelope) (State, error) {
 		return applyRoundCompleted(s, env)
 	case event.TypeModeratorSummarized:
 		return applyModeratorSummarized(s, env)
+	case event.TypeDeliberationReadinessChecked:
+		return applyDeliberationReadinessChecked(s, env)
 	case event.TypeFreeDialogueStarted:
 		return applyFreeDialogueStarted(s, env)
 	case event.TypeFreeDialogueQuestion:
@@ -122,6 +125,14 @@ func applyMeetingCreated(s State, env event.Envelope) (State, error) {
 	s.MaxRoundsPerSegment = p.MaxRoundsPerSegment
 	if s.MaxRoundsPerSegment <= 0 {
 		s.MaxRoundsPerSegment = defaultMaxRoundsPerSegment
+	}
+	if p.MinRoundsBeforeSynthesis != nil {
+		s.MinRoundsBeforeSynthesis = *p.MinRoundsBeforeSynthesis
+	} else {
+		s.MinRoundsBeforeSynthesis = defaultMinRoundsBeforeSynthesis
+	}
+	if s.MinRoundsBeforeSynthesis <= 0 {
+		s.MinRoundsBeforeSynthesis = defaultMinRoundsBeforeSynthesis
 	}
 	s.MaxConfirmationCycles = p.MaxConfirmationCycles
 	if s.MaxConfirmationCycles <= 0 {
@@ -295,6 +306,26 @@ func applyModeratorSummarized(s State, env event.Envelope) (State, error) {
 		s.ModeratorSummaries = make(map[int]string)
 	}
 	s.ModeratorSummaries[p.RoundNumber] = p.Summary
+	return s, nil
+}
+
+func applyDeliberationReadinessChecked(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning {
+		return s, fmt.Errorf("meeting %s: DeliberationReadinessChecked not allowed in status %s", s.ID, s.Status)
+	}
+	if !s.IsDeliberation() {
+		return s, fmt.Errorf("meeting %s: DeliberationReadinessChecked requires meeting_mode deliberation", s.ID)
+	}
+	p, err := decodePayload[event.DeliberationReadinessCheckedPayload](s, env, "DeliberationReadinessChecked")
+	if err != nil {
+		return s, err
+	}
+	if p.RoundNumber <= 0 || p.RoundNumber > s.CurrentRound {
+		return s, fmt.Errorf("meeting %s: DeliberationReadinessChecked invalid round %d for current %d", s.ID, p.RoundNumber, s.CurrentRound)
+	}
+	if p.TokenUsage != nil {
+		s = recordTokenUsage(s, *p.TokenUsage)
+	}
 	return s, nil
 }
 

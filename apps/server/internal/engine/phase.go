@@ -10,6 +10,7 @@ const (
 	PhaseFreeDialogueAsk        = "Phase: free-dialogue-ask"
 	PhaseFreeDialogueAnswer     = "Phase: free-dialogue-answer"
 	PhaseDeliberationSynthesis  = "Phase: deliberation-synthesis"
+	PhaseDeliberationReadiness  = "Phase: deliberation-readiness"
 )
 
 func isPreMeetingPhase(prompt string) bool {

@@ -9,6 +9,7 @@ import (
 
 	knowport "round_table/apps/server/internal/adapter/knowledge"
 	"round_table/apps/server/internal/adapter/knowledge/fs"
+	"round_table/apps/server/internal/adapter/model"
 	"round_table/apps/server/internal/adapter/participant/stub"
 	prinstub "round_table/apps/server/internal/adapter/principal/stub"
 	profilefs "round_table/apps/server/internal/adapter/profile/fs"
@@ -23,7 +24,7 @@ import (
 func TestEngine_Integration_skipConfirmation(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()
-	eng := newTestEngine(t, dataRoot, &stub.Participant{}, nil)
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, nil, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:        "mtg-int-1",
@@ -88,7 +89,7 @@ func TestEngine_Integration_skipConfirmation(t *testing.T) {
 func TestEngine_Integration_freeDialogueDisabled(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()
-	eng := newTestEngine(t, dataRoot, &stub.Participant{}, nil)
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, nil, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:                "mtg-int-fd-off",
@@ -127,7 +128,7 @@ func TestEngine_Integration_freeDialogueDisabled(t *testing.T) {
 func TestEngine_Integration_maxRoundsModeratorDecision(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()
-	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "object", Content: "需要修改", ObjectReason: "方案不完整"}, nil)
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "object", Content: "需要修改", ObjectReason: "方案不完整"}, nil, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:           "mtg-int-2",
@@ -157,7 +158,7 @@ func TestEngine_Integration_maxRoundsModeratorDecision(t *testing.T) {
 func TestEngine_Integration_deliberationMode(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()
-	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "agree", Content: "技能框架：三连击 + 位移"}, nil)
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "agree", Content: "技能框架：三连击 + 位移"}, nil, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:                "mtg-delib-1",
@@ -196,10 +197,50 @@ func TestEngine_Integration_deliberationMode(t *testing.T) {
 	assertFileExists(t, filepath.Join(wsRoot, "moderator", "round-002-summary.md"))
 }
 
+func TestEngine_Integration_deliberationEarlySynthesis(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	llm := integrationPhaseModel{
+		readiness: `{"ready": true, "rationale": "要素已齐", "gaps": []}`,
+		synthesis: `{"core_scheme":["核心方案"],"decisions":[],"open_questions":["待验证？"]}`,
+	}
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "agree", Content: "技能框架：三连击 + 位移"}, nil, llm)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:                "mtg-delib-early",
+		Topic:                    "设计新职业「影舞者」的核心技能",
+		MeetingMode:              meeting.MeetingModeDeliberation,
+		ConfirmationMode:         meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment:      5,
+		MinRoundsBeforeSynthesis: intPtr(2),
+		FreeDialogueMaxQuestions: intPtr(0),
+		Participants: []engine.ParticipantInput{
+			{ID: "designer", Role: "策划"},
+			{ID: "player", Role: "玩家代表"},
+		},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Consensus == nil || final.Consensus.ResolvedBy != "readiness" {
+		t.Fatalf("consensus = %+v, want resolved_by=readiness", final.Consensus)
+	}
+	if final.DebateRoundCount() != 2 {
+		t.Fatalf("debate rounds = %d, want 2 (early stop)", final.DebateRoundCount())
+	}
+
+	wsRoot := filepath.Join(dataRoot, "workspaces", spec.MeetingID)
+	assertFileExists(t, filepath.Join(wsRoot, "moderator", "round-002-readiness.md"))
+}
+
 func TestEngine_Integration_requiredConfirmation(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()
-	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{})
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{}, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:        "mtg-int-3",
@@ -235,7 +276,7 @@ func TestEngine_Integration_confirmationRejectThenApprove(t *testing.T) {
 	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{
 		RejectUntilCycle: 2,
 		Feedback:           "需要更多细节",
-	})
+	}, nil)
 
 	spec := engine.CreateMeetingInput{
 		MeetingID:        "mtg-int-4",
@@ -266,7 +307,23 @@ func TestEngine_Integration_confirmationRejectThenApprove(t *testing.T) {
 
 func intPtr(n int) *int { return &n }
 
-func newTestEngine(t *testing.T, dataRoot string, parts *stub.Participant, prin *prinstub.Principal) *engine.Engine {
+type integrationPhaseModel struct {
+	readiness string
+	synthesis string
+}
+
+func (m integrationPhaseModel) Complete(_ context.Context, req model.Request) (model.Response, error) {
+	content := m.synthesis
+	for _, msg := range req.Messages {
+		if strings.Contains(msg.Content, "Phase: deliberation-readiness") {
+			content = m.readiness
+			break
+		}
+	}
+	return model.Response{Content: content}, nil
+}
+
+func newTestEngine(t *testing.T, dataRoot string, parts *stub.Participant, prin *prinstub.Principal, llm model.Port) *engine.Engine {
 	t.Helper()
 	templates := filepath.Join(repoRoot(t), "data", "_templates")
 	if prin == nil {
@@ -282,6 +339,10 @@ func newTestEngine(t *testing.T, dataRoot string, parts *stub.Participant, prin 
 		fs.NewStore(filepath.Join(dataRoot, "knowledge"), filepath.Join(templates, "knowledge")),
 	)
 	eng.Progress = engine.DiscardProgressLogger{}
+	if llm != nil {
+		eng.Model = llm
+		eng.ModelName = "test-model"
+	}
 	return eng
 }
 

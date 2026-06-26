@@ -30,8 +30,9 @@ type State struct {
 	ConsensusStrategy     string
 	SynthesisSummary      string
 	SynthesisOpenQuestions []string
-	MaxRoundsPerSegment   int
-	ConfirmationMode      string
+	MaxRoundsPerSegment        int
+	MinRoundsBeforeSynthesis   int
+	ConfirmationMode           string
 	MaxConfirmationCycles int
 
 	StartedAt             time.Time

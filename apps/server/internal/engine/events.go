@@ -7,14 +7,16 @@ import (
 	"round_table/apps/server/internal/domain/event"
 )
 
-func eventMeetingCreated(topic, goal, meetingMode, confirmationMode string, maxRounds, freeDialogueMaxQuestions int) event.Envelope {
+func eventMeetingCreated(topic, goal, meetingMode, confirmationMode string, maxRounds, minRoundsBeforeSynthesis, freeDialogueMaxQuestions int) event.Envelope {
 	q := freeDialogueMaxQuestions
+	minRounds := minRoundsBeforeSynthesis
 	payload, _ := json.Marshal(event.MeetingCreatedPayload{
 		Topic:                    topic,
 		Goal:                     goal,
 		MeetingMode:              meetingMode,
 		ConfirmationMode:         confirmationMode,
 		MaxRoundsPerSegment:      maxRounds,
+		MinRoundsBeforeSynthesis: &minRounds,
 		FreeDialogueMaxQuestions: &q,
 	})
 	return event.Envelope{
@@ -85,6 +87,21 @@ func eventModeratorSummarized(roundNumber int, summary string) event.Envelope {
 	})
 	return event.Envelope{
 		Type:    event.TypeModeratorSummarized,
+		Payload: payload,
+		Actor:   event.ActorModerator,
+	}
+}
+
+func eventDeliberationReadinessChecked(roundNumber int, ready bool, rationale string, gaps []string, usage *event.TokenUsage) event.Envelope {
+	payload, _ := json.Marshal(event.DeliberationReadinessCheckedPayload{
+		RoundNumber: roundNumber,
+		Ready:       ready,
+		Rationale:   rationale,
+		Gaps:        gaps,
+		TokenUsage:  usage,
+	})
+	return event.Envelope{
+		Type:    event.TypeDeliberationReadinessChecked,
 		Payload: payload,
 		Actor:   event.ActorModerator,
 	}

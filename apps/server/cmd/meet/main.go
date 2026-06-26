@@ -23,6 +23,7 @@ func main() {
 	confirmation := flag.String("confirmation", "skip", "confirmation mode: skip | required")
 	meetingMode := flag.String("mode", "decision", "meeting mode: decision | deliberation")
 	maxRounds := flag.Int("max-rounds", 0, "max debate rounds per segment, excluding pre-meeting round 0 (0 = server.yaml default)")
+	minRoundsBeforeSynthesis := flag.Int("min-rounds-before-synthesis", 0, "earliest debate round to allow early synthesis in deliberation mode (0 = server.yaml default)")
 	maxFreeQuestions := flag.Int("max-free-dialogue-questions", -1, "questions per participant in free dialogue after Round 1 (-1=server.yaml default, 0=disable)")
 	flag.Parse()
 
@@ -55,6 +56,13 @@ func main() {
 	if rounds <= 0 {
 		rounds = cfg.Meeting.MaxRoundsPerSegment
 	}
+	minRounds := *minRoundsBeforeSynthesis
+	if minRounds <= 0 {
+		minRounds = cfg.Meeting.MinRoundsBeforeSynthesis
+	}
+	if minRounds <= 0 {
+		minRounds = 2
+	}
 	freeQuestions := cfg.Meeting.FreeDialogueMaxQuestions
 	if *maxFreeQuestions >= 0 {
 		freeQuestions = *maxFreeQuestions
@@ -68,6 +76,7 @@ func main() {
 	ctx := context.Background()
 	log.Printf("creating meeting %s: %q", id, *topic)
 	freeQ := freeQuestions
+	minQ := minRounds
 	if _, err := eng.CreateMeeting(ctx, engine.CreateMeetingInput{
 		MeetingID:                id,
 		Topic:                    *topic,
@@ -75,14 +84,15 @@ func main() {
 		MeetingMode:              *meetingMode,
 		ConfirmationMode:         mode,
 		MaxRoundsPerSegment:      rounds,
+		MinRoundsBeforeSynthesis: &minQ,
 		FreeDialogueMaxQuestions: &freeQ,
 		Participants:             parts,
 	}); err != nil {
 		log.Fatalf("CreateMeeting: %v", err)
 	}
 
-	log.Printf("running meeting (model=%s, mode=%s, max_debate_rounds=%d, free_dialogue_questions=%d, pre-meeting=round 0)...",
-		cfg.Model.DefaultModel, *meetingMode, rounds, freeQuestions)
+	log.Printf("running meeting (model=%s, mode=%s, max_debate_rounds=%d, min_rounds_before_synthesis=%d, free_dialogue_questions=%d, pre-meeting=round 0)...",
+		cfg.Model.DefaultModel, *meetingMode, rounds, minRounds, freeQuestions)
 	final, err := eng.Run(ctx, id)
 	if err != nil {
 		log.Fatalf("Run: %v", err)

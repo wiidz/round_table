@@ -27,8 +27,9 @@ type Server struct {
 }
 
 type Meeting struct {
-	MaxRoundsPerSegment      int    `yaml:"max_rounds_per_segment"`
-	MaxConfirmationCycles    int    `yaml:"max_confirmation_cycles"`
+	MaxRoundsPerSegment        int    `yaml:"max_rounds_per_segment"`
+	MinRoundsBeforeSynthesis   int    `yaml:"min_rounds_before_synthesis"`
+	MaxConfirmationCycles      int    `yaml:"max_confirmation_cycles"`
 	ConfirmationMode         string `yaml:"confirmation_mode"`
 	FreeDialogueMaxQuestions int    `yaml:"free_dialogue_max_questions"`
 }
@@ -103,6 +104,7 @@ func defaults() Config {
 		},
 		Meeting: Meeting{
 			MaxRoundsPerSegment:      5,
+			MinRoundsBeforeSynthesis: 2,
 			MaxConfirmationCycles:    3,
 			ConfirmationMode:         "required",
 			FreeDialogueMaxQuestions: 1,
@@ -138,6 +140,7 @@ func applyEnv(cfg *Config) {
 	overrideInt(&cfg.Server.WriteTimeoutSec, "ROUND_TABLE_WRITE_TIMEOUT_SEC")
 
 	overrideInt(&cfg.Meeting.MaxRoundsPerSegment, "ROUND_TABLE_MAX_ROUNDS_PER_SEGMENT")
+	overrideInt(&cfg.Meeting.MinRoundsBeforeSynthesis, "ROUND_TABLE_MIN_ROUNDS_BEFORE_SYNTHESIS")
 	overrideInt(&cfg.Meeting.MaxConfirmationCycles, "ROUND_TABLE_MAX_CONFIRMATION_CYCLES")
 	overrideInt(&cfg.Meeting.FreeDialogueMaxQuestions, "ROUND_TABLE_FREE_DIALOGUE_MAX_QUESTIONS")
 	overrideString(&cfg.Meeting.ConfirmationMode, "ROUND_TABLE_CONFIRMATION_MODE")

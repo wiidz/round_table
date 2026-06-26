@@ -33,7 +33,7 @@ go run ./apps/server/cmd/meet/main.go \
 
 ## 成功标准
 
-- 日志：`synthesis: resolved_by=max_rounds`（或 `synthesis`）
+- 日志：`synthesis: resolved_by=readiness|synthesis|max_rounds`
 - `artifacts/design-draft.md` 含各轮贡献汇总
 - 辩论轮发言 `stance=none`（无 agree/object 投票）
 - `MEETING.md` 显示会议模式为「研讨型」

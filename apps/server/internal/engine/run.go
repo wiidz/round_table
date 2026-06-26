@@ -260,6 +260,30 @@ func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelop
 				return err
 			}
 		}
+	case event.TypeDeliberationReadinessChecked:
+		if err := e.projectTokenUsage(s); err != nil {
+			return err
+		}
+		p, _ := decodePayload[event.DeliberationReadinessCheckedPayload](env)
+		if e.Workspace != nil {
+			var body strings.Builder
+			fmt.Fprintf(&body, "# Synthesis Readiness — Round %d\n\n", p.RoundNumber)
+			fmt.Fprintf(&body, "Ready: **%v**\n\n", p.Ready)
+			if p.Rationale != "" {
+				fmt.Fprintf(&body, "## Rationale\n\n%s\n\n", p.Rationale)
+			}
+			if len(p.Gaps) > 0 {
+				body.WriteString("## Gaps\n\n")
+				for _, g := range p.Gaps {
+					fmt.Fprintf(&body, "- %s\n", g)
+				}
+				body.WriteByte('\n')
+			}
+			name := fmt.Sprintf("moderator/round-%03d-readiness.md", p.RoundNumber)
+			if err := e.Workspace.Write(s.ID, name, []byte(body.String())); err != nil {
+				return err
+			}
+		}
 	case event.TypeFreeDialogueCompleted:
 		p, _ := decodePayload[event.FreeDialogueCompletedPayload](env)
 		if e.Workspace != nil {
@@ -272,6 +296,9 @@ func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelop
 			}
 		}
 	case event.TypeSynthesisCompleted:
+		if err := e.projectTokenUsage(s); err != nil {
+			return err
+		}
 		if e.Workspace != nil && s.SynthesisSummary != "" {
 			if err := e.Workspace.Write(s.ID, "artifacts/design-draft.md", []byte(s.SynthesisSummary+"\n")); err != nil {
 				return err

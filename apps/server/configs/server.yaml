@@ -7,6 +7,7 @@ server:
 
 meeting:
   max_rounds_per_segment: 5
+  min_rounds_before_synthesis: 2
   max_confirmation_cycles: 3
   confirmation_mode: required
   free_dialogue_max_questions: 1
