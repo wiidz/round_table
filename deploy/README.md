@@ -149,11 +149,24 @@ volumes:
 | Bot 在线但不回消息 | Message Content Intent；`guild_id` 是否匹配 |
 | LLM 报错 | `DEEPSEEK_API_KEY`；容器内 `wget -O- https://api.deepseek.com` |
 | 重启后 Principal 要重新 bind | `transport` 卷是否挂载；是否用了 `docker compose down -v` |
+| 会议跑完但无 workspace 文件 | 命名卷 root 属主；重建镜像后 entrypoint 会自动 `chown`（见下） |
+
+## 数据卷权限（entrypoint）
+
+镜像启动时会以 root **一次性** `chown` 挂载目录给 `roundtable`（uid 1000），再降权运行进程。升级后：
+
+```bash
+git pull
+docker compose up -d --build --force-recreate discord
+```
+
+无需对宿主机 `data/` 或命名卷手动 `chmod 777`。
 
 ## 文件说明
 
 | 文件 | 作用 |
 |------|------|
 | `Dockerfile` | 多阶段构建 `roundtable-discord` / `roundtable-server` |
+| `deploy/docker-entrypoint.sh` | 启动时 chown 数据卷并降权为 uid 1000 |
 | `docker-compose.yml` | 服务定义与持久化卷 |
 | `deploy/.env.example` | 环境变量模板 |

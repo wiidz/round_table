@@ -39,7 +39,7 @@ ARG HTTP_PROXY
 ARG HTTPS_PROXY
 
 RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories && \
-    apk add --no-cache ca-certificates tzdata wget && \
+    apk add --no-cache ca-certificates tzdata wget su-exec && \
     adduser -D -u 1000 roundtable
 
 WORKDIR /app
@@ -47,8 +47,10 @@ WORKDIR /app
 COPY --from=builder /out/roundtable-discord /out/roundtable-server /usr/local/bin/
 COPY apps/server/configs ./apps/server/configs
 COPY data/_templates ./data/_templates
+COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
 
-RUN mkdir -p \
+RUN chmod +x /app/docker-entrypoint.sh && \
+    mkdir -p \
       data/workspaces \
       data/profiles/participants \
       data/profiles/principals \
@@ -59,7 +61,8 @@ RUN mkdir -p \
       data/transport && \
     chown -R roundtable:roundtable /app
 
-USER roundtable
+# entrypoint chowns mounted volumes then exec su-exec roundtable
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 ENV ROUND_TABLE_ROOT=/app/apps/server \
     ROUND_TABLE_WORKSPACE_ROOT=/app/data/workspaces \
