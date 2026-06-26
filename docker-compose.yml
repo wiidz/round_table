@@ -20,9 +20,9 @@ services:
     image: roundtable/server:latest
     container_name: roundtable-discord
     restart: unless-stopped
+    # Share host network so 127.0.0.1:4567 reaches ShellCrash (mixed-port often binds localhost only).
+    network_mode: host
     command: ["roundtable-discord"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     env_file:
       - path: .env
         required: true

@@ -106,16 +106,23 @@ docker compose exec discord sh
 
 ## 代理 / ShellCrash（mixed-port 4567）
 
-宿主机跑 ShellCrash 时：
+`discord` 服务使用 **`network_mode: host`**（Linux 专用）：容器与宿主机共享网络栈，`.env` 里可直接写 **`127.0.0.1:4567`**，无需 `host.docker.internal` / `172.17.0.1`。
+
+ShellCrash 默认只监听本机时，桥接网络会报 `172.17.0.1:4567: connection refused`；host 网络可绕过。
 
 | 场景 | 配置 |
 |------|------|
-| **容器运行时**（Discord / DeepSeek 出站） | `.env` 中 `http_proxy=http://host.docker.internal:4567`（模板已写好） |
-| **docker build**（拉基础镜像） | 宿主机执行 `export HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567` 后再 build |
+| **容器运行时** | `.env`：`http_proxy` + **`https_proxy`** 均指向 `http://USER:PASS@127.0.0.1:4567` |
+| **docker build** | 宿主机 `export HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567` |
 
-`docker-compose.yml` 已为 discord 添加 `host.docker.internal:host-gateway`，Linux 上容器可访问宿主机 4567。
+验证：
 
-若容器仍连不上代理，在 ShellCrash 打开 **允许局域网连接**，或改用 docker 网桥网关 `172.17.0.1:4567`。
+```bash
+docker compose up -d --force-recreate discord
+docker compose logs -f discord
+```
+
+应出现 `discord bot connected`。
 
 ## 防火墙
 
@@ -134,6 +141,8 @@ volumes:
 
 | 现象 | 检查 |
 |------|------|
+| `172.17.0.1:4567: connection refused` | ShellCrash 只监听 127.0.0.1；`git pull` 后用 host 网络 + `.env` 改回 `127.0.0.1:4567` |
+| `TLS handshake timeout` / `open gateway` | 缺 `https_proxy`；或代理地址/认证错误 |
 | `apk add` / `no such package` | 多为 Alpine CDN 超时；`git pull` 最新 Dockerfile（阿里云 mirror）后 `--no-cache` 重建 |
 | `golang:1.25-alpine` pull 慢/失败 | 构建前 `export HTTP_PROXY=http://127.0.0.1:4567` |
 | `DISCORD_BOT_TOKEN required` | 根目录 `.env` 是否存在且 compose 能读到 |
