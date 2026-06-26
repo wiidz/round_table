@@ -14,7 +14,7 @@ RUN apk add --no-cache git ca-certificates
 WORKDIR /src
 
 ENV CGO_ENABLED=0
-ENV GOPROXY=direct
+ENV GOPROXY=https://goproxy.cn,direct
 
 COPY go.work go.work.sum ./
 COPY apps/server/go.mod apps/server/go.sum ./apps/server/

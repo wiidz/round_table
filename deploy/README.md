@@ -42,7 +42,7 @@ docker compose up -d --build discord
 docker compose logs -f discord
 ```
 
-> **apk / 基础镜像拉取失败**：构建走 ShellCrash 代理（见下 `HTTP_PROXY`）；`build.network: host` 使用宿主机网络。Alpine / Go 均使用官方源。
+> **go mod download 慢/失败**：Dockerfile 使用 `GOPROXY=https://goproxy.cn,direct`；Alpine apk 仍走官方源（构建时经 `HTTP_PROXY`）。
 
 成功日志示例：
 
