@@ -9,6 +9,8 @@ ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY=localhost,127.0.0.1
 
+RUN apk add --no-cache git ca-certificates
+
 WORKDIR /src
 
 ENV CGO_ENABLED=0
