@@ -1,10 +1,19 @@
 # RoundTable server — multi-stage build (Discord bot + HTTP health server)
 # Build: docker compose build
 # Run:   docker compose up -d discord
+#
+# Optional build proxy (ShellCrash mixed-port on host):
+#   HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567 docker compose build discord
 
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY=localhost,127.0.0.1
+
+# Alpine official CDN is often unreachable from CN servers — use Aliyun mirror.
+RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories && \
+    apk add --no-cache git ca-certificates
 
 WORKDIR /src
 
@@ -26,8 +35,12 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/roundtable-discord ./cmd/discord
 
 FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates tzdata wget && \
-    adduser -D -u 1000 -g roundtable roundtable
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+
+RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories && \
+    apk add --no-cache ca-certificates tzdata wget && \
+    adduser -D -u 1000 roundtable
 
 WORKDIR /app
 

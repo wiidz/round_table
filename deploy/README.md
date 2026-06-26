@@ -35,9 +35,14 @@ volumes:
 ## 3. 构建并启动 Discord Bot
 
 ```bash
+# 若 ShellCrash mixed-port=4567，拉 golang 基础镜像可能也需要代理：
+export HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567
+
 docker compose up -d --build discord
 docker compose logs -f discord
 ```
+
+> **apk / 镜像拉取失败**：Dockerfile 已切换 Alpine 源到 `mirrors.aliyun.com`。若仍卡在 `golang:1.25-alpine`，用上面的 `HTTP_PROXY` 再 build 一次。
 
 成功日志示例：
 
@@ -99,11 +104,20 @@ docker compose down -v
 docker compose exec discord sh
 ```
 
-## 代理 / 防火墙
+## 代理 / ShellCrash（mixed-port 4567）
 
-- 容器需能访问 `discord.com`、`api.deepseek.com`（或你配置的 `base_url`）
-- 若宿主机走代理，在 `.env` 设置 `https_proxy` / `http_proxy`（见 `deploy/.env.example`）
-- 国内服务器通常**不需要**代理；确保出站 443 未被拦
+宿主机跑 ShellCrash 时：
+
+| 场景 | 配置 |
+|------|------|
+| **容器运行时**（Discord / DeepSeek 出站） | `.env` 中 `http_proxy=http://host.docker.internal:4567`（模板已写好） |
+| **docker build**（拉基础镜像） | 宿主机执行 `export HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567` 后再 build |
+
+`docker-compose.yml` 已为 discord 添加 `host.docker.internal:host-gateway`，Linux 上容器可访问宿主机 4567。
+
+若容器仍连不上代理，在 ShellCrash 打开 **允许局域网连接**，或改用 docker 网桥网关 `172.17.0.1:4567`。
+
+## 防火墙
 
 ## 自定义 Participant Profile
 
@@ -120,6 +134,8 @@ volumes:
 
 | 现象 | 检查 |
 |------|------|
+| `apk add` / `no such package` | 多为 Alpine CDN 超时；`git pull` 最新 Dockerfile（阿里云 mirror）后 `--no-cache` 重建 |
+| `golang:1.25-alpine` pull 慢/失败 | 构建前 `export HTTP_PROXY=http://127.0.0.1:4567` |
 | `DISCORD_BOT_TOKEN required` | 根目录 `.env` 是否存在且 compose 能读到 |
 | Bot 在线但不回消息 | Message Content Intent；`guild_id` 是否匹配 |
 | LLM 报错 | `DEEPSEEK_API_KEY`；容器内 `wget -O- https://api.deepseek.com` |

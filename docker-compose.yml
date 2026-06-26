@@ -1,11 +1,11 @@
 # RoundTable — Docker Compose (Ubuntu / Linux server)
 #
 # Quick start:
-#   cp deploy/.env.example .env    # fill secrets
+#   cp deploy/.env.example .env
 #   docker compose up -d --build discord
 #
-# Optional HTTP health server:
-#   docker compose --profile http up -d
+# Build behind ShellCrash (mixed-port 4567 on host):
+#   HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567 docker compose build discord
 
 name: roundtable
 
@@ -14,10 +14,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
     image: roundtable/server:latest
     container_name: roundtable-discord
     restart: unless-stopped
     command: ["roundtable-discord"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - path: .env
         required: true
@@ -29,9 +34,12 @@ services:
       ROUND_TABLE_KNOWLEDGE_ROOT: /app/data/knowledge
       ROUND_TABLE_KNOWLEDGE_TEMPLATES: /app/data/_templates/knowledge
       ROUND_TABLE_DISCORD_BINDINGS_FILE: /app/data/transport/discord-principal.json
-      # Uncomment if the server needs an outbound proxy to reach Discord / LLM APIs:
-      # https_proxy: http://host.docker.internal:7897
-      # http_proxy: http://host.docker.internal:7897
+      http_proxy: ${http_proxy:-}
+      https_proxy: ${https_proxy:-}
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-localhost,127.0.0.1}
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
     volumes:
       - workspaces:/app/data/workspaces
       - profiles:/app/data/profiles
@@ -49,6 +57,8 @@ services:
     container_name: roundtable-server
     restart: unless-stopped
     command: ["roundtable-server"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - path: .env
         required: true
