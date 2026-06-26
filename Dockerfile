@@ -1,19 +1,16 @@
 # RoundTable server — multi-stage build (Discord bot + HTTP health server)
-# Build: docker compose build
-# Run:   docker compose up -d discord
 #
-# Optional build proxy (ShellCrash mixed-port on host):
+# Build (ShellCrash mixed-port 4567 on host):
 #   HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567 docker compose build discord
+#
+# Override Alpine mirror:
+#   APK_MIRROR=mirrors.aliyun.com docker compose build discord
 
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25-alpine AS gobuild
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY=localhost,127.0.0.1
-
-# Alpine official CDN is often unreachable from CN servers — use Aliyun mirror.
-RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories && \
-    apk add --no-cache git ca-certificates
 
 WORKDIR /src
 
@@ -31,20 +28,27 @@ COPY apps/server/ ./
 RUN go build -trimpath -ldflags="-s -w" -o /out/roundtable-discord ./cmd/discord/main.go && \
     go build -trimpath -ldflags="-s -w" -o /out/roundtable-server ./cmd/roundtable/main.go
 
-# --- runtime ---
+# --- runtime (single apk stage — Tsinghua + USTC mirrors) ---
 
 FROM alpine:3.21
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
+ARG APK_MIRROR
 
-RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirrors.aliyun.com|g' /etc/apk/repositories && \
+COPY deploy/apk-repositories /etc/apk/repositories
+
+# Optional single-mirror override (replaces multi-mirror file)
+RUN if [ -n "$APK_MIRROR" ]; then \
+      printf "https://%s/alpine/v3.21/main\nhttps://%s/alpine/v3.21/community\n" "$APK_MIRROR" "$APK_MIRROR" \
+        > /etc/apk/repositories; \
+    fi && \
     apk add --no-cache ca-certificates tzdata wget su-exec && \
     adduser -D -u 1000 roundtable
 
 WORKDIR /app
 
-COPY --from=builder /out/roundtable-discord /out/roundtable-server /usr/local/bin/
+COPY --from=gobuild /out/roundtable-discord /out/roundtable-server /usr/local/bin/
 COPY apps/server/configs ./apps/server/configs
 COPY data/_templates ./data/_templates
 COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
@@ -61,7 +65,6 @@ RUN chmod +x /app/docker-entrypoint.sh && \
       data/transport && \
     chown -R roundtable:roundtable /app
 
-# entrypoint chowns mounted volumes then exec su-exec roundtable
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 ENV ROUND_TABLE_ROOT=/app/apps/server \

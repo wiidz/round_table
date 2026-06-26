@@ -14,9 +14,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      network: host
       args:
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
+        APK_MIRROR: ${APK_MIRROR:-}
     image: roundtable/server:latest
     container_name: roundtable-discord
     restart: unless-stopped

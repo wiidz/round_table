@@ -42,7 +42,7 @@ docker compose up -d --build discord
 docker compose logs -f discord
 ```
 
-> **apk / 镜像拉取失败**：Dockerfile 已切换 Alpine 源到 `mirrors.aliyun.com`。若仍卡在 `golang:1.25-alpine`，用上面的 `HTTP_PROXY` 再 build 一次。
+> **apk / 镜像拉取失败**：Dockerfile 默认使用清华 + USTC Alpine 源（`deploy/apk-repositories`），且 `build.network: host` 可走宿主机网络/代理。仍失败时可指定：`APK_MIRROR=mirrors.aliyun.com docker compose build discord`
 
 成功日志示例：
 
@@ -143,7 +143,7 @@ volumes:
 |------|------|
 | `172.17.0.1:4567: connection refused` | ShellCrash 只监听 127.0.0.1；`git pull` 后用 host 网络 + `.env` 改回 `127.0.0.1:4567` |
 | `TLS handshake timeout` / `open gateway` | 缺 `https_proxy`；或代理地址/认证错误 |
-| `apk add` / `no such package` | 多为 Alpine CDN 超时；`git pull` 最新 Dockerfile（阿里云 mirror）后 `--no-cache` 重建 |
+| `apk add` / `could not connect` | 构建时 export `HTTP_PROXY`；或 `APK_MIRROR=mirrors.aliyun.com docker compose build` |
 | `golang:1.25-alpine` pull 慢/失败 | 构建前 `export HTTP_PROXY=http://127.0.0.1:4567` |
 | `DISCORD_BOT_TOKEN required` | 根目录 `.env` 是否存在且 compose 能读到 |
 | Bot 在线但不回消息 | Message Content Intent；`guild_id` 是否匹配 |
