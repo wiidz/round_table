@@ -20,7 +20,8 @@ func (h *CommandHandler) helpText() string {
 - `+"`%sprincipal bind`"+` — 绑定本范围 Principal（每服务器/私信一位）
 - `+"`%sprincipal whoami`"+` — 查看 Principal 绑定
 - `+"`%sprincipal unbind`"+` — 解除 Principal 绑定
-- `+"`%smeet [-mode decision|deliberation] 主题`"+` — 发起会议（仅 Principal，每频道一场）`, p, p, p, p, p, p)
+- `+"`%smeet [-mode decision|deliberation] 主题`"+` — 发起会议；主持人列出数字选项，回复 **1–5** 即可
+- `+"`%smeet cancel`"+` — 取消待确认的会议配置`, p, p, p, p, p, p, p)
 	}
 	return fmt.Sprintf(`📖 **RoundTable Discord commands**
 
@@ -30,7 +31,8 @@ Prefix: `+"`%s`"+`
 - `+"`%sprincipal bind`"+` — Bind yourself as Principal (one per server/DM)
 - `+"`%sprincipal whoami`"+` — Show Principal binding
 - `+"`%sprincipal unbind`"+` — Remove Principal binding
-- `+"`%smeet [-mode decision|deliberation] topic`"+` — Start a meeting (Principal only, one per channel)`, p, p, p, p, p, p)
+- `+"`%smeet [-mode decision|deliberation] topic`"+` — Start a meeting; Moderator shows numbered options — reply **1–5**
+- `+"`%smeet cancel`"+` — Cancel pending meet setup`, p, p, p, p, p, p, p)
 }
 
 func unknownCommandText(loc Locale, prefix, cmd string) string {
@@ -118,9 +120,9 @@ func meetDisabledText(loc Locale) string {
 
 func meetUsageText(loc Locale, prefix string) string {
 	if loc == LocaleZH {
-		return fmt.Sprintf("用法：`%smeet [-mode decision|deliberation] 会议主题`", prefix)
+		return fmt.Sprintf("用法：`%smeet [-mode decision|deliberation] 会议主题`\n主持人会给出 **1–5** 数字选项；回复一个数字即可开始或进入自定义。", prefix)
 	}
-	return fmt.Sprintf("Usage: `%smeet [-mode decision|deliberation] topic`", prefix)
+	return fmt.Sprintf("Usage: `%smeet [-mode decision|deliberation] topic`\nModerator shows **1–5** options; reply with one number to start or customize.", prefix)
 }
 
 func meetNeedBindText(loc Locale) string {
@@ -170,4 +172,39 @@ func meetRunFailedText(loc Locale, meetingID string, err error) string {
 		return fmt.Sprintf("❌ 会议 `%s` 失败：%v", meetingID, err)
 	}
 	return fmt.Sprintf("❌ Meeting `%s` failed: %v", meetingID, err)
+}
+
+func meetSetupPendingText(loc Locale) string {
+	if loc == LocaleZH {
+		return "⏳ 本频道已有待确认的会议配置。回复 **1–5** 选择，或 `!rt meet cancel` 取消。"
+	}
+	return "⏳ Meet setup is pending. Reply **1–5**, or `!rt meet cancel` to cancel."
+}
+
+func meetSetupCancelledText(loc Locale) string {
+	if loc == LocaleZH {
+		return "🛑 已取消会议配置。"
+	}
+	return "🛑 Meet setup cancelled."
+}
+
+func meetSetupNothingToCancelText(loc Locale) string {
+	if loc == LocaleZH {
+		return "ℹ️ 当前没有待确认的会议配置。"
+	}
+	return "ℹ️ No pending meet setup."
+}
+
+func meetSetupNotOwnerText(loc Locale) string {
+	if loc == LocaleZH {
+		return "⚠️ 只有发起会议的 Principal 可以确认或调整配置。"
+	}
+	return "⚠️ Only the Principal who started setup can confirm or adjust."
+}
+
+func meetSetupParseErrorText(loc Locale, err error) string {
+	if loc == LocaleZH {
+		return "❌ " + err.Error() + "\n请回复菜单上的 **数字**（如 `1`），自定义步骤中 `0` 返回上一级。"
+	}
+	return "❌ " + err.Error() + "\nReply with a menu **number** (e.g. `1`); use `0` to go back during custom setup."
 }

@@ -28,6 +28,7 @@ type MeetRunner struct {
 	Registry *principalbind.Registry
 	Bots     *BotPool
 	sessions meetSessions
+	setups   meetSetupSessions
 }
 
 type meetSessions struct {
@@ -61,8 +62,8 @@ func (m *meetSessions) active(channelID string) (string, bool) {
 	return id, ok
 }
 
-// Start launches a meeting asynchronously and returns an immediate ack message.
-func (r *MeetRunner) Start(msg transport.Inbound, parsed meetParseResult) (string, error) {
+// BeginSetup asks the Principal to confirm or adjust meeting configuration.
+func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (string, error) {
 	loc := ParseLocale(r.Discord.Locale)
 	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
 	binding, ok := r.Registry.Get(scope)
@@ -71,6 +72,82 @@ func (r *MeetRunner) Start(msg transport.Inbound, parsed meetParseResult) (strin
 	}
 	if binding.ExternalID != msg.AuthorID {
 		return meetNotScopePrincipalText(loc), nil
+	}
+	if id, busy := r.sessions.active(msg.ChannelID); busy {
+		return meetChannelBusyText(loc, id), nil
+	}
+	if r.setups.pending(msg.ChannelID) {
+		return meetSetupPendingText(loc), nil
+	}
+
+	cfg := r.defaultLaunchConfig(parsed.Topic, parsed.Mode)
+	r.setups.put(msg.ChannelID, meetSetupSession{
+		channelID: msg.ChannelID,
+		authorID:  msg.AuthorID,
+		config:    cfg,
+		step:      setupStepPresetMenu,
+	})
+	prefix := strings.TrimSpace(r.Discord.CommandPrefix)
+	if prefix == "" {
+		prefix = "!rt"
+	}
+	return formatModeratorSetupPrompt(loc, prefix+" ", cfg), nil
+}
+
+// CancelSetup clears a pending meet configuration for a channel.
+func (r *MeetRunner) CancelSetup(channelID, authorID string) (string, bool) {
+	sess, ok := r.setups.get(channelID)
+	if !ok {
+		return "", false
+	}
+	if sess.authorID != authorID {
+		loc := ParseLocale(r.Discord.Locale)
+		return meetSetupNotOwnerText(loc), true
+	}
+	r.setups.clear(channelID)
+	return meetSetupCancelledText(ParseLocale(r.Discord.Locale)), true
+}
+
+// HandleSetupReply processes a Principal reply while setup is pending.
+func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
+	loc := ParseLocale(r.Discord.Locale)
+	sess, ok := r.setups.get(msg.ChannelID)
+	if !ok {
+		return "", nil
+	}
+	if msg.AuthorID != sess.authorID {
+		return meetSetupNotOwnerText(loc), nil
+	}
+
+	prefix := strings.TrimSpace(r.Discord.CommandPrefix)
+	if prefix == "" {
+		prefix = "!rt"
+	}
+	prefix = prefix + " "
+	defaultCfg := r.defaultLaunchConfig(sess.config.Topic, "")
+
+	result, err := handleSetupStep(sess, msg.Content, loc, prefix, defaultCfg)
+	if err != nil {
+		return meetSetupParseErrorText(loc, err), nil
+	}
+	if result.launch {
+		r.setups.clear(msg.ChannelID)
+		return r.launch(msg, result.config)
+	}
+
+	sess.config = result.config
+	sess.step = result.step
+	r.setups.put(msg.ChannelID, sess)
+	return result.reply, nil
+}
+
+// launch starts the meeting asynchronously after configuration is confirmed.
+func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string, error) {
+	loc := ParseLocale(r.Discord.Locale)
+	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
+	binding, ok := r.Registry.Get(scope)
+	if !ok {
+		return meetNeedBindText(loc), nil
 	}
 
 	meetingID := fmt.Sprintf("mtg-dc-%d", time.Now().Unix())
@@ -81,17 +158,11 @@ func (r *MeetRunner) Start(msg transport.Inbound, parsed meetParseResult) (strin
 		return err.Error(), nil
 	}
 
-	go r.runMeeting(msg.ChannelID, meetingID, binding, parsed)
-
-	if loc == LocaleZH {
-		return fmt.Sprintf("🚀 **会议已启动**\n- 🆔 `%s`\n- 📌 主题：%s\n- 🎯 模式：%s\n- 👤 Principal：%s\n\n进度将推送到本频道。",
-			meetingID, parsed.Topic, meetingModeLabel(parsed.Mode, loc), binding.DisplayName), nil
-	}
-	return fmt.Sprintf("🚀 **Meeting started**\n- 🆔 `%s`\n- 📌 Topic: %s\n- 🎯 Mode: %s\n- 👤 Principal: %s\n\nProgress will post here.",
-		meetingID, parsed.Topic, parsed.Mode, binding.DisplayName), nil
+	go r.runMeeting(msg.ChannelID, meetingID, binding, cfg)
+	return formatMeetLaunchAck(loc, meetingID, cfg, binding.DisplayName), nil
 }
 
-func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbind.Binding, parsed meetParseResult) {
+func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbind.Binding, cfg meetLaunchConfig) {
 	defer r.sessions.clear(channelID)
 	ctx := context.Background()
 
@@ -116,28 +187,14 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		return
 	}
 
-	rounds := r.Discord.MeetMaxRounds
-	if rounds <= 0 {
-		rounds = r.Cfg.Meeting.MaxRoundsPerSegment
-	}
-	minRounds := r.Cfg.Meeting.MinRoundsBeforeSynthesis
-	if minRounds <= 0 {
-		minRounds = 2
-	}
-	freeQ := r.Discord.MeetFreeDialogueQuestions
-	confirmation := r.Discord.MeetConfirmation
-	if confirmation == "" {
-		confirmation = meeting.ConfirmationModeSkip
-	}
-
-	minPtr := minRounds
-	freePtr := freeQ
+	minPtr := cfg.MinRoundsBeforeSynthesis
+	freePtr := cfg.FreeDialogueQuestions
 	if _, err := eng.CreateMeeting(ctx, engine.CreateMeetingInput{
 		MeetingID:                meetingID,
-		Topic:                    parsed.Topic,
-		MeetingMode:              parsed.Mode,
-		ConfirmationMode:         confirmation,
-		MaxRoundsPerSegment:      rounds,
+		Topic:                    cfg.Topic,
+		MeetingMode:              cfg.Mode,
+		ConfirmationMode:         cfg.Confirmation,
+		MaxRoundsPerSegment:      cfg.MaxRounds,
 		MinRoundsBeforeSynthesis: &minPtr,
 		FreeDialogueMaxQuestions: &freePtr,
 		Participants:             parts,
@@ -146,8 +203,8 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		return
 	}
 
-	log.Printf("discord meet started id=%s topic=%q principal=%s channel=%s",
-		meetingID, parsed.Topic, binding.PrincipalID, channelID)
+	log.Printf("discord meet started id=%s topic=%q mode=%s rounds=%d principal=%s channel=%s",
+		meetingID, cfg.Topic, cfg.Mode, cfg.MaxRounds, binding.PrincipalID, channelID)
 
 	final, err := eng.Run(ctx, meetingID)
 	if err != nil {
