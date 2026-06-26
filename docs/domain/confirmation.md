@@ -92,6 +92,16 @@ ConsensusReached
 | D-CF05 | 默认最多 **3 次** Confirmation 循环，超出后 Principal 选择强制批准 / 继续 / 终止 |
 | D-CF06 | 取代 ADR-0002 的 `completion_mode: manual`，统一为 Confirmation 模型 |
 
+### 实现补充（v0.2 · Discord / Engine）
+
+| 编号 | 决议 |
+|------|------|
+| D-CF07 | Principal 可按 Item 编号附注（`item_notes`），驳回时合并进 `PrincipalFeedback` 注入下一轮 |
+| D-CF08 | 触达 `max_confirmation_cycles` 后三选一：强制批准 / 继续研讨（重置 cycle + 加 1 轮）/ 中止 |
+| D-CF09 | 驳回后保留已完成的 debate 轮次，追加 1 轮而非全盘重来 |
+
+Transport 语法见 [discord-transport.md](../adapters/discord-transport.md)。
+
 ---
 
 ## 关联

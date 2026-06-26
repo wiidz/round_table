@@ -19,6 +19,7 @@ Domain 概念见 [docs/domain/](../domain/README.md)，权威原则见 [CONSTITU
 | [ADR-0008](./ADR-0008-project-structure.md) | Go 工程结构 | Accepted |
 | [ADR-0009](./ADR-0009-meeting-workspace.md) | Meeting Workspace 文件产出 | Accepted |
 | [ADR-0010](./ADR-0010-agent-profiles.md) | Agent Profile 身份层 | Accepted |
+| [ADR-0011](./ADR-0011-meeting-mode.md) | Meeting Mode（decision / deliberation） | Accepted |
 
 ---
 

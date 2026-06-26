@@ -59,23 +59,28 @@ Pre-meeting (R0) → Debate (R1…) → [R1 后 Free Dialogue] → Moderator 总
 
 ## 项目状态
 
-🚧 **Phase 1** — Meeting Engine 可本地端到端跑会（DeepSeek + `cmd/meet`）。
+🚧 **Phase 1** — Meeting Engine 可本地端到端跑会（DeepSeek + `cmd/meet`）。  
+🚧 **Phase 1.5** — **Discord Transport** 可完整跑会（Principal 绑定 → 预设菜单 → 确认关 → 交付物）。
 
-已实现：Event Sourcing 主循环、Pre-meeting（Round 0）、多轮辩论、Round 1 自由对话、Moderator 轮间摘要、Consensus / Confirmation、Workspace 投影、Token 用量统计。
+**Engine（CLI）**已实现：Event Sourcing 主循环、Pre-meeting（Round 0）、多轮辩论、Round 1 自由对话（含 Principal turn boundary 代问）、Moderator 轮间摘要、Consensus / Confirmation（含 ItemNotes、上限三选一）、deliberation 合成、Workspace 投影、Token 用量统计。
+
+**Discord**已实现：自然语言/`!rt` 发起、数字预设菜单、确认关交互、运行期干预、Principal 自由问答 `提问`、结束 artifact 推送与按需拉取、多 Bot 发言、中文 i18n、发送重试与重连提示。详见 [docs/adapters/discord-transport.md](./docs/adapters/discord-transport.md)。
 
 ```
 apps/server/cmd/meet/            # 本地 CLI 跑会
+apps/server/cmd/discord/         # Discord Transport bot
 apps/server/cmd/roundtable/      # HTTP 服务入口（/health）
 apps/server/internal/domain/     # 纯领域（Meeting、Event、Consensus）
 apps/server/internal/engine/     # Meeting Engine 编排
 apps/server/internal/scheduler/  # Moderator Fixed Order
-apps/server/internal/adapter/    # model、participant、workspace、storage…
+apps/server/internal/adapter/    # model、participant、workspace、transport…
 apps/server/internal/platform/   # config、bootstrap
 ```
 
 ```bash
 make test          # 运行测试
 make run           # 启动 :7777 /health
+make run-discord   # 启动 Discord bot（需 DISCORD_BOT_TOKEN）
 make meet-3round   # 三轮辩论场景（DeepSeek）
 make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y"'
 ```
@@ -94,6 +99,7 @@ make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y
 | [NAMING.md](./docs/NAMING.md) | 命名约定与 rationale |
 | [COMMITS.md](./docs/COMMITS.md) | Git Commit 规范 |
 | [domain/](./docs/domain/README.md) | 领域概念（Meeting、Principal、Moderator…） |
+| [adapters/discord-transport.md](./docs/adapters/discord-transport.md) | Discord 指令与频道行为 |
 | [flow/](./docs/flow/context_diagram.md) | 状态机与上下文图 |
 | [architecture/](./docs/architecture/README.md) | 架构决策记录（ADR） |
 
@@ -122,6 +128,7 @@ make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y
 | [ADR-0006](./docs/architecture/ADR-0006-knowledge-scope.md) | Knowledge 作用域（默认隔离） |
 | [ADR-0009](./docs/architecture/ADR-0009-meeting-workspace.md) | Meeting Workspace 文件产出 |
 | [ADR-0010](./docs/architecture/ADR-0010-agent-profiles.md) | Agent Profile（SOUL/USER） |
+| [ADR-0011](./docs/architecture/ADR-0011-meeting-mode.md) | Meeting Mode（decision / deliberation） |
 
 ---
 

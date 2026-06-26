@@ -86,7 +86,7 @@ Event 横切所有状态变更，是 Meeting State 的唯一来源。
 |----|------|----------|
 | Runtime Adapter | OpenClaw, LangGraph, AutoGen | `docs/adapters/runtime.md` |
 | Model Adapter | OpenAI, Anthropic, DeepSeek | `docs/adapters/model.md` |
-| Transport Layer | Discord, Slack, Web UI | `docs/adapters/transport.md` |
+| Transport Layer | Discord, Slack, Web UI | [discord-transport.md](../adapters/discord-transport.md)（Discord 已实现 v0.2） |
 | Memory Store | 向量库、持久化存储 | `docs/adapters/memory.md` |
 
 Domain 层不得引用上述具体实现。

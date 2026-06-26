@@ -56,40 +56,39 @@ make meet TOPIC="REST API 是否应采用 GraphQL"
 
 会议产出在 `data/workspaces/{meeting_id}/`（rounds、minutes、artifacts）。
 
-### Discord Transport（v0.2 切片）
+集成测试（Engine 端到端，stub LLM/Principal）：
+
+```bash
+go test ./apps/server/internal/engine/... -timeout 5m
+```
+
+### Discord Transport（v0.2）
 
 Bot Token 写在 **`apps/server/.env`**（勿提交 git）：
 
 ```bash
 DISCORD_BOT_TOKEN=your-bot-token
+# 可选：各 Participant 独立 Bot
+DISCORD_BOT_TOKEN_DESIGNER=...
 ```
 
-非敏感选项在 **`apps/server/configs/server.yaml`** → `transport.discord`（`allow_dm` / `allow_guild` / `guild_id`）。
-
-在 [Discord Developer Portal](https://discord.com/developers/applications) 创建 Bot 并开启 **Message Content Intent**，邀请 Bot 进服务器后：
+非敏感选项在 **`apps/server/configs/server.yaml`** → `transport.discord`（`locale`、`meet_mode`、预设默认值、`max_confirmation_cycles`、`participant_bots` 等）。
 
 ```bash
 make run-discord
 ```
 
-当前行为：文本指令绑定 Principal（每个服务器或私信会话一位）。
+**完整指令与行为**见 [docs/adapters/discord-transport.md](../../docs/adapters/discord-transport.md)。摘要：
 
-```
-!rt help
-!rt principal bind    # 绑定你自己为 Principal
-!rt principal whoami  # 查看绑定
-!rt principal unbind  # 解除绑定
-```
+| 阶段 | 能力 |
+|------|------|
+| 身份 | `!rt principal bind/whoami/unbind` |
+| 发起 | `新会议` / `!rt meet` + 预设 **1–6** / **J1–J5** / 自定义 |
+| 确认关 | 批准/驳回、ItemNotes（`2: 意见`）、触顶三选一 |
+| 运行中 | 暂停/恢复/终止、立即合成/强制共识 |
+| 自由问答 | `提问 [participant] …`（Round 1 后） |
+| 结束 | 自动短节选 + `获取纪要/草案/待决/结论` |
 
-绑定数据持久化在 `data/transport/discord-principal.json`（路径可在 server.yaml 配置）。
-
-```
-!rt meet 设计影舞者核心技能          # 默认 deliberation（见 server.yaml）
-!rt meet -mode decision 是否上线    # 裁决型
-```
-
-仅已绑定的 Principal 可发起；每个 Discord 频道同时只允许一场会议。进度与主持人摘要由主 Bot 推送；各 Participant 发言由其对应 Bot 账号发出（见 `transport.discord.participant_bots`）。
-
-**多 Bot 发言**：在 `server.yaml` 配置 `participant_bots`，在 `.env` 为每个 ID 设置 `DISCORD_BOT_TOKEN_<ID>`（如 `DISCORD_BOT_TOKEN_DESIGNER`）。未配置 token 的 Participant 回退到主 Bot。
+绑定数据：`data/transport/discord-principal.json`。每频道同时一场会；进度与 Brief 由主 Bot 推送，Participant 发言由对应 Bot 发出。
 
 结构说明见 [ADR-0008](../../docs/architecture/ADR-0008-project-structure.md)。
