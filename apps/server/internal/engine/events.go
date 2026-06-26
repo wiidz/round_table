@@ -217,6 +217,24 @@ func eventSynthesisCompleted(summary string, openQuestions []string, resolvedBy 
 	}
 }
 
+func eventSynthesisForced(reason string) event.Envelope {
+	payload, _ := json.Marshal(event.SynthesisForcedPayload{Reason: reason})
+	return event.Envelope{
+		Type:    event.TypeSynthesisForced,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
+func eventConsensusForced(reason string) event.Envelope {
+	payload, _ := json.Marshal(event.ConsensusForcedPayload{Reason: reason})
+	return event.Envelope{
+		Type:    event.TypeConsensusForced,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
 func eventArtifactProduced(id, typ, ref string) event.Envelope {
 	payload, _ := json.Marshal(event.ArtifactProducedPayload{
 		ArtifactID: id,

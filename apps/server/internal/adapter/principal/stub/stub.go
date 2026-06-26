@@ -5,13 +5,20 @@ import (
 
 	"round_table/apps/server/internal/adapter/principal"
 	"round_table/apps/server/internal/domain/event"
+	"round_table/apps/server/internal/domain/meeting"
 )
 
-// Principal is a test double for Confirmation decisions.
+// Principal is a test double for Confirmation and Running interventions.
 type Principal struct {
 	// RejectUntilCycle rejects when cycle < RejectUntilCycle (1-based cycle from engine).
 	RejectUntilCycle int
 	Feedback           string
+
+	// ForceConsensus triggers ConsensusForced at the next debate turn boundary (decision mode).
+	ForceConsensus bool
+	// ForceSynthesisWhenRoundGTE triggers SynthesisForced when CurrentRound >= this value (deliberation).
+	ForceSynthesisWhenRoundGTE int
+	ForceSynthesisReason         string
 }
 
 var _ principal.Port = (*Principal)(nil)
@@ -29,4 +36,31 @@ func (p *Principal) Confirm(ctx context.Context, _ string, _ event.ConfirmationB
 		return principal.Response{Decision: principal.DecisionRejected, Feedback: fb}, nil
 	}
 	return principal.Response{Decision: principal.DecisionApproved}, nil
+}
+
+// RunningAction implements principal.Port.
+func (p *Principal) RunningAction(_ context.Context, _ string, s meeting.State) (principal.RunningIntervention, error) {
+	if s.Status != meeting.StatusRunning || s.CurrentRound <= 0 {
+		return principal.RunningIntervention{}, nil
+	}
+	if s.IsDeliberation() {
+		if p.ForceSynthesisWhenRoundGTE > 0 && s.CurrentRound >= p.ForceSynthesisWhenRoundGTE {
+			reason := p.ForceSynthesisReason
+			if reason == "" {
+				reason = "Principal 要求立即合成草案"
+			}
+			return principal.RunningIntervention{
+				Kind:   principal.RunningInterventionForceSynthesis,
+				Reason: reason,
+			}, nil
+		}
+		return principal.RunningIntervention{}, nil
+	}
+	if p.ForceConsensus {
+		return principal.RunningIntervention{
+			Kind:   principal.RunningInterventionForceConsensus,
+			Reason: "Principal 强制宣布共识",
+		}, nil
+	}
+	return principal.RunningIntervention{}, nil
 }

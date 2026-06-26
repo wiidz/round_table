@@ -237,6 +237,84 @@ func TestEngine_Integration_deliberationEarlySynthesis(t *testing.T) {
 	assertFileExists(t, filepath.Join(wsRoot, "moderator", "round-002-readiness.md"))
 }
 
+func TestEngine_Integration_principalForceSynthesis(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "agree", Content: "技能框架：三连击 + 位移"}, &prinstub.Principal{
+		ForceSynthesisWhenRoundGTE: 2,
+		ForceSynthesisReason:         "Principal 要求立即出草案",
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:                "mtg-force-synth",
+		Topic:                    "设计新职业核心技能",
+		MeetingMode:              meeting.MeetingModeDeliberation,
+		ConfirmationMode:         meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment:      5,
+		MinRoundsBeforeSynthesis: intPtr(2),
+		FreeDialogueMaxQuestions: intPtr(0),
+		Participants: []engine.ParticipantInput{
+			{ID: "designer", Role: "策划"},
+			{ID: "player", Role: "玩家代表"},
+		},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status = %s", final.Status)
+	}
+	if final.Consensus == nil || final.Consensus.ResolvedBy != "principal" {
+		t.Fatalf("consensus = %+v, want resolved_by=principal", final.Consensus)
+	}
+	if final.SynthesisSummary == "" {
+		t.Fatal("expected synthesis summary")
+	}
+	if final.DebateRoundCount() >= 5 {
+		t.Fatalf("expected early stop via force synthesis, got %d debate rounds", final.DebateRoundCount())
+	}
+}
+
+func TestEngine_Integration_principalForceConsensus(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "agree", Content: "方案可行"}, &prinstub.Principal{
+		ForceConsensus: true,
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:           "mtg-force-consensus",
+		Topic:               "是否批准上线",
+		MeetingMode:         meeting.MeetingModeDecision,
+		ConfirmationMode:    meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment: 5,
+		Participants: []engine.ParticipantInput{
+			{ID: "a", Role: "Architect"},
+			{ID: "b", Role: "Developer"},
+		},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status = %s", final.Status)
+	}
+	if final.Consensus == nil || final.Consensus.ResolvedBy != "principal" {
+		t.Fatalf("consensus = %+v, want resolved_by=principal", final.Consensus)
+	}
+	if final.DebateRoundCount() >= 5 {
+		t.Fatal("expected early stop via force consensus")
+	}
+}
+
 func TestEngine_Integration_requiredConfirmation(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()

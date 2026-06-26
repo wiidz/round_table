@@ -27,6 +27,7 @@ func main() {
 	minRoundsBeforeSynthesis := flag.Int("min-rounds-before-synthesis", 0, "earliest debate round to allow early synthesis in deliberation mode (0 = server.yaml default)")
 	maxFreeQuestions := flag.Int("max-free-dialogue-questions", -1, "questions per participant in free dialogue after Round 1 (-1=server.yaml default, 0=disable)")
 	agenda := flag.String("agenda", "", "deliberation agenda items: id:Title,id2:Title2 (optional)")
+	forceSynthesisAtRound := flag.Int("force-synthesis-at-round", 0, "deliberation: Principal forces synthesis when debate round >= N (0=disabled)")
 	flag.Parse()
 
 	if *topic == "" {
@@ -41,7 +42,10 @@ func main() {
 		id = fmt.Sprintf("mtg-%d", time.Now().Unix())
 	}
 
-	eng, err := bootstrap.NewEngine(cfg)
+	eng, err := bootstrap.NewEngine(cfg, bootstrap.PrincipalOptions{
+		ForceSynthesisAtRound: *forceSynthesisAtRound,
+		ForceSynthesisReason:  "Principal 要求立即合成草案",
+	})
 	if err != nil {
 		log.Fatalf("engine: %v", err)
 	}

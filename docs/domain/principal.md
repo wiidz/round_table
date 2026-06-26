@@ -74,6 +74,7 @@ Principal 位于 Moderator 之上，拥有**最终控制权**：
 | **Confirmation** | 跳过确认关、达上限强制批准 | `ConfirmationSkipped` / `ConfirmationForced` |
 | **Consensus** | 否决 Participant 共识，要求继续讨论 | `ConsensusVetoed` |
 | **Consensus** | 强制宣布 Consensus | `ConsensusForced` |
+| **Deliberation** | 强制结束辩论并合成草案 | `SynthesisForced` → `SynthesisCompleted` |
 | **生命周期** | 暂停 / 恢复 / 终止 Meeting | `MeetingPaused` / `MeetingResumed` / `MeetingFinished` |
 | **配置** | 覆盖 ConsensusStrategy | 配置变更 Event（v0.2） |
 

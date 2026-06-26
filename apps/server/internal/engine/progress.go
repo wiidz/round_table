@@ -84,6 +84,12 @@ func (e *Engine) logProgress(env event.Envelope, s meeting.State) {
 	case event.TypeSynthesisCompleted:
 		p, _ := decodePayload[event.SynthesisCompletedPayload](env)
 		e.logf("★ synthesis completed resolved_by=%s open_questions=%d", p.ResolvedBy, len(p.OpenQuestions))
+	case event.TypeSynthesisForced:
+		p, _ := decodePayload[event.SynthesisForcedPayload](env)
+		e.logf("◇ synthesis forced by principal (%s)", p.Reason)
+	case event.TypeConsensusForced:
+		p, _ := decodePayload[event.ConsensusForcedPayload](env)
+		e.logf("◇ consensus forced by principal (%s)", p.Reason)
 	case event.TypeConfirmationPrepared:
 		p, _ := decodePayload[event.ConfirmationPreparedPayload](env)
 		e.logf("▶ confirmation prepared cycle=%d", p.Cycle)

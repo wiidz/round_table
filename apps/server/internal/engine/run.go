@@ -28,6 +28,11 @@ func (e *Engine) startRound(ctx context.Context, s meeting.State) (meeting.State
 }
 
 func (e *Engine) advanceRunning(ctx context.Context, s meeting.State) (meeting.State, error) {
+	if s.CurrentRound > 0 {
+		if ns, handled, err := e.maybePrincipalRunningAction(ctx, s); err != nil || handled {
+			return ns, err
+		}
+	}
 	spoken := spokenInRound(s)
 	if next, ok := scheduler.FixedOrder(s.RoundOrder, spoken); ok {
 		return e.inviteSpeak(ctx, s, next)

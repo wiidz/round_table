@@ -67,13 +67,14 @@ v0.2 可扩展 `review`、`retrospective` 等，仍走同一编排。
 | 事件 | 每轮一条 `DeliberationReadinessChecked`（`ready`, `rationale`, `gaps[]`） |
 | Workspace | `moderator/round-N-readiness.md` |
 
-`resolved_by` 三态：
+`resolved_by` 四态：
 
 | 值 | 条件 |
 |----|------|
 | `readiness` | `round < max` 且就绪 |
 | `synthesis` | `round == max` 且就绪 |
 | `max_rounds` | 达上限仍未就绪 |
+| `principal` | Principal `SynthesisForced` 于 Turn boundary |
 
 ### 4. 方案合成（v0.1.1）
 
@@ -116,7 +117,7 @@ completeDeliberation
 
 - `summary` — 方案草案正文
 - `open_questions[]` — 未决事项
-- `resolved_by` — `readiness`（提前就绪）| `synthesis`（末轮就绪）| `max_rounds`（上限兜底）
+- `resolved_by` — `readiness` | `synthesis` | `max_rounds` | `principal`（Principal 强制合成）
 
 状态机：`Running → StatusConsensus`（与 ConsensusReached 相同后续路径），便于复用 Confirmation / MeetingFinished。
 
@@ -168,6 +169,25 @@ completeDeliberation
 | **规则 fallback** | 仍用扁平结构（无 LLM 时不强行拆 agenda） |
 
 CLI：`-agenda "id:Title,id2:Title2"`；`make meet-game-class` 带默认四议程。
+
+---
+
+## v0.2 补充：Principal Force Synthesis（已实现）
+
+研讨型 Running 阶段，Principal 可在 **Participant 发言间隙**（Turn boundary）强制结束辩论并合成：
+
+```
+Turn boundary (CurrentRound >= 1)
+  → principal.Port.RunningAction
+  → force_synthesis → SynthesisForced → completeDeliberation(resolved_by=principal)
+```
+
+| 模式 | Principal 强制 | Event | resolved_by |
+|------|----------------|-------|-------------|
+| `decision` | Force Consensus | `ConsensusForced` | `principal` |
+| `deliberation` | Force Synthesis | `SynthesisForced` + `SynthesisCompleted` | `principal` |
+
+裁决型 `ConsensusForced` 与研讨型 `SynthesisForced` 互斥（apply 层校验）。
 
 ---
 

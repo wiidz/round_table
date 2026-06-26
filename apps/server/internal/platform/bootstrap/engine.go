@@ -16,8 +16,14 @@ import (
 	"round_table/apps/server/internal/platform/config"
 )
 
+// PrincipalOptions configures the default Principal stub for CLI runs.
+type PrincipalOptions struct {
+	ForceSynthesisAtRound int
+	ForceSynthesisReason  string
+}
+
 // NewEngine wires adapters from configuration for a real LLM-backed meeting run.
-func NewEngine(cfg config.Config) (*engine.Engine, error) {
+func NewEngine(cfg config.Config, principalOpts ...PrincipalOptions) (*engine.Engine, error) {
 	key, err := resolveAPIKey(cfg)
 	if err != nil {
 		return nil, err
@@ -35,11 +41,18 @@ func NewEngine(cfg config.Config) (*engine.Engine, error) {
 		ModelName: cfg.Model.DefaultModel,
 	}
 
+	prin := &prinstub.Principal{}
+	if len(principalOpts) > 0 {
+		o := principalOpts[0]
+		prin.ForceSynthesisWhenRoundGTE = o.ForceSynthesisAtRound
+		prin.ForceSynthesisReason = o.ForceSynthesisReason
+	}
+
 	eng := engine.New(
 		memory.New(),
 		consensus.NoObjection{},
 		parts,
-		&prinstub.Principal{},
+		prin,
 		ws,
 		prof,
 		know,

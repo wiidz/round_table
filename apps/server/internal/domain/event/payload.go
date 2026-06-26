@@ -125,8 +125,13 @@ type ConsensusReachedPayload struct {
 type SynthesisCompletedPayload struct {
 	Summary       string      `json:"summary"`
 	OpenQuestions []string    `json:"open_questions,omitempty"`
-	ResolvedBy    string      `json:"resolved_by,omitempty"` // readiness | synthesis | max_rounds
+	ResolvedBy    string      `json:"resolved_by,omitempty"` // readiness | synthesis | max_rounds | principal
 	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
+}
+
+// SynthesisForcedPayload records Principal intent to stop debate and synthesize now (deliberation).
+type SynthesisForcedPayload struct {
+	Reason string `json:"reason,omitempty"`
 }
 
 // ConsensusVetoedPayload is the v1 payload for ConsensusVetoed.

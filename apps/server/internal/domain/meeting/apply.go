@@ -48,6 +48,8 @@ func Apply(s State, env event.Envelope) (State, error) {
 		return applyConsensusReached(s, env)
 	case event.TypeSynthesisCompleted:
 		return applySynthesisCompleted(s, env)
+	case event.TypeSynthesisForced:
+		return applySynthesisForced(s, env)
 	case event.TypeConsensusVetoed:
 		return applyConsensusVetoed(s, env)
 	case event.TypeConsensusForced:
@@ -511,6 +513,9 @@ func applyConsensusForced(s State, env event.Envelope) (State, error) {
 	if s.Status != StatusRunning {
 		return s, fmt.Errorf("meeting %s: ConsensusForced not allowed in status %s", s.ID, s.Status)
 	}
+	if s.IsDeliberation() {
+		return s, fmt.Errorf("meeting %s: ConsensusForced not allowed in deliberation mode; use SynthesisForced", s.ID)
+	}
 	p, err := decodePayload[event.ConsensusForcedPayload](s, env, "ConsensusForced")
 	if err != nil {
 		return s, err
@@ -522,6 +527,19 @@ func applyConsensusForced(s State, env event.Envelope) (State, error) {
 	}
 	_ = p
 	s.Status = StatusConsensus
+	return s, nil
+}
+
+func applySynthesisForced(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning {
+		return s, fmt.Errorf("meeting %s: SynthesisForced not allowed in status %s", s.ID, s.Status)
+	}
+	if !s.IsDeliberation() {
+		return s, fmt.Errorf("meeting %s: SynthesisForced requires meeting_mode deliberation", s.ID)
+	}
+	if _, err := decodePayload[event.SynthesisForcedPayload](s, env, "SynthesisForced"); err != nil {
+		return s, err
+	}
 	return s, nil
 }
 
