@@ -154,6 +154,48 @@ func TestEngine_Integration_maxRoundsModeratorDecision(t *testing.T) {
 	}
 }
 
+func TestEngine_Integration_deliberationMode(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "agree", Content: "技能框架：三连击 + 位移"}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:                "mtg-delib-1",
+		Topic:                    "设计新职业「影舞者」的核心技能",
+		MeetingMode:              meeting.MeetingModeDeliberation,
+		ConfirmationMode:         meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment:      2,
+		FreeDialogueMaxQuestions: intPtr(0),
+		Participants: []engine.ParticipantInput{
+			{ID: "designer", Role: "策划", Expertise: "gameplay"},
+			{ID: "player", Role: "玩家代表", Expertise: "experience"},
+		},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !final.IsDeliberation() {
+		t.Fatal("expected deliberation mode")
+	}
+	if final.Consensus == nil || final.Consensus.ResolvedBy != "max_rounds" {
+		t.Fatalf("consensus = %+v", final.Consensus)
+	}
+	if final.SynthesisSummary == "" {
+		t.Fatal("expected synthesis summary")
+	}
+	if !strings.Contains(final.SynthesisSummary, "Executive Summary") {
+		t.Fatalf("missing executive summary in synthesis")
+	}
+
+	wsRoot := filepath.Join(dataRoot, "workspaces", spec.MeetingID)
+	assertFileExists(t, filepath.Join(wsRoot, "artifacts", "design-draft.md"))
+	assertFileExists(t, filepath.Join(wsRoot, "moderator", "round-002-summary.md"))
+}
+
 func TestEngine_Integration_requiredConfirmation(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()

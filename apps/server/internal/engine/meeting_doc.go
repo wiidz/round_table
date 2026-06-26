@@ -20,7 +20,10 @@ func renderMeetingDoc(s meeting.State) string {
 		))
 	}
 	b.WriteString(fmt.Sprintf("| 会议状态 | %s |\n", meetingStatusLabel(s.Status)))
-	b.WriteString(fmt.Sprintf("| 共识策略 | %s |\n", s.ConsensusStrategy))
+	b.WriteString(fmt.Sprintf("| 会议模式 | %s |\n", meetingModeLabel(s.MeetingMode)))
+	if !s.IsDeliberation() {
+		b.WriteString(fmt.Sprintf("| 共识策略 | %s |\n", s.ConsensusStrategy))
+	}
 	b.WriteString(fmt.Sprintf("| 确认模式 | %s |\n", s.ConfirmationMode))
 	b.WriteString(fmt.Sprintf("| 辩论轮次上限 | %d（不含 Pre-meeting Round 0） |\n", s.MaxRoundsPerSegment))
 	if s.FreeDialogueMaxQuestions > 0 {
@@ -54,19 +57,39 @@ func renderMeetingDoc(s meeting.State) string {
 
 	b.WriteString("\n## 议程\n\n")
 	b.WriteString("1. **Pre-meeting（Round 0）**：各参会者独立提交初始观点（互不可见）\n")
-	b.WriteString("2. **辩论讨论（Round 1+）**：按固定顺序发言\n")
+	if s.IsDeliberation() {
+		b.WriteString("2. **研讨讨论（Round 1+）**：各角色贡献设计点与约束（不投票）\n")
+	} else {
+		b.WriteString("2. **辩论讨论（Round 1+）**：按固定顺序发言\n")
+	}
 	if s.FreeDialogueMaxQuestions > 0 {
 		b.WriteString("3. **自由对话（Round 1 后）**：参会者互相提问与回答\n")
-		b.WriteString("4. **Moderator 总结**：每轮辩论后提炼要点\n")
-		b.WriteString("5. **共识判定**：No-objection 或达到轮次上限由 Moderator 裁决\n")
+		b.WriteString("4. **Moderator 总结**：每轮后提炼要点\n")
+		if s.IsDeliberation() {
+			b.WriteString("5. **方案合成**：达轮次上限后输出 design-draft\n")
+		} else {
+			b.WriteString("5. **共识判定**：No-objection 或达到轮次上限由 Moderator 裁决\n")
+		}
 		if s.ConfirmationMode == meeting.ConfirmationModeRequired {
-			b.WriteString("6. **Principal 确认**：共识结果提交 Principal 审批\n")
+			if s.IsDeliberation() {
+				b.WriteString("6. **Principal 确认**：审阅方案草案是否足够进入下一环节\n")
+			} else {
+				b.WriteString("6. **Principal 确认**：共识结果提交 Principal 审批\n")
+			}
 		}
 	} else {
-		b.WriteString("3. **Moderator 总结**：每轮辩论后提炼要点\n")
-		b.WriteString("4. **共识判定**：No-objection 或达到轮次上限由 Moderator 裁决\n")
+		b.WriteString("3. **Moderator 总结**：每轮后提炼要点\n")
+		if s.IsDeliberation() {
+			b.WriteString("4. **方案合成**：达轮次上限后输出 design-draft\n")
+		} else {
+			b.WriteString("4. **共识判定**：No-objection 或达到轮次上限由 Moderator 裁决\n")
+		}
 		if s.ConfirmationMode == meeting.ConfirmationModeRequired {
-			b.WriteString("5. **Principal 确认**：共识结果提交 Principal 审批\n")
+			if s.IsDeliberation() {
+				b.WriteString("5. **Principal 确认**：审阅方案草案是否足够进入下一环节\n")
+			} else {
+				b.WriteString("5. **Principal 确认**：共识结果提交 Principal 审批\n")
+			}
 		}
 	}
 
@@ -88,6 +111,17 @@ func renderMeetingDoc(s meeting.State) string {
 	}
 	b.WriteString("_本文档由 RoundTable Engine 维护，随会议进展更新。详细发言见 `MINUTES.md` 与 `rounds/`。_\n")
 	return b.String()
+}
+
+func meetingModeLabel(mode string) string {
+	switch mode {
+	case meeting.MeetingModeDeliberation:
+		return "研讨型（deliberation）"
+	case meeting.MeetingModeDecision, "":
+		return "裁决型（decision）"
+	default:
+		return mode
+	}
 }
 
 func meetingStatusLabel(st meeting.Status) string {

@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"round_table/apps/server/internal/adapter/principal"
 	"round_table/apps/server/internal/domain/event"
@@ -85,6 +86,9 @@ func confirmationCycle(s meeting.State) int {
 }
 
 func prepareConfirmationBrief(s meeting.State) event.ConfirmationBrief {
+	if s.IsDeliberation() {
+		return prepareDeliberationConfirmationBrief(s)
+	}
 	summary := s.Topic
 	source := "consensus"
 	if n := len(s.Minutes.Rounds); n > 0 {
@@ -100,5 +104,34 @@ func prepareConfirmationBrief(s meeting.State) event.ConfirmationBrief {
 			Description: summary,
 			Source:      source,
 		}},
+	}
+}
+
+func prepareDeliberationConfirmationBrief(s meeting.State) event.ConfirmationBrief {
+	desc := s.SynthesisSummary
+	if desc == "" {
+		desc = s.Topic
+	}
+	items := []event.ConfirmationItem{{
+		Index:       1,
+		Title:       "方案草案",
+		Description: desc,
+		Source:      "SynthesisCompleted",
+	}}
+	if len(s.SynthesisOpenQuestions) > 0 {
+		var b strings.Builder
+		for _, q := range s.SynthesisOpenQuestions {
+			fmt.Fprintf(&b, "- %s\n", q)
+		}
+		items = append(items, event.ConfirmationItem{
+			Index:       2,
+			Title:       "待决事项",
+			Description: strings.TrimSpace(b.String()),
+			Source:      "SynthesisCompleted",
+		})
+	}
+	return event.ConfirmationBrief{
+		ExecutiveSummary: fmt.Sprintf("%s — 专家团队已形成方案草案，请 Principal 审阅是否足够进入下一环节。", s.Topic),
+		Items:            items,
 	}
 }

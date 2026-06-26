@@ -14,6 +14,7 @@ var (
 
 func parseOutput(raw string) (llmOutput, error) {
 	raw = cleanRaw(raw)
+	raw = repairMalformedJSON(raw)
 
 	var out llmOutput
 	if err := json.Unmarshal([]byte(raw), &out); err == nil && out.Content != "" {
@@ -48,6 +49,31 @@ func cleanRaw(raw string) string {
 	return strings.TrimSpace(raw)
 }
 
+// repairMalformedJSON fixes common LLM JSON mistakes (Chinese closing quotes, missing ").
+func repairMalformedJSON(raw string) string {
+	raw = strings.TrimSpace(raw)
+	switch {
+	case strings.HasSuffix(raw, "」}"):
+		raw = raw[:len(raw)-len("」}")] + `"}` 
+	case strings.HasSuffix(raw, "」",):
+		raw = raw[:len(raw)-len("」",)] + `",`
+	case strings.HasSuffix(raw, "」"):
+		raw = raw[:len(raw)-len("」")] + `"`
+	}
+	// content-only object: {"content":"..."} with missing closing quote before }
+	if strings.HasSuffix(raw, "}") && strings.Contains(raw, `"content"`) {
+		if !strings.HasSuffix(raw, `"}`) && !strings.Contains(raw, `","`) {
+			if idx := strings.LastIndex(raw, "}"); idx > 0 {
+				before := strings.TrimRight(raw[:idx], " \t\n\r")
+				if before != "" && !strings.HasSuffix(before, `"`) {
+					raw = before + `"}` 
+				}
+			}
+		}
+	}
+	return raw
+}
+
 func extractContentLoose(raw string) (string, bool) {
 	keyPos := strings.Index(raw, `"content"`)
 	if keyPos < 0 {
@@ -76,7 +102,19 @@ func extractContentLoose(raw string) (string, bool) {
 	trimmed := strings.TrimSpace(raw)
 	close := strings.LastIndex(trimmed, `"}`)
 	if close > valueStart {
-		return strings.TrimSpace(raw[valueStart:close]), true
+		return unescapeJSONString(strings.TrimSpace(raw[valueStart:close])), true
+	}
+	// Trailing 」} or bare } (after repair pass may still miss edge cases)
+	if strings.HasSuffix(trimmed, "}") {
+		end := strings.LastIndex(trimmed, "}")
+		if end > valueStart {
+			content := strings.TrimSpace(raw[valueStart:end])
+			content = strings.TrimSuffix(content, "」")
+			content = strings.TrimSuffix(content, `"`)
+			if content != "" {
+				return unescapeJSONString(content), true
+			}
+		}
 	}
 	return "", false
 }

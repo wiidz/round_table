@@ -83,6 +83,32 @@ func moderatorSummarizeRound(s meeting.State) string {
 	return strings.TrimSpace(b.String())
 }
 
+func moderatorSummarizeDeliberationRound(s meeting.State) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "## Round %d 研讨摘要\n\n", s.CurrentRound)
+
+	b.WriteString("### 各角色贡献\n\n")
+	for _, id := range s.RoundOrder {
+		r := s.RoundResponses[s.CurrentRound][id]
+		role := s.Participants[id].Role
+		fmt.Fprintf(&b, "- **%s** (%s): %s\n", id, role, truncateRunes(strings.TrimSpace(r.Content), 300))
+	}
+
+	if sum, ok := s.ModeratorSummaries[s.CurrentRound-1]; ok && s.CurrentRound > 1 {
+		b.WriteString("\n### 与上轮衔接\n\n")
+		b.WriteString(truncateRunes(sum, 400))
+		b.WriteByte('\n')
+	}
+
+	b.WriteString("\n### 研讨状态\n\n")
+	if s.CurrentRound >= s.MaxRoundsPerSegment {
+		b.WriteString("本轮为最后一轮，接下来将合成 **design-draft**。\n")
+	} else {
+		b.WriteString("继续下一轮以补全方案要素；最后一轮后将合成 **design-draft**。\n")
+	}
+	return strings.TrimSpace(b.String())
+}
+
 type participantTurn struct {
 	id, role, stance, reason string
 	points                     []string

@@ -74,6 +74,9 @@ func (e *Engine) logProgress(env event.Envelope, s meeting.State) {
 	case event.TypeConsensusReached:
 		p, _ := decodePayload[event.ConsensusReachedPayload](env)
 		e.logf("★ consensus reached strategy=%s resolved_by=%s", p.Strategy, p.ResolvedBy)
+	case event.TypeSynthesisCompleted:
+		p, _ := decodePayload[event.SynthesisCompletedPayload](env)
+		e.logf("★ synthesis completed resolved_by=%s open_questions=%d", p.ResolvedBy, len(p.OpenQuestions))
 	case event.TypeConfirmationPrepared:
 		p, _ := decodePayload[event.ConfirmationPreparedPayload](env)
 		e.logf("▶ confirmation prepared cycle=%d", p.Cycle)

@@ -6,9 +6,17 @@ const (
 	ConfirmationModeRequired = "required"
 	ConfirmationModeSkip     = "skip"
 
+	MeetingModeDecision     = "decision"
+	MeetingModeDeliberation = "deliberation"
+
 	OutcomeCompleted = "completed"
 	OutcomeAborted   = "aborted"
 )
+
+// IsDeliberation reports whether the meeting synthesizes a design draft instead of binary consensus.
+func (s State) IsDeliberation() bool {
+	return s.MeetingMode == MeetingModeDeliberation
+}
 
 // ParticipantState is the folded projection of an invited participant.
 type ParticipantState struct {

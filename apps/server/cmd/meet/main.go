@@ -21,6 +21,7 @@ func main() {
 	meetingID := flag.String("id", "", "meeting id (default: mtg-<timestamp>)")
 	participants := flag.String("participants", "architect:Architect:system design,developer:Developer:backend", "id:Role:Expertise,...")
 	confirmation := flag.String("confirmation", "skip", "confirmation mode: skip | required")
+	meetingMode := flag.String("mode", "decision", "meeting mode: decision | deliberation")
 	maxRounds := flag.Int("max-rounds", 0, "max debate rounds per segment, excluding pre-meeting round 0 (0 = server.yaml default)")
 	maxFreeQuestions := flag.Int("max-free-dialogue-questions", -1, "questions per participant in free dialogue after Round 1 (-1=server.yaml default, 0=disable)")
 	flag.Parse()
@@ -71,6 +72,7 @@ func main() {
 		MeetingID:                id,
 		Topic:                    *topic,
 		Goal:                     *goal,
+		MeetingMode:              *meetingMode,
 		ConfirmationMode:         mode,
 		MaxRoundsPerSegment:      rounds,
 		FreeDialogueMaxQuestions: &freeQ,
@@ -79,8 +81,8 @@ func main() {
 		log.Fatalf("CreateMeeting: %v", err)
 	}
 
-	log.Printf("running meeting (model=%s, max_debate_rounds=%d, free_dialogue_questions=%d, pre-meeting=round 0)...",
-		cfg.Model.DefaultModel, rounds, freeQuestions)
+	log.Printf("running meeting (model=%s, mode=%s, max_debate_rounds=%d, free_dialogue_questions=%d, pre-meeting=round 0)...",
+		cfg.Model.DefaultModel, *meetingMode, rounds, freeQuestions)
 	final, err := eng.Run(ctx, id)
 	if err != nil {
 		log.Fatalf("Run: %v", err)
@@ -89,7 +91,11 @@ func main() {
 	log.Printf("done: status=%s debate_rounds=%d pre_meeting=1 workspace=%s/%s",
 		final.Status, final.DebateRoundCount(), cfg.Workspace.Root, id)
 	if final.Consensus != nil {
-		log.Printf("consensus: resolved_by=%s", final.Consensus.ResolvedBy)
+		if final.IsDeliberation() {
+			log.Printf("synthesis: resolved_by=%s", final.Consensus.ResolvedBy)
+		} else {
+			log.Printf("consensus: resolved_by=%s", final.Consensus.ResolvedBy)
+		}
 	}
 	if final.Confirmation != nil {
 		log.Printf("confirmation: approved=%v cycle=%d", final.Confirmation.Approved, final.ConfirmationCycle)

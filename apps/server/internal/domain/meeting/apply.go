@@ -43,6 +43,8 @@ func Apply(s State, env event.Envelope) (State, error) {
 		return applyFreeDialogueCompleted(s, env)
 	case event.TypeConsensusReached:
 		return applyConsensusReached(s, env)
+	case event.TypeSynthesisCompleted:
+		return applySynthesisCompleted(s, env)
 	case event.TypeConsensusVetoed:
 		return applyConsensusVetoed(s, env)
 	case event.TypeConsensusForced:
@@ -105,6 +107,10 @@ func applyMeetingCreated(s State, env event.Envelope) (State, error) {
 	}
 	s.Topic = p.Topic
 	s.Agenda = p.Agenda
+	s.MeetingMode = p.MeetingMode
+	if s.MeetingMode == "" {
+		s.MeetingMode = MeetingModeDecision
+	}
 	s.ConsensusStrategy = p.ConsensusStrategy
 	if s.ConsensusStrategy == "" {
 		s.ConsensusStrategy = defaultConsensusStrategy
@@ -129,13 +135,16 @@ func applyMeetingCreated(s State, env event.Envelope) (State, error) {
 	s.StartedAt = env.OccurredAt
 	s.Goal = p.Goal
 	if s.Goal == "" {
-		s.Goal = defaultMeetingGoal(s.Topic)
+		s.Goal = defaultMeetingGoal(s.Topic, s.MeetingMode)
 	}
 	s.Status = StatusPreparing
 	return s, nil
 }
 
-func defaultMeetingGoal(topic string) string {
+func defaultMeetingGoal(topic, mode string) string {
+	if mode == MeetingModeDeliberation {
+		return "围绕「" + topic + "」形成可评审的方案草案，并列出待决事项。"
+	}
 	return "围绕「" + topic + "」达成可执行的共识，并明确后续行动项。"
 }
 
@@ -225,6 +234,13 @@ func applyParticipantResponded(s State, env event.Envelope) (State, error) {
 	if p.RoundNumber == 0 {
 		if p.Stance != "" && p.Stance != event.StanceNone {
 			return s, fmt.Errorf("meeting %s: pre-meeting round 0 requires stance none", s.ID)
+		}
+	} else if s.IsDeliberation() {
+		if p.Stance != "" && p.Stance != event.StanceNone {
+			return s, fmt.Errorf("meeting %s: deliberation round %d requires stance none", s.ID, p.RoundNumber)
+		}
+		if p.Stance == "" {
+			p.Stance = event.StanceNone
 		}
 	} else if p.Stance == event.StanceNone || p.Stance == "" {
 		return s, fmt.Errorf("meeting %s: debate round %d requires agree, object, or abstain", s.ID, p.RoundNumber)
@@ -414,6 +430,31 @@ func applyConsensusReached(s State, env event.Envelope) (State, error) {
 		Strategy:   p.Strategy,
 		ResolvedBy: p.ResolvedBy,
 		Dissent:    append([]event.DissentingOpinion(nil), p.Dissent...),
+	}
+	s.Status = StatusConsensus
+	return s, nil
+}
+
+func applySynthesisCompleted(s State, env event.Envelope) (State, error) {
+	if s.Status != StatusRunning {
+		return s, fmt.Errorf("meeting %s: SynthesisCompleted not allowed in status %s", s.ID, s.Status)
+	}
+	if !s.IsDeliberation() {
+		return s, fmt.Errorf("meeting %s: SynthesisCompleted requires meeting_mode deliberation", s.ID)
+	}
+	p, err := decodePayload[event.SynthesisCompletedPayload](s, env, "SynthesisCompleted")
+	if err != nil {
+		return s, err
+	}
+	s.SynthesisSummary = p.Summary
+	s.SynthesisOpenQuestions = append([]string(nil), p.OpenQuestions...)
+	resolvedBy := p.ResolvedBy
+	if resolvedBy == "" {
+		resolvedBy = "synthesis"
+	}
+	s.Consensus = &ConsensusState{
+		Strategy:   MeetingModeDeliberation,
+		ResolvedBy: resolvedBy,
 	}
 	s.Status = StatusConsensus
 	return s, nil

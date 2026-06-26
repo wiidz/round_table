@@ -2,9 +2,10 @@ package event
 
 // MeetingCreatedPayload is the v1 payload for MeetingCreated.
 type MeetingCreatedPayload struct {
-	Topic                 string       `json:"topic"`
-	Goal                  string       `json:"goal,omitempty"`
-	Agenda                []AgendaItem `json:"agenda,omitempty"`
+	Topic                    string       `json:"topic"`
+	Goal                     string       `json:"goal,omitempty"`
+	MeetingMode              string       `json:"meeting_mode,omitempty"`
+	Agenda                   []AgendaItem `json:"agenda,omitempty"`
 	ConsensusStrategy     string       `json:"consensus_strategy,omitempty"`
 	ConfirmationMode      string       `json:"confirmation_mode"`
 	MaxRoundsPerSegment      int          `json:"max_rounds_per_segment"`
@@ -108,6 +109,13 @@ type ConsensusReachedPayload struct {
 	Strategy   string              `json:"strategy"`
 	Dissent    []DissentingOpinion `json:"dissent,omitempty"`
 	ResolvedBy string              `json:"resolved_by"` // strategy | moderator | principal
+}
+
+// SynthesisCompletedPayload is the v1 payload for SynthesisCompleted (deliberation mode).
+type SynthesisCompletedPayload struct {
+	Summary       string   `json:"summary"`
+	OpenQuestions []string `json:"open_questions,omitempty"`
+	ResolvedBy    string   `json:"resolved_by,omitempty"` // synthesis | max_rounds
 }
 
 // ConsensusVetoedPayload is the v1 payload for ConsensusVetoed.

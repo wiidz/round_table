@@ -17,6 +17,7 @@ const (
 	TypeFreeDialogueAnswer     Type = "FreeDialogueAnswered"
 	TypeFreeDialogueCompleted  Type = "FreeDialogueCompleted"
 	TypeConsensusReached       Type = "ConsensusReached"
+	TypeSynthesisCompleted     Type = "SynthesisCompleted"
 	TypeConsensusVetoed        Type = "ConsensusVetoed"
 	TypeConsensusForced        Type = "ConsensusForced"
 	TypeConfirmationPrepared   Type = "ConfirmationPrepared"

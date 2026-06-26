@@ -19,6 +19,10 @@ const preMeetingSchema = `Respond ONLY with a JSON object (no markdown fences).
 Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
 {"content":"<your preliminary perspectives and evaluation angles>","stance":"none","object_reason":""}`
 
+const deliberationSchema = `Respond ONLY with a JSON object (no markdown fences).
+Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+{"content":"<your design contribution: ideas, constraints, trade-offs, and open questions from your role>","stance":"none","object_reason":""}`
+
 const freeDialogueAskSchema = `Respond ONLY with a JSON object (no markdown fences).
 Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
 {"content":"<your question to the other participant>"}`
@@ -60,6 +64,8 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 	switch {
 	case isPreMeetingPrompt(prompt):
 		schema = preMeetingSchema
+	case isDeliberationPrompt(prompt):
+		schema = deliberationSchema
 	case isFreeDialogueAskPrompt(prompt):
 		schema = freeDialogueAskSchema
 	case isFreeDialogueAnswerPrompt(prompt):
@@ -90,6 +96,8 @@ func (p *Participant) Respond(ctx context.Context, _, participantID string, prom
 	stance := strings.ToLower(strings.TrimSpace(out.Stance))
 	switch {
 	case isPreMeetingPrompt(prompt):
+		stance = "none"
+	case isDeliberationPrompt(prompt):
 		stance = "none"
 	case isFreeDialogueAskPrompt(prompt), isFreeDialogueAnswerPrompt(prompt):
 		stance = "none"
@@ -138,6 +146,15 @@ func (p *Participant) buildSystem(participantID string) (string, error) {
 func isPreMeetingPrompt(prompt string) bool {
 	for _, line := range strings.Split(prompt, "\n") {
 		if strings.TrimSpace(line) == "Phase: pre-meeting" {
+			return true
+		}
+	}
+	return false
+}
+
+func isDeliberationPrompt(prompt string) bool {
+	for _, line := range strings.Split(prompt, "\n") {
+		if strings.TrimSpace(line) == "Phase: deliberation" {
 			return true
 		}
 	}

@@ -39,12 +39,16 @@ func (e *Engine) inviteSpeak(ctx context.Context, s meeting.State, participantID
 	var prompt string
 	if s.CurrentRound == 0 {
 		prompt = e.buildPreMeetingPrompt(s, participantID)
+	} else if s.IsDeliberation() {
+		prompt = e.buildDeliberationPrompt(s, participantID)
 	} else {
 		prompt = e.buildPrompt(s, participantID)
 	}
 	phase := PhaseDebate
 	if s.CurrentRound == 0 {
 		phase = PhasePreMeeting
+	} else if s.IsDeliberation() {
+		phase = PhaseDeliberation
 	}
 	phaseLabel := strings.TrimPrefix(phase, "Phase: ")
 	e.logLLMWaiting(phaseLabel, participantID, "turn="+debateTurnLabel(s, participantID)+" round="+strconv.Itoa(s.CurrentRound))
@@ -60,7 +64,7 @@ func (e *Engine) inviteSpeak(ctx context.Context, s meeting.State, participantID
 		return s, err
 	}
 	stance := event.Stance(resp.Stance)
-	if s.CurrentRound == 0 {
+	if s.CurrentRound == 0 || s.IsDeliberation() {
 		stance = event.StanceNone
 	} else if stance == "" {
 		stance = event.StanceAgree
@@ -267,6 +271,25 @@ func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelop
 				return err
 			}
 		}
+	case event.TypeSynthesisCompleted:
+		if e.Workspace != nil && s.SynthesisSummary != "" {
+			if err := e.Workspace.Write(s.ID, "artifacts/design-draft.md", []byte(s.SynthesisSummary+"\n")); err != nil {
+				return err
+			}
+			if len(s.SynthesisOpenQuestions) > 0 {
+				var ob strings.Builder
+				ob.WriteString("# Open Questions\n\n")
+				for _, q := range s.SynthesisOpenQuestions {
+					fmt.Fprintf(&ob, "- %s\n", q)
+				}
+				if err := e.Workspace.Write(s.ID, "artifacts/open-questions.md", []byte(ob.String())); err != nil {
+					return err
+				}
+			}
+			if err := e.Workspace.Write(s.ID, workspace.FileMinutes, []byte(renderMinutes(s))); err != nil {
+				return err
+			}
+		}
 	case event.TypeConfirmationPrepared:
 		if e.Workspace != nil {
 			p, _ := decodePayload[event.ConfirmationPreparedPayload](env)
@@ -324,7 +347,15 @@ func renderMinutes(s meeting.State) string {
 		}
 	}
 	if s.Consensus != nil {
-		fmt.Fprintf(&b, "## Consensus\n\nStrategy: %s (resolved by %s)\n", s.Consensus.Strategy, s.Consensus.ResolvedBy)
+		if s.IsDeliberation() {
+			fmt.Fprintf(&b, "## Synthesis\n\nMode: deliberation (resolved by %s)\n\n", s.Consensus.ResolvedBy)
+			if s.SynthesisSummary != "" {
+				b.WriteString(s.SynthesisSummary)
+				b.WriteString("\n\n")
+			}
+		} else {
+			fmt.Fprintf(&b, "## Consensus\n\nStrategy: %s (resolved by %s)\n", s.Consensus.Strategy, s.Consensus.ResolvedBy)
+		}
 	}
 	if s.TokenUsageTotals.CallCount > 0 {
 		fmt.Fprintf(&b, "\n## Token usage\n\nTotal tokens: **%d** (%d LLM calls — see `usage/summary.md`)\n",

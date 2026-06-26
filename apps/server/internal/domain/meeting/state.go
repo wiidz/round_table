@@ -25,8 +25,11 @@ type State struct {
 	ID                    string
 	Status                Status
 	Topic                 string
+	MeetingMode           string
 	Agenda                []event.AgendaItem
 	ConsensusStrategy     string
+	SynthesisSummary      string
+	SynthesisOpenQuestions []string
 	MaxRoundsPerSegment   int
 	ConfirmationMode      string
 	MaxConfirmationCycles int

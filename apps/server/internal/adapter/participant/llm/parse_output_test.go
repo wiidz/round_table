@@ -1,6 +1,9 @@
 package llm
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseOutput_contentWithInnerQuotes(t *testing.T) {
 	raw := `{"content":"明确边界：在核心认证路径上，我无法接受"绕过撤销检查"的降级策略。如果Redis完全不可用，应拒绝所有需要验证撤销状态的请求（返回503或强制重新登录），而不是让已吊销令牌通过。RPO方面，我要求最多1秒的数据丢失窗口——Sentinel + 同步写入（WAIT命令）可实现，RTO在30秒内。审计日志方面，第一批迭代中本地文件+异步队列足够作为检查点，但必须保证事件序列化后不丢失（如使用持久化消息队列），且日志格式包含标准合规字段（时间戳、用户ID、操作类型、结果）。这两个刚性边界请写入架构设计文档。"}`
@@ -41,6 +44,20 @@ func TestParseOutput_validJSON(t *testing.T) {
 	}
 	if out.Content != "同意" || out.Stance != "agree" {
 		t.Fatalf("got %+v", out)
+	}
+}
+
+func TestParseOutput_trailingCornerQuote(t *testing.T) {
+	raw := `{"content":"好问题。针对分身置换的延迟补偿，我们采用确定性帧同步 + 客户端预测 + 服务器回滚的组合方案。不会因分身数量影响同步质量。」}`
+	out, err := parseOutput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsSubstring(out.Content, "帧同步") {
+		t.Fatalf("content = %q", out.Content)
+	}
+	if strings.HasSuffix(out.Content, "」") {
+		t.Fatalf("content should not end with corner quote: %q", out.Content)
 	}
 }
 

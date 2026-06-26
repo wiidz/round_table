@@ -121,6 +121,7 @@ Domain 层不得引用上述具体实现。
 | [ADR-0007](../architecture/ADR-0007-moderator-scheduling.md) | Moderator 调度策略 | Accepted |
 | [ADR-0009](../architecture/ADR-0009-meeting-workspace.md) | Meeting Workspace | Accepted |
 | [ADR-0010](../architecture/ADR-0010-agent-profiles.md) | Agent Profile | Accepted |
+| [ADR-0011](../architecture/ADR-0011-meeting-mode.md) | Meeting Mode（decision / deliberation） | Accepted |
 
 完整索引：[architecture/README.md](../architecture/README.md)
 

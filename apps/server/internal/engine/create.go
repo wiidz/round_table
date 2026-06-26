@@ -17,10 +17,11 @@ func (e *Engine) LoadState(ctx context.Context, meetingID string) (meeting.State
 
 // CreateMeetingInput seeds a new meeting through MeetingCreated + invites.
 type CreateMeetingInput struct {
-	MeetingID           string
-	Topic               string
-	Goal                string
-	ConfirmationMode    string
+	MeetingID                string
+	Topic                    string
+	Goal                     string
+	MeetingMode              string
+	ConfirmationMode         string
 	MaxRoundsPerSegment      int
 	FreeDialogueMaxQuestions *int // nil = default (1); explicit 0 disables
 	Participants             []ParticipantInput
@@ -46,9 +47,9 @@ func (e *Engine) CreateMeeting(ctx context.Context, in CreateMeetingInput) (meet
 		return meeting.State{}, errNoParticipants
 	}
 
-	mode := in.ConfirmationMode
-	if mode == "" {
-		mode = meeting.ConfirmationModeSkip
+	confMode := in.ConfirmationMode
+	if confMode == "" {
+		confMode = meeting.ConfirmationModeSkip
 	}
 
 	freeQuestions := 1
@@ -56,7 +57,12 @@ func (e *Engine) CreateMeeting(ctx context.Context, in CreateMeetingInput) (meet
 		freeQuestions = *in.FreeDialogueMaxQuestions
 	}
 
-	s, err := e.append(ctx, meeting.NewState(in.MeetingID), eventMeetingCreated(in.Topic, in.Goal, mode, in.MaxRoundsPerSegment, freeQuestions))
+	meetMode := in.MeetingMode
+	if meetMode == "" {
+		meetMode = meeting.MeetingModeDecision
+	}
+
+	s, err := e.append(ctx, meeting.NewState(in.MeetingID), eventMeetingCreated(in.Topic, in.Goal, meetMode, confMode, in.MaxRoundsPerSegment, freeQuestions))
 	if err != nil {
 		return s, err
 	}
