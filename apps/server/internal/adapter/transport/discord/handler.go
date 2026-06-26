@@ -29,6 +29,14 @@ func NewCommandHandler(prefix string, reg *principalbind.Registry, meet *MeetRun
 func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (string, error) {
 	body := strings.TrimSpace(msg.Content)
 
+	if h.Meet != nil {
+		if reply, err := h.Meet.HandleInputStatus(msg); err != nil {
+			return "", err
+		} else if reply != "" {
+			return reply, nil
+		}
+	}
+
 	if h.Meet != nil && isMeetCancelTrigger(body) {
 		if reply, ok := h.Meet.CancelSetup(msg.ChannelID, msg.AuthorID); ok {
 			return reply, nil
@@ -68,6 +76,30 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 		}
 	}
 
+	if strings.HasPrefix(body, h.Prefix) {
+		args := strings.Fields(strings.TrimSpace(strings.TrimPrefix(body, h.Prefix)))
+		if len(args) == 0 {
+			return h.helpText(), nil
+		}
+		loc := h.locale()
+		switch strings.ToLower(args[0]) {
+		case "help", "h", "?":
+			return h.helpText(), nil
+		case "status", "st":
+			if h.Meet != nil {
+				phase := h.Meet.InputPhase(msg.ChannelID)
+				return formatInputPhaseStatus(loc, phase, h.Meet.meetingIDForPhase(msg.ChannelID, phase)), nil
+			}
+			return h.helpText(), nil
+		case "principal", "p":
+			return h.handlePrincipal(msg, args[1:])
+		case "meet", "m":
+			return h.handleMeet(msg, args[1:])
+		default:
+			return unknownCommandText(loc, h.Prefix, args[0]), nil
+		}
+	}
+
 	if h.Meet != nil {
 		if reply, err := h.Meet.HandleSetupReply(msg); err != nil {
 			return "", err
@@ -80,25 +112,12 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 		return h.Meet.BeginSetupFromTrigger(msg)
 	}
 
-	if !strings.HasPrefix(body, h.Prefix) {
-		return "", nil
+	if h.Meet != nil {
+		if hint, ok := h.Meet.MisplacedInputHint(msg); ok {
+			return hint, nil
+		}
 	}
-	args := strings.Fields(strings.TrimSpace(strings.TrimPrefix(body, h.Prefix)))
-	if len(args) == 0 {
-		return h.helpText(), nil
-	}
-
-	loc := h.locale()
-	switch strings.ToLower(args[0]) {
-	case "help", "h", "?":
-		return h.helpText(), nil
-	case "principal", "p":
-		return h.handlePrincipal(msg, args[1:])
-	case "meet", "m":
-		return h.handleMeet(msg, args[1:])
-	default:
-		return unknownCommandText(loc, h.Prefix, args[0]), nil
-	}
+	return "", nil
 }
 
 func (h *CommandHandler) handlePrincipal(msg transport.Inbound, args []string) (string, error) {

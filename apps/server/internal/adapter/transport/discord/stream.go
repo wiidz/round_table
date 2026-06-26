@@ -17,21 +17,48 @@ type pendingTurn struct {
 
 // channelStream posts turn headers and formatted LLM output to a Discord channel.
 type channelStream struct {
-	pool      *BotPool
-	channelID string
-	loc       Locale
-	buf       strings.Builder
-	speaker   string
-	pending   pendingTurn
+	pool       *BotPool
+	channelID  string
+	loc        Locale
+	buf        strings.Builder
+	speaker    string
+	pending    pendingTurn
+	stopTyping func()
+}
+
+func (s *channelStream) beginTyping(participantID string) {
+	s.endTyping()
+	if s.pool == nil {
+		return
+	}
+	sender := s.pool.SenderFor(participantID)
+	if sender == nil {
+		return
+	}
+	typer, ok := sender.(TypingSender)
+	if !ok {
+		return
+	}
+	s.stopTyping = typer.StartTyping(s.channelID)
+}
+
+func (s *channelStream) endTyping() {
+	if s.stopTyping != nil {
+		s.stopTyping()
+		s.stopTyping = nil
+	}
 }
 
 func (s *channelStream) Start(meta stream.Meta) {
 	s.buf.Reset()
 	s.pending = pendingTurn{}
 	s.speaker = meta.ParticipantID
-	// Moderator readiness/synthesis posts formatted body on End — skip redundant header.
-	if meta.ParticipantID == "moderator" &&
-		(meta.Phase == "deliberation-readiness" || meta.Phase == "deliberation-synthesis") {
+	s.beginTyping(meta.ParticipantID)
+
+	skipHeader := meta.ParticipantID == "moderator" &&
+		(meta.Phase == "deliberation-readiness" || meta.Phase == "deliberation-synthesis")
+	// Dedicated participant bots show native Discord typing under their account name.
+	if skipHeader || (s.pool != nil && s.pool.HasBot(meta.ParticipantID)) {
 		return
 	}
 	line := formatStreamStart(streamMeta{
@@ -56,12 +83,14 @@ func (s *channelStream) End() {
 	s.buf.Reset()
 	s.speaker = ""
 	if raw == "" {
+		s.endTyping()
 		return
 	}
 	if s.pool != nil && s.pool.HasBot(speaker) {
 		s.pending = pendingTurn{speaker: speaker, raw: raw}
 		return
 	}
+	s.endTyping()
 	s.postTurn(speaker, raw, 0, 0)
 }
 
@@ -69,6 +98,7 @@ func (s *channelStream) CompleteTurn(participantID string, tokens int, elapsed t
 	if s.pending.speaker == "" || s.pending.speaker != participantID {
 		return
 	}
+	s.endTyping()
 	s.postTurn(s.pending.speaker, s.pending.raw, tokens, elapsed)
 	s.pending = pendingTurn{}
 }

@@ -100,6 +100,7 @@ make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y
 | [COMMITS.md](./docs/COMMITS.md) | Git Commit 规范 |
 | [domain/](./docs/domain/README.md) | 领域概念（Meeting、Principal、Moderator…） |
 | [adapters/discord-transport.md](./docs/adapters/discord-transport.md) | Discord 指令与频道行为 |
+| [roadmap.md](./docs/roadmap.md) | 产品路线图（P0–P4） |
 | [flow/](./docs/flow/context_diagram.md) | 状态机与上下文图 |
 | [architecture/](./docs/architecture/README.md) | 架构决策记录（ADR） |
 

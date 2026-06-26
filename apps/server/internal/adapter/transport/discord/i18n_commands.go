@@ -16,6 +16,8 @@ func (h *CommandHandler) helpText() string {
 
 前缀：`+"`%s`"+`
 
+- `+"`会议状态`"+` / `+"`状态`"+` — 查看当前频道输入态与可接受指令
+- `+"`%sstatus`"+` — 同上
 - `+"`%shelp`"+` — 显示帮助
 - `+"`%sprincipal bind`"+` — 绑定本范围 Principal（每服务器/私信一位）
 - `+"`%sprincipal whoami`"+` — 查看 Principal 绑定
@@ -26,12 +28,14 @@ func (h *CommandHandler) helpText() string {
 - **自由问答阶段**：`+"`提问 …`"+` / `+"`提问 designer …`"+` — 指定参与者提问
 - **会议结束后**：`+"`获取纪要`"+` · `+"`获取草案`"+` · `+"`获取待决`"+` · `+"`获取结论`"+`
 - `+"`%smeet [-mode decision|deliberation] 主题`"+` — 同上（带主题时可跳过主题输入）
-- `+"`%smeet cancel`"+` — 取消待确认的会议配置`, p, p, p, p, p, p, p)
+- `+"`%smeet cancel`"+` — 取消待确认的会议配置`, p, p, p, p, p, p, p, p)
 	}
 	return fmt.Sprintf(`📖 **RoundTable Discord commands**
 
 Prefix: `+"`%s`"+`
 
+- `+"`会议状态`"+` / `+"`status`"+` — Show current input phase and accepted commands
+- `+"`%sstatus`"+` — Same
 - `+"`%shelp`"+` — Show this help
 - `+"`%sprincipal bind`"+` — Bind yourself as Principal (one per server/DM)
 - `+"`%sprincipal whoami`"+` — Show Principal binding
@@ -42,7 +46,7 @@ Prefix: `+"`%s`"+`
 - **During free dialogue:** `+"`ask …`"+` / `+"`提问 designer …`"+` — ask a participant
 - **After meeting:** `+"`get minutes`"+` · `+"`get draft`"+` · `+"`get open`"+` · `+"`get conclusion`"+`
 - `+"`%smeet [-mode decision|deliberation] topic`"+` — Same (topic inline skips topic prompt)
-- `+"`%smeet cancel`"+` — Cancel pending meet setup`, p, p, p, p, p, p, p)
+- `+"`%smeet cancel`"+` — Cancel pending meet setup`, p, p, p, p, p, p, p, p)
 }
 
 func unknownCommandText(loc Locale, prefix, cmd string) string {
