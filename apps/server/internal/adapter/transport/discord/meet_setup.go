@@ -22,7 +22,8 @@ type meetLaunchConfig struct {
 type setupStep int
 
 const (
-	setupStepPresetMenu setupStep = iota
+	setupStepAskTopic setupStep = iota
+	setupStepPresetMenu
 	setupStepCustomMode
 	setupStepCustomRounds
 	setupStepCustomConfirmation
@@ -167,34 +168,17 @@ func freeDialogueLabel(n int, loc Locale) string {
 	return fmt.Sprintf("%d/participant", n)
 }
 
-func formatModeratorSetupPrompt(loc Locale, prefix string, defaultCfg meetLaunchConfig) string {
-	def := formatConfigShort(defaultCfg, loc)
+func formatAskTopicPrompt(loc Locale) string {
 	if loc == LocaleZH {
-		return fmt.Sprintf(`🎙️ **主持人** — 选择会议配置
+		return `🎙️ **主持人** — 请输入会议主题
 
-📌 **主题：** %s
-
-回复 **一个数字** 即可（手机友好）：
-**1** — 直接开始（默认：%s）
-**2** — 快速研讨（2轮 · 跳过确认）
-**3** — 标准研讨（3轮 · 跳过确认）
-**4** — 深度研讨（5轮 · 需确认）
-**5** — 自定义（逐步选择，每步回复 1/2/3）
-
-取消：`+"`%smeet cancel`"+``, defaultCfg.Topic, def, prefix)
+直接发送主题文字即可（无需前缀）。
+取消：发送 **取消会议**`
 	}
-	return fmt.Sprintf(`🎙️ **Moderator** — pick a meeting preset
+	return `🎙️ **Moderator** — enter the meeting topic
 
-📌 **Topic:** %s
-
-Reply with **one number**:
-**1** — Start now (default: %s)
-**2** — Quick deliberation (2 rounds · skip confirm)
-**3** — Standard (3 rounds · skip confirm)
-**4** — Deep (5 rounds · confirm required)
-**5** — Custom (step-by-step, reply 1/2/3 each step)
-
-Cancel: `+"`%smeet cancel`"+``, defaultCfg.Topic, def, prefix)
+Send the topic as plain text (no prefix).
+Cancel: send **取消会议**`
 }
 
 func formatCustomStepPrompt(loc Locale, step setupStep) string {
@@ -202,14 +186,15 @@ func formatCustomStepPrompt(loc Locale, step setupStep) string {
 		switch step {
 		case setupStepCustomMode:
 			return `🎙️ **自定义 · 1/4 模式**
-**1** — 研讨型（出方案草案）
-**2** — 裁决型（投票共识）
+**1** — 研讨（出方案草案）
+**J** — 裁决（投票共识）
 **0** — 返回预设菜单`
 		case setupStepCustomRounds:
 			return `🎙️ **自定义 · 2/4 轮次**
-**1** — 2 轮
-**2** — 3 轮
-**3** — 5 轮
+**1** — 1 轮（闪电）
+**2** — 2 轮
+**3** — 3 轮
+**4** — 5 轮
 **0** — 返回预设菜单`
 		case setupStepCustomConfirmation:
 			return `🎙️ **自定义 · 3/4 Principal 确认**
@@ -229,13 +214,14 @@ func formatCustomStepPrompt(loc Locale, step setupStep) string {
 	case setupStepCustomMode:
 		return `🎙️ **Custom · 1/4 mode**
 **1** — Deliberation (design draft)
-**2** — Decision (vote consensus)
+**J** — Decision (vote consensus)
 **0** — Back to preset menu`
 	case setupStepCustomRounds:
 		return `🎙️ **Custom · 2/4 rounds**
-**1** — 2 rounds
-**2** — 3 rounds
-**3** — 5 rounds
+**1** — 1 round (flash)
+**2** — 2 rounds
+**3** — 3 rounds
+**4** — 5 rounds
 **0** — Back to preset menu`
 	case setupStepCustomConfirmation:
 		return `🎙️ **Custom · 3/4 confirmation**
@@ -301,21 +287,28 @@ func normalizeSetupChoice(content string) string {
 	if s == "" {
 		return ""
 	}
-	replacer := strings.NewReplacer("０", "0", "１", "1", "２", "2", "３", "3", "４", "4", "５", "5")
-	s = replacer.Replace(s)
+	s = normalizeASCIIForms(s)
 	lower := strings.ToLower(s)
 	if lower == "开始" || lower == "默认" || lower == "start" || lower == "default" || lower == "ok" {
 		return "1"
 	}
 	fields := strings.Fields(s)
 	if len(fields) == 1 {
+		c := strings.ToUpper(fields[0])
+		if c == "J" {
+			return "J"
+		}
 		return fields[0]
 	}
 	return s
 }
 
 func handleSetupStep(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
-	choice = normalizeSetupChoice(choice)
+	if sess.step == setupStepPresetMenu {
+		choice = normalizePresetChoice(choice)
+	} else {
+		choice = normalizeSetupChoice(choice)
+	}
 	if choice == "" {
 		return setupHandleResult{}, errSetupReplyEmpty
 	}
@@ -341,37 +334,27 @@ func handleSetupStep(sess meetSetupSession, choice string, loc Locale, prefix st
 func handlePresetMenu(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
 	topic := sess.config.Topic
 	participants := sess.config.ParticipantsSummary
-	switch choice {
-	case "1":
-		cfg := defaultCfg
-		cfg.Topic = topic
-		cfg.ParticipantsSummary = participants
-		if err := validateLaunchConfig(cfg); err != nil {
-			return setupHandleResult{}, err
-		}
-		return setupHandleResult{launch: true, config: cfg}, nil
-	case "2":
-		cfg := presetLaunchConfig(topic, meeting.MeetingModeDeliberation, 2, meeting.ConfirmationModeSkip, 0)
-		cfg.ParticipantsSummary = participants
-		return setupHandleResult{launch: true, config: cfg}, nil
-	case "3":
-		cfg := presetLaunchConfig(topic, meeting.MeetingModeDeliberation, 3, meeting.ConfirmationModeSkip, 0)
-		cfg.ParticipantsSummary = participants
-		return setupHandleResult{launch: true, config: cfg}, nil
-	case "4":
-		cfg := presetLaunchConfig(topic, meeting.MeetingModeDeliberation, 5, meeting.ConfirmationModeRequired, 0)
-		cfg.ParticipantsSummary = participants
-		return setupHandleResult{launch: true, config: cfg}, nil
-	case "5":
+
+	if choice == "0" {
 		sess.step = setupStepCustomMode
 		return setupHandleResult{
 			reply:  formatCustomStepPrompt(loc, setupStepCustomMode),
 			step:   setupStepCustomMode,
 			config: sess.config,
 		}, nil
-	default:
+	}
+
+	preset, ok := lookupPreset(choice, defaultCfg, loc)
+	if !ok {
 		return setupHandleResult{}, errSetupInvalidChoice
 	}
+
+	cfg := preset.Make(topic)
+	cfg.ParticipantsSummary = participants
+	if err := validateLaunchConfig(cfg); err != nil {
+		return setupHandleResult{}, err
+	}
+	return setupHandleResult{launch: true, config: cfg}, nil
 }
 
 func handleCustomMode(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
@@ -385,7 +368,7 @@ func handleCustomMode(sess meetSetupSession, choice string, loc Locale, prefix s
 		}, nil
 	case "1":
 		sess.config.Mode = meeting.MeetingModeDeliberation
-	case "2":
+	case "J":
 		sess.config.Mode = meeting.MeetingModeDecision
 	default:
 		return setupHandleResult{}, errSetupInvalidChoice
@@ -409,10 +392,12 @@ func handleCustomRounds(sess meetSetupSession, choice string, loc Locale, prefix
 			config: sess.config,
 		}, nil
 	case "1":
-		rounds = 2
+		rounds = 1
 	case "2":
-		rounds = 3
+		rounds = 2
 	case "3":
+		rounds = 3
+	case "4":
 		rounds = 5
 	default:
 		return setupHandleResult{}, errSetupInvalidChoice

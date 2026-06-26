@@ -63,7 +63,13 @@ func (e *Engine) advanceConfirmation(ctx context.Context, s meeting.State) (meet
 		if fb == "" {
 			fb = "需要修订"
 		}
-		return e.append(ctx, s, eventConfirmationRejected(s.Confirmation.Cycle, fb, resp.ItemNotes))
+		cycle := s.Confirmation.Cycle
+		s, err = e.append(ctx, s, eventConfirmationRejected(cycle, fb, resp.ItemNotes))
+		if err != nil {
+			return s, err
+		}
+		e.logf("↩ confirmation rejected cycle=%d — starting round %d", cycle, s.CurrentRound+1)
+		return e.startRound(ctx, s)
 	default:
 		return s, errUnknownPrincipalDecision
 	}

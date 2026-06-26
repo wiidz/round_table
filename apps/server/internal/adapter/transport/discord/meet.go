@@ -23,12 +23,13 @@ type ChannelSender interface {
 
 // MeetRunner starts Engine meetings from Discord commands.
 type MeetRunner struct {
-	Cfg      config.Config
-	Discord  config.DiscordTransport
-	Registry *principalbind.Registry
-	Bots     *BotPool
-	sessions meetSessions
-	setups   meetSetupSessions
+	Cfg       config.Config
+	Discord   config.DiscordTransport
+	Registry  *principalbind.Registry
+	Bots      *BotPool
+	Principal *ChannelPrincipal
+	sessions  meetSessions
+	setups    meetSetupSessions
 }
 
 type meetSessions struct {
@@ -62,22 +63,28 @@ func (m *meetSessions) active(channelID string) (string, bool) {
 	return id, ok
 }
 
+// BeginSetupFromTrigger starts setup when Principal sends a natural-language trigger (no prefix).
+func (r *MeetRunner) BeginSetupFromTrigger(msg transport.Inbound) (string, error) {
+	loc := ParseLocale(r.Discord.Locale)
+	if reply, ok := r.checkBeginSetup(msg, loc); ok {
+		return reply, nil
+	}
+
+	cfg := r.defaultLaunchConfig("", "")
+	r.setups.put(msg.ChannelID, meetSetupSession{
+		channelID: msg.ChannelID,
+		authorID:  msg.AuthorID,
+		config:    cfg,
+		step:      setupStepAskTopic,
+	})
+	return formatAskTopicPrompt(loc), nil
+}
+
 // BeginSetup asks the Principal to confirm or adjust meeting configuration.
 func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (string, error) {
 	loc := ParseLocale(r.Discord.Locale)
-	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
-	binding, ok := r.Registry.Get(scope)
-	if !ok {
-		return meetNeedBindText(loc), nil
-	}
-	if binding.ExternalID != msg.AuthorID {
-		return meetNotScopePrincipalText(loc), nil
-	}
-	if id, busy := r.sessions.active(msg.ChannelID); busy {
-		return meetChannelBusyText(loc, id), nil
-	}
-	if r.setups.pending(msg.ChannelID) {
-		return meetSetupPendingText(loc), nil
+	if reply, ok := r.checkBeginSetup(msg, loc); ok {
+		return reply, nil
 	}
 
 	cfg := r.defaultLaunchConfig(parsed.Topic, parsed.Mode)
@@ -92,6 +99,24 @@ func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (
 		prefix = "!rt"
 	}
 	return formatModeratorSetupPrompt(loc, prefix+" ", cfg), nil
+}
+
+func (r *MeetRunner) checkBeginSetup(msg transport.Inbound, loc Locale) (string, bool) {
+	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
+	binding, ok := r.Registry.Get(scope)
+	if !ok {
+		return meetNeedBindText(loc), true
+	}
+	if binding.ExternalID != msg.AuthorID {
+		return meetNotScopePrincipalText(loc), true
+	}
+	if id, busy := r.sessions.active(msg.ChannelID); busy {
+		return meetChannelBusyText(loc, id), true
+	}
+	if r.setups.pending(msg.ChannelID) {
+		return meetSetupPendingText(loc), true
+	}
+	return "", false
 }
 
 // CancelSetup clears a pending meet configuration for a channel.
@@ -117,6 +142,22 @@ func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
 	}
 	if msg.AuthorID != sess.authorID {
 		return meetSetupNotOwnerText(loc), nil
+	}
+
+	if sess.step == setupStepAskTopic {
+		topic := strings.TrimSpace(msg.Content)
+		if topic == "" {
+			return meetTopicRequiredText(loc), nil
+		}
+		defaultCfg := r.defaultLaunchConfig(topic, "")
+		sess.config = defaultCfg
+		sess.step = setupStepPresetMenu
+		r.setups.put(msg.ChannelID, sess)
+		prefix := strings.TrimSpace(r.Discord.CommandPrefix)
+		if prefix == "" {
+			prefix = "!rt"
+		}
+		return formatModeratorSetupPrompt(loc, prefix+" ", defaultCfg), nil
 	}
 
 	prefix := strings.TrimSpace(r.Discord.CommandPrefix)
@@ -162,14 +203,34 @@ func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string
 	return formatMeetLaunchAck(loc, meetingID, cfg, binding.DisplayName), nil
 }
 
+// HandleConfirmationReply processes Principal confirmation while a meeting waits.
+func (r *MeetRunner) HandleConfirmationReply(msg transport.Inbound) (string, error) {
+	if r.Principal == nil {
+		return "", nil
+	}
+	return r.Principal.DeliverConfirmationReply(msg.ChannelID, msg.AuthorID, msg.Content)
+}
+
 func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbind.Binding, cfg meetLaunchConfig) {
 	defer r.sessions.clear(channelID)
 	ctx := context.Background()
 
 	loc := ParseLocale(r.Discord.Locale)
+	if r.Principal != nil {
+		r.Principal.BindMeeting(meetingID, channelID, binding.ExternalID)
+		defer r.Principal.UnbindMeeting(meetingID)
+	}
+
 	chProgress := &channelProgress{pool: r.Bots, channelID: channelID, loc: loc}
 	chStream := &channelStream{pool: r.Bots, channelID: channelID, loc: loc}
-	eng, err := bootstrap.NewEngine(r.Cfg)
+
+	var eng *engine.Engine
+	var err error
+	if r.Principal != nil && cfg.Confirmation == meeting.ConfirmationModeRequired {
+		eng, err = bootstrap.NewEngineWithPrincipal(r.Cfg, r.Principal)
+	} else {
+		eng, err = bootstrap.NewEngine(r.Cfg)
+	}
 	if err != nil {
 		_ = r.Bots.Default.Send(ctx, channelID, meetEngineFailedText(loc, err))
 		return

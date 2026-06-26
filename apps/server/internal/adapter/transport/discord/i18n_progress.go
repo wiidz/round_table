@@ -40,6 +40,34 @@ func localizeProgressEN(line string) string {
 		return "✅ " + line
 	case strings.HasPrefix(line, "◇ synthesis readiness: not ready"):
 		return "⏳ " + line
+	case strings.HasPrefix(line, "… waiting for principal confirmation"):
+		var cycle int
+		if _, err := fmt.Sscanf(line, "… waiting for principal confirmation cycle=%d", &cycle); err == nil {
+			return fmt.Sprintf("⏳ Waiting for Principal confirmation · cycle %d", cycle)
+		}
+		return line
+	case strings.HasPrefix(line, "▶ confirmation prepared"):
+		var cycle int
+		if _, err := fmt.Sscanf(line, "▶ confirmation prepared cycle=%d", &cycle); err == nil {
+			return fmt.Sprintf("📎 Confirmation brief prepared · cycle %d", cycle)
+		}
+		return line
+	case strings.HasPrefix(line, "★ confirmation approved"):
+		var cycle int
+		if _, err := fmt.Sscanf(line, "★ confirmation approved cycle=%d", &cycle); err == nil {
+			return fmt.Sprintf("✅ Principal approved · cycle %d", cycle)
+		}
+		return line
+	case strings.HasPrefix(line, "↩ confirmation rejected"):
+		var cycle, round int
+		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — starting round %d", &cycle, &round); err == nil {
+			return fmt.Sprintf("↩ Principal rejected · cycle %d · starting round %d", cycle, round)
+		}
+		var cycleOnly int
+		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — adding one round", &cycleOnly); err == nil {
+			return fmt.Sprintf("↩ Principal rejected · cycle %d · adding one round", cycleOnly)
+		}
+		return line
 	default:
 		return line
 	}
@@ -133,6 +161,12 @@ func localizeProgressZH(line string) string {
 			return fmt.Sprintf("⏱️ 已达最大轮次 (%d) · 开始合成设计草案", max)
 		}
 
+	case strings.HasPrefix(line, "… waiting for principal confirmation"):
+		var cycle int
+		if _, err := fmt.Sscanf(line, "… waiting for principal confirmation cycle=%d", &cycle); err == nil {
+			return fmt.Sprintf("⏳ 等待 Principal 确认 · 第 %d 轮", cycle)
+		}
+
 	case strings.HasPrefix(line, "▶ confirmation prepared"):
 		var cycle int
 		if _, err := fmt.Sscanf(line, "▶ confirmation prepared cycle=%d", &cycle); err == nil {
@@ -146,9 +180,13 @@ func localizeProgressZH(line string) string {
 		}
 
 	case strings.HasPrefix(line, "↩ confirmation rejected"):
-		var cycle int
-		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — resuming debate", &cycle); err == nil {
-			return fmt.Sprintf("↩ Principal 驳回 · 第 %d 轮 · 继续研讨", cycle)
+		var cycle, round int
+		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — starting round %d", &cycle, &round); err == nil {
+			return fmt.Sprintf("↩ Principal 驳回 · 第 %d 轮 · 追加第 %d 轮研讨", cycle, round)
+		}
+		var cycleOnly int
+		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — adding one round", &cycleOnly); err == nil {
+			return fmt.Sprintf("↩ Principal 驳回 · 第 %d 轮 · 追加 1 轮研讨", cycleOnly)
 		}
 
 	case strings.HasPrefix(line, "⏸ meeting paused"):

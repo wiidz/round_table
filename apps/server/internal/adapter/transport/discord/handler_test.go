@@ -66,6 +66,39 @@ func TestNewCommandHandler_wiresMeet(t *testing.T) {
 	}
 }
 
+func TestCommandHandler_naturalMeetTrigger(t *testing.T) {
+	reg, err := principalbind.NewRegistry(t.TempDir() + "/b.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	meet := &MeetRunner{
+		Registry: reg,
+		Discord:  config.DiscordTransport{Locale: "zh"},
+	}
+	h := NewCommandHandler("!rt", reg, meet)
+
+	_, _ = h.Handle(context.Background(), transport.Inbound{
+		Platform: "discord", GuildID: "g1", AuthorID: "u1", AuthorName: "Alice",
+		ChannelID: "ch1", Content: "!rt principal bind",
+	})
+
+	reply, err := h.Handle(context.Background(), transport.Inbound{
+		Platform: "discord", GuildID: "g1", AuthorID: "u1",
+		ChannelID: "ch1", Content: "新会议",
+	})
+	if err != nil || !strings.Contains(reply, "请输入会议主题") {
+		t.Fatalf("reply=%q err=%v", reply, err)
+	}
+
+	reply, err = h.Handle(context.Background(), transport.Inbound{
+		Platform: "discord", GuildID: "g1", AuthorID: "u1",
+		ChannelID: "ch1", Content: "影舞者设计",
+	})
+	if err != nil || !strings.Contains(reply, "请选择会议方案") || !strings.Contains(reply, "影舞者设计") {
+		t.Fatalf("reply=%q err=%v", reply, err)
+	}
+}
+
 func TestCommandHandler_nonCommandSilent(t *testing.T) {
 	h := NewCommandHandler("!rt", mustReg(t), nil)
 	reply, err := h.Handle(context.Background(), transport.Inbound{Content: "hello"})

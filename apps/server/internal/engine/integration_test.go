@@ -470,7 +470,7 @@ func TestEngine_Integration_confirmationRejectThenApprove(t *testing.T) {
 		t.Fatalf("confirmation cycle = %d, want 1 after one reject", final.ConfirmationCycle)
 	}
 	if len(final.Minutes.Rounds) < 3 {
-		t.Fatalf("expected >=3 rounds after reject (pre-meeting + 2 debate), got %d", len(final.Minutes.Rounds))
+		t.Fatalf("expected >=3 rounds after reject (pre-meeting + round 1 + round 2), got %d", len(final.Minutes.Rounds))
 	}
 }
 

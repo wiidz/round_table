@@ -19,4 +19,6 @@ var (
 	errSetupInvalidRounds  = errors.New("discord: rounds must be a positive integer")
 	errSetupInvalidMinRounds = errors.New("discord: min-rounds must be a positive integer")
 	errSetupInvalidFree    = errors.New("discord: free must be a non-negative integer")
+	errConfirmReplyEmpty   = errors.New("discord: empty confirmation reply")
+	errConfirmReplyUnrecognized = errors.New("discord: unrecognized confirmation reply")
 )

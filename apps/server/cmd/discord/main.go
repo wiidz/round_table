@@ -54,10 +54,11 @@ func main() {
 	defer pool.Close()
 
 	meet := &discordtransport.MeetRunner{
-		Cfg:      cfg,
-		Discord:  dc,
-		Registry: reg,
-		Bots:     pool,
+		Cfg:       cfg,
+		Discord:   dc,
+		Registry:  reg,
+		Bots:      pool,
+		Principal: discordtransport.NewChannelPrincipal(pool, dc.Locale),
 	}
 
 	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg, meet)
@@ -68,7 +69,7 @@ func main() {
 	log.Printf("discord bot connected — prefix=%q bindings=%s", cmd.Prefix, dc.BindingsFile)
 	log.Printf("discord participant bots: %d/%d connected",
 		pool.Count(), len(discordtransport.ParseParticipantBotMapping(dc.ParticipantBots)))
-	log.Printf("try: %sprincipal bind | %smeet 会议主题 | %shelp", cmd.Prefix, cmd.Prefix, cmd.Prefix)
+	log.Printf("try: 新会议 | %sprincipal bind | %shelp", cmd.Prefix, cmd.Prefix)
 
 	if err := bot.Run(ctx, cmd.Handle); err != nil {
 		log.Fatalf("discord: %v", err)

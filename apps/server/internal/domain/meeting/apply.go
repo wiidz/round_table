@@ -623,12 +623,16 @@ func applyConfirmationRejected(s State, env event.Envelope) (State, error) {
 	}
 
 	s.ConfirmationCycle++
-	s.RunningSegment++
 	s.PrincipalFeedback = p.Feedback
 	s.Consensus = nil
 	s.Confirmation = nil
-	s.CurrentRound = 0
-	s.RoundOrder = nil
+	s.SynthesisSummary = ""
+	s.SynthesisOpenQuestions = nil
+	s.SynthesisSections = nil
+	s.SynthesisCrossCutting = nil
+	if s.CurrentRound >= s.MaxRoundsPerSegment {
+		s.MaxRoundsPerSegment = s.CurrentRound + 1
+	}
 	s.Status = StatusRunning
 	return s, nil
 }

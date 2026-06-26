@@ -27,6 +27,23 @@ func NewCommandHandler(prefix string, reg *principalbind.Registry, meet *MeetRun
 
 // Handle implements transport.MessageHandler.
 func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (string, error) {
+	body := strings.TrimSpace(msg.Content)
+
+	if h.Meet != nil && isMeetCancelTrigger(body) {
+		if reply, ok := h.Meet.CancelSetup(msg.ChannelID, msg.AuthorID); ok {
+			return reply, nil
+		}
+		return meetSetupNothingToCancelText(h.locale()), nil
+	}
+
+	if h.Meet != nil {
+		if reply, err := h.Meet.HandleConfirmationReply(msg); err != nil {
+			return "", err
+		} else if reply != "" {
+			return reply, nil
+		}
+	}
+
 	if h.Meet != nil {
 		if reply, err := h.Meet.HandleSetupReply(msg); err != nil {
 			return "", err
@@ -35,7 +52,10 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 		}
 	}
 
-	body := strings.TrimSpace(msg.Content)
+	if h.Meet != nil && isMeetStartTrigger(body) {
+		return h.Meet.BeginSetupFromTrigger(msg)
+	}
+
 	if !strings.HasPrefix(body, h.Prefix) {
 		return "", nil
 	}

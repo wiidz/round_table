@@ -70,9 +70,9 @@ func meetingModeLabel(mode string, loc Locale) string {
 	}
 	switch mode {
 	case "deliberation":
-		return "研讨型"
+		return "研讨"
 	case "decision":
-		return "裁决型"
+		return "裁决"
 	default:
 		return mode
 	}

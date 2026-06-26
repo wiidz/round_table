@@ -7,6 +7,7 @@ import (
 	knowfs "round_table/apps/server/internal/adapter/knowledge/fs"
 	"round_table/apps/server/internal/adapter/model/openai_compat"
 	participantllm "round_table/apps/server/internal/adapter/participant/llm"
+	"round_table/apps/server/internal/adapter/principal"
 	prinstub "round_table/apps/server/internal/adapter/principal/stub"
 	profilefs "round_table/apps/server/internal/adapter/profile/fs"
 	"round_table/apps/server/internal/adapter/storage/memory"
@@ -26,6 +27,22 @@ type PrincipalOptions struct {
 
 // NewEngine wires adapters from configuration for a real LLM-backed meeting run.
 func NewEngine(cfg config.Config, principalOpts ...PrincipalOptions) (*engine.Engine, error) {
+	var stub PrincipalOptions
+	if len(principalOpts) > 0 {
+		stub = principalOpts[0]
+	}
+	return newEngine(cfg, nil, stub)
+}
+
+// NewEngineWithPrincipal wires a custom Principal port (e.g. Discord confirmation).
+func NewEngineWithPrincipal(cfg config.Config, prin principal.Port) (*engine.Engine, error) {
+	if prin == nil {
+		return nil, fmt.Errorf("bootstrap: principal port required")
+	}
+	return newEngine(cfg, prin, PrincipalOptions{})
+}
+
+func newEngine(cfg config.Config, prin principal.Port, stubOpts PrincipalOptions) (*engine.Engine, error) {
 	key, err := resolveAPIKey(cfg)
 	if err != nil {
 		return nil, err
@@ -43,13 +60,14 @@ func NewEngine(cfg config.Config, principalOpts ...PrincipalOptions) (*engine.En
 		ModelName: cfg.Model.DefaultModel,
 	}
 
-	prin := &prinstub.Principal{}
-	if len(principalOpts) > 0 {
-		o := principalOpts[0]
-		prin.ForceSynthesisWhenRoundGTE = o.ForceSynthesisAtRound
-		prin.ForceSynthesisReason = o.ForceSynthesisReason
-		prin.PauseWhenRoundGTE = o.PauseAtRound
-		prin.AbortWhenRoundGTE = o.AbortAtRound
+	if prin == nil {
+		stub := &prinstub.Principal{
+			ForceSynthesisWhenRoundGTE: stubOpts.ForceSynthesisAtRound,
+			ForceSynthesisReason:       stubOpts.ForceSynthesisReason,
+			PauseWhenRoundGTE:          stubOpts.PauseAtRound,
+			AbortWhenRoundGTE:          stubOpts.AbortAtRound,
+		}
+		prin = stub
 	}
 
 	eng := engine.New(

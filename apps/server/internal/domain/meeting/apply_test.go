@@ -238,7 +238,7 @@ func TestFold_skipConfirmation(t *testing.T) {
 	}
 }
 
-func TestFold_confirmationRejected_resetsRound(t *testing.T) {
+func TestFold_confirmationRejected_addsOneRound(t *testing.T) {
 	t.Parallel()
 
 	order := []string{"p1"}
@@ -274,8 +274,8 @@ func TestFold_confirmationRejected_resetsRound(t *testing.T) {
 	if s.Status != StatusRunning {
 		t.Fatalf("status = %s, want Running", s.Status)
 	}
-	if s.CurrentRound != 0 {
-		t.Fatalf("current round = %d, want 0", s.CurrentRound)
+	if s.CurrentRound != 1 {
+		t.Fatalf("current round = %d, want 1 (last completed)", s.CurrentRound)
 	}
 	if s.ConfirmationCycle != 1 {
 		t.Fatalf("confirmation cycle = %d", s.ConfirmationCycle)
@@ -283,17 +283,20 @@ func TestFold_confirmationRejected_resetsRound(t *testing.T) {
 	if s.PrincipalFeedback != "需要更多细节" {
 		t.Fatalf("feedback = %q", s.PrincipalFeedback)
 	}
+	if s.SynthesisSummary != "" {
+		t.Fatal("synthesis should be cleared after reject")
+	}
 
-	// Second segment round 1
+	// One additional round after reject
 	next := append(base,
-		env(14, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 1, Order: order}), event.ActorModerator),
+		env(14, event.TypeRoundStarted, mustPayload(t, event.RoundStartedPayload{RoundNumber: 2, Order: order}), event.ActorModerator),
 	)
 	s, err = Fold("mtg-1", next)
 	if err != nil {
-		t.Fatalf("Fold second segment: %v", err)
+		t.Fatalf("Fold post-reject round: %v", err)
 	}
-	if s.CurrentRound != 1 {
-		t.Fatalf("current round = %d", s.CurrentRound)
+	if s.CurrentRound != 2 {
+		t.Fatalf("current round = %d, want 2", s.CurrentRound)
 	}
 }
 
