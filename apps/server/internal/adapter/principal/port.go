@@ -26,9 +26,12 @@ type Response struct {
 type RunningInterventionKind string
 
 const (
-	RunningInterventionNone            RunningInterventionKind = ""
-	RunningInterventionForceConsensus  RunningInterventionKind = "force_consensus"
-	RunningInterventionForceSynthesis  RunningInterventionKind = "force_synthesis"
+	RunningInterventionNone           RunningInterventionKind = ""
+	RunningInterventionForceConsensus RunningInterventionKind = "force_consensus"
+	RunningInterventionForceSynthesis RunningInterventionKind = "force_synthesis"
+	RunningInterventionPause          RunningInterventionKind = "pause"
+	RunningInterventionAbort          RunningInterventionKind = "abort"
+	RunningInterventionResume         RunningInterventionKind = "resume"
 )
 
 // RunningIntervention is a Principal request during Status=Running.
@@ -40,6 +43,8 @@ type RunningIntervention struct {
 // Port represents the Principal at Confirmation and optional Running turn boundaries.
 type Port interface {
 	Confirm(ctx context.Context, meetingID string, brief event.ConfirmationBrief, cycle int) (Response, error)
-	// RunningAction returns a turn-boundary intervention. Default implementation: none.
+	// RunningAction returns a turn-boundary intervention while Status=Running. Default: none.
 	RunningAction(ctx context.Context, meetingID string, s meeting.State) (RunningIntervention, error)
+	// PausedAction returns resume or abort while Status=Paused. Default: resume immediately.
+	PausedAction(ctx context.Context, meetingID string, s meeting.State) (RunningIntervention, error)
 }

@@ -5,6 +5,7 @@ import (
 
 	"round_table/apps/server/internal/domain/consensus"
 	"round_table/apps/server/internal/domain/event"
+	"round_table/apps/server/internal/domain/meeting"
 )
 
 type meetingCreatedParams struct {
@@ -203,12 +204,21 @@ func eventModeratorDecision(strategy string) event.Envelope {
 	}
 }
 
-func eventSynthesisCompleted(summary string, openQuestions []string, resolvedBy string, usage *event.TokenUsage) event.Envelope {
+func eventSynthesisCompleted(
+	summary string,
+	openQuestions []string,
+	resolvedBy string,
+	usage *event.TokenUsage,
+	sections []event.SynthesisAgendaSectionPayload,
+	cross *event.SynthesisCrossCuttingPayload,
+) event.Envelope {
 	payload, _ := json.Marshal(event.SynthesisCompletedPayload{
 		Summary:       summary,
 		OpenQuestions: openQuestions,
 		ResolvedBy:    resolvedBy,
 		TokenUsage:    usage,
+		Sections:      sections,
+		CrossCutting:  cross,
 	})
 	return event.Envelope{
 		Type:    event.TypeSynthesisCompleted,
@@ -254,6 +264,31 @@ func eventMeetingFinished(outcome string) event.Envelope {
 		Type:    event.TypeMeetingFinished,
 		Payload: payload,
 		Actor:   event.ActorModerator,
+	}
+}
+
+func eventMeetingAborted(_ string) event.Envelope {
+	payload, _ := json.Marshal(event.MeetingFinishedPayload{Outcome: meeting.OutcomeAborted})
+	return event.Envelope{
+		Type:    event.TypeMeetingFinished,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
+func eventMeetingPaused(reason string) event.Envelope {
+	payload, _ := json.Marshal(event.MeetingPausedPayload{Reason: reason})
+	return event.Envelope{
+		Type:    event.TypeMeetingPaused,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
+func eventMeetingResumed() event.Envelope {
+	return event.Envelope{
+		Type:  event.TypeMeetingResumed,
+		Actor: event.ActorPrincipal,
 	}
 }
 

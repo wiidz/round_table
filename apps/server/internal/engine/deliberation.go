@@ -7,6 +7,7 @@ import (
 
 	"round_table/apps/server/internal/adapter/workspace"
 	"round_table/apps/server/internal/domain/consensus"
+	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
 )
 
@@ -86,12 +87,17 @@ func (e *Engine) continueAfterDeliberationRound(ctx context.Context, s meeting.S
 }
 
 func (e *Engine) completeDeliberation(ctx context.Context, s meeting.State, resolvedBy string) (meeting.State, error) {
-	summary, openQuestions, usage, err := e.synthesizeDeliberationFinal(ctx, s)
+	summary, openQuestions, usage, agenda, err := e.synthesizeDeliberationFinal(ctx, s)
 	if err != nil {
 		return s, err
 	}
 	e.logf("◆ synthesis completed (%d open questions)", len(openQuestions))
-	return e.append(ctx, s, eventSynthesisCompleted(summary, openQuestions, resolvedBy, usage))
+	var sections []event.SynthesisAgendaSectionPayload
+	var cross *event.SynthesisCrossCuttingPayload
+	if agenda != nil {
+		sections, cross = synthesisAgendaOutputToEvent(*agenda)
+	}
+	return e.append(ctx, s, eventSynthesisCompleted(summary, openQuestions, resolvedBy, usage, sections, cross))
 }
 
 func (e *Engine) buildDeliberationPrompt(s meeting.State, participantID string) string {

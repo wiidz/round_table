@@ -123,10 +123,26 @@ type ConsensusReachedPayload struct {
 
 // SynthesisCompletedPayload is the v1 payload for SynthesisCompleted (deliberation mode).
 type SynthesisCompletedPayload struct {
-	Summary       string      `json:"summary"`
-	OpenQuestions []string    `json:"open_questions,omitempty"`
-	ResolvedBy    string      `json:"resolved_by,omitempty"` // readiness | synthesis | max_rounds | principal
-	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
+	Summary       string                         `json:"summary"`
+	OpenQuestions []string                       `json:"open_questions,omitempty"`
+	ResolvedBy    string                         `json:"resolved_by,omitempty"` // readiness | synthesis | max_rounds | principal
+	TokenUsage    *TokenUsage                    `json:"token_usage,omitempty"`
+	Sections      []SynthesisAgendaSectionPayload  `json:"sections,omitempty"`
+	CrossCutting  *SynthesisCrossCuttingPayload    `json:"cross_cutting,omitempty"`
+}
+
+// SynthesisAgendaSectionPayload is one agenda item's synthesized content.
+type SynthesisAgendaSectionPayload struct {
+	AgendaID      string   `json:"agenda_id"`
+	Summary       []string `json:"summary,omitempty"`
+	Decisions     []string `json:"decisions,omitempty"`
+	OpenQuestions []string `json:"open_questions,omitempty"`
+}
+
+// SynthesisCrossCuttingPayload holds synthesis not tied to a single agenda item.
+type SynthesisCrossCuttingPayload struct {
+	Decisions     []string `json:"decisions,omitempty"`
+	OpenQuestions []string `json:"open_questions,omitempty"`
 }
 
 // SynthesisForcedPayload records Principal intent to stop debate and synthesize now (deliberation).

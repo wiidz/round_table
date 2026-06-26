@@ -91,7 +91,7 @@ func TestSynthesizeDeliberationFinal_agendaLLMPath(t *testing.T) {
 			Rounds: []meeting.RoundSummary{{RoundNumber: 2, Summary: "Round 2"}},
 		},
 	}
-	summary, open, usage, err := e.synthesizeDeliberationFinal(context.Background(), s)
+	summary, open, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestModeratorSynthesizeFinal_agendaRuleFallback(t *testing.T) {
 			Rounds: []meeting.RoundSummary{{RoundNumber: 1, Summary: "round 1"}},
 		},
 	}
-	summary, _ := moderatorSynthesizeFinal(s)
+	summary, _, _ := moderatorSynthesizeFinal(s)
 	if !strings.Contains(summary, "### 核心技能与资源机制") {
 		t.Fatalf("expected agenda section header: %s", summary)
 	}

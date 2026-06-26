@@ -28,8 +28,10 @@ type State struct {
 	MeetingMode           string
 	Agenda                []event.AgendaItem
 	ConsensusStrategy     string
-	SynthesisSummary      string
+	SynthesisSummary       string
 	SynthesisOpenQuestions []string
+	SynthesisSections      []event.SynthesisAgendaSectionPayload
+	SynthesisCrossCutting  *event.SynthesisCrossCuttingPayload
 	MaxRoundsPerSegment        int
 	MinRoundsBeforeSynthesis   int
 	ConfirmationMode           string

@@ -105,6 +105,11 @@ func (e *Engine) logProgress(env event.Envelope, s meeting.State) {
 	case event.TypeConfirmationForced:
 		p, _ := decodePayload[event.ConfirmationForcedPayload](env)
 		e.logf("★ confirmation forced cycle=%d (%s)", p.Cycle, p.Reason)
+	case event.TypeMeetingPaused:
+		p, _ := decodePayload[event.MeetingPausedPayload](env)
+		e.logf("⏸ meeting paused (%s)", p.Reason)
+	case event.TypeMeetingResumed:
+		e.logf("▶ meeting resumed")
 	case event.TypeMeetingFinished:
 		p, _ := decodePayload[event.MeetingFinishedPayload](env)
 		e.logf("■ meeting finished outcome=%s", p.Outcome)

@@ -19,6 +19,11 @@ func (e *Engine) startFreeDialogue(ctx context.Context, s meeting.State) (meetin
 }
 
 func (e *Engine) advanceFreeDialogue(ctx context.Context, s meeting.State) (meeting.State, error) {
+	if s.CurrentRound > 0 {
+		if ns, handled, err := e.maybePrincipalRunningAction(ctx, s); err != nil || handled {
+			return ns, err
+		}
+	}
 	if s.PendingFreeDialogue != nil {
 		return e.inviteFreeDialogueAnswer(ctx, s)
 	}

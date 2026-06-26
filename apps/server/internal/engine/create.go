@@ -129,6 +129,8 @@ func (e *Engine) Run(ctx context.Context, meetingID string) (meeting.State, erro
 			s, err = e.afterConsensus(ctx, s)
 		case meeting.StatusConfirmation:
 			s, err = e.advanceConfirmation(ctx, s)
+		case meeting.StatusPaused:
+			s, err = e.advancePaused(ctx, s)
 		default:
 			return s, errStatusNotRunnable(s.Status)
 		}

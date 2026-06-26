@@ -40,6 +40,34 @@ func TestApply_SynthesisCompleted(t *testing.T) {
 	}
 }
 
+func TestApply_SynthesisCompleted_agendaSections(t *testing.T) {
+	s := State{
+		ID:          "mtg-1",
+		Status:      StatusRunning,
+		MeetingMode: MeetingModeDeliberation,
+	}
+	payload, _ := json.Marshal(event.SynthesisCompletedPayload{
+		Summary: "# Draft",
+		Sections: []event.SynthesisAgendaSectionPayload{
+			{AgendaID: "skills", Summary: []string{"连击"}},
+		},
+		CrossCutting: &event.SynthesisCrossCuttingPayload{
+			OpenQuestions: []string{"平衡？"},
+		},
+	})
+	env := event.Envelope{Type: event.TypeSynthesisCompleted, Payload: payload}
+	next, err := Apply(s, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next.SynthesisSections) != 1 || next.SynthesisSections[0].AgendaID != "skills" {
+		t.Fatalf("sections = %+v", next.SynthesisSections)
+	}
+	if next.SynthesisCrossCutting == nil || len(next.SynthesisCrossCutting.OpenQuestions) != 1 {
+		t.Fatalf("cross = %+v", next.SynthesisCrossCutting)
+	}
+}
+
 func TestApply_SynthesisCompleted_requiresDeliberationMode(t *testing.T) {
 	s := State{ID: "mtg-1", Status: StatusRunning, MeetingMode: MeetingModeDecision}
 	payload, _ := json.Marshal(event.SynthesisCompletedPayload{Summary: "x"})

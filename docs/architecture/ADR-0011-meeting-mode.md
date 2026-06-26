@@ -152,6 +152,7 @@ completeDeliberation
 - [x] `SynthesisCompleted` 携带 `TokenUsage`
 - [x] v0.2：合成就绪检测（`DeliberationReadinessChecked`、`min_rounds_before_synthesis`）
 - [x] v0.2：Agenda 子项驱动合成结构
+- [x] v0.2：Confirmation Brief 按 Agenda 分节（deliberation）
 
 ---
 
@@ -188,6 +189,41 @@ Turn boundary (CurrentRound >= 1)
 | `deliberation` | Force Synthesis | `SynthesisForced` + `SynthesisCompleted` | `principal` |
 
 裁决型 `ConsensusForced` 与研讨型 `SynthesisForced` 互斥（apply 层校验）。
+
+---
+
+## v0.2 补充：Principal Pause / Abort（已实现）
+
+Running 阶段 Turn boundary，Principal 可暂停或终止会议（ADR-0005 §6）：
+
+```
+Turn boundary (CurrentRound >= 1)
+  → principal.Port.RunningAction
+  → pause  → MeetingPaused → principal.Port.PausedAction → MeetingResumed
+  → abort  → MeetingFinished(outcome=aborted)
+```
+
+| 操作 | Event | 恢复 |
+|------|-------|------|
+| Pause | `MeetingPaused` | `PausedAction` → `MeetingResumed`，从 Paused 前 Round 断点继续 |
+| Abort | `MeetingFinished(aborted)` | 不可恢复 |
+
+CLI：`-pause-at-round N`、`-abort-at-round N`（stub 自动 resume，便于本地验证）。
+
+---
+
+## v0.2 补充：Confirmation Brief 按 Agenda 分节（已实现）
+
+当 `SynthesisCompleted.sections[]` 非空时，研讨型 Confirmation Brief 与 design-draft Executive Summary 对齐：
+
+| 层级 | 行为 |
+|------|------|
+| **SynthesisCompleted** | 持久化 `sections[]` + `cross_cutting`（与合成 JSON 同源） |
+| **State fold** | `SynthesisSections` / `SynthesisCrossCutting` |
+| **Confirmation Item** | 每个 agenda 一项 + 可选「跨议程事项」 |
+| **无 sections** | 保持扁平「方案草案 + 待决事项」（向后兼容） |
+
+Principal 可按 Item 编号逐项确认或驳回（`ItemNotes`）。
 
 ---
 

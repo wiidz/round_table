@@ -34,6 +34,14 @@ func (e *Engine) maybePrincipalRunningAction(ctx context.Context, s meeting.Stat
 		}
 		ns, err = e.completeDeliberation(ctx, ns, "principal")
 		return ns, true, err
+	case principal.RunningInterventionPause:
+		e.logf("⏸ principal pause (%s)", action.Reason)
+		ns, err := e.append(ctx, s, eventMeetingPaused(action.Reason))
+		return ns, true, err
+	case principal.RunningInterventionAbort:
+		e.logf("■ principal abort (%s)", action.Reason)
+		ns, err := e.append(ctx, s, eventMeetingAborted(action.Reason))
+		return ns, true, err
 	default:
 		return s, false, nil
 	}

@@ -17,6 +17,7 @@ import (
 	"round_table/apps/server/internal/adapter/workspace"
 	wsfs "round_table/apps/server/internal/adapter/workspace/fs"
 	"round_table/apps/server/internal/domain/consensus"
+	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
 	"round_table/apps/server/internal/engine"
 )
@@ -313,6 +314,96 @@ func TestEngine_Integration_principalForceConsensus(t *testing.T) {
 	if final.DebateRoundCount() >= 5 {
 		t.Fatal("expected early stop via force consensus")
 	}
+}
+
+func TestEngine_Integration_principalPauseResume(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "object", Content: "还需补充细节", ObjectReason: "方案不完整"}, &prinstub.Principal{
+		PauseWhenRoundGTE: 2,
+		PauseReason:       "Principal 暂停检查",
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:                "mtg-pause-resume",
+		Topic:                    "暂停恢复测试",
+		ConfirmationMode:         meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment:      5,
+		FreeDialogueMaxQuestions: intPtr(0),
+		Participants: []engine.ParticipantInput{
+			{ID: "a", Role: "Architect"},
+			{ID: "b", Role: "Developer"},
+		},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status = %s, want Completed", final.Status)
+	}
+	if final.Consensus == nil {
+		t.Fatal("expected consensus after pause/resume")
+	}
+	events, err := eng.Store.List(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !eventTypesContain(events, event.TypeMeetingPaused) {
+		t.Fatal("expected MeetingPaused event")
+	}
+	if !eventTypesContain(events, event.TypeMeetingResumed) {
+		t.Fatal("expected MeetingResumed event")
+	}
+}
+
+func TestEngine_Integration_principalAbort(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "object", Content: "还需补充细节", ObjectReason: "方案不完整"}, &prinstub.Principal{
+		AbortWhenRoundGTE: 2,
+		AbortReason:       "Principal 终止",
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:                "mtg-abort",
+		Topic:                    "终止测试",
+		ConfirmationMode:         meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment:      5,
+		FreeDialogueMaxQuestions: intPtr(0),
+		Participants: []engine.ParticipantInput{
+			{ID: "a", Role: "Architect"},
+			{ID: "b", Role: "Developer"},
+		},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status = %s, want Completed", final.Status)
+	}
+	if final.Outcome != meeting.OutcomeAborted {
+		t.Fatalf("outcome = %q, want aborted", final.Outcome)
+	}
+	if final.Consensus != nil {
+		t.Fatal("expected no consensus on abort")
+	}
+}
+
+func eventTypesContain(events []event.Envelope, typ event.Type) bool {
+	for _, ev := range events {
+		if ev.Type == typ {
+			return true
+		}
+	}
+	return false
 }
 
 func TestEngine_Integration_requiredConfirmation(t *testing.T) {

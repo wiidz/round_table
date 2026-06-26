@@ -12,13 +12,22 @@ import (
 type Principal struct {
 	// RejectUntilCycle rejects when cycle < RejectUntilCycle (1-based cycle from engine).
 	RejectUntilCycle int
-	Feedback           string
+	Feedback         string
 
 	// ForceConsensus triggers ConsensusForced at the next debate turn boundary (decision mode).
 	ForceConsensus bool
 	// ForceSynthesisWhenRoundGTE triggers SynthesisForced when CurrentRound >= this value (deliberation).
 	ForceSynthesisWhenRoundGTE int
-	ForceSynthesisReason         string
+	ForceSynthesisReason       string
+
+	// AbortWhenRoundGTE triggers MeetingFinished(outcome=aborted) at the next turn boundary.
+	AbortWhenRoundGTE int
+	AbortReason       string
+	// PauseWhenRoundGTE triggers MeetingPaused once at the next turn boundary when CurrentRound >= N.
+	PauseWhenRoundGTE int
+	PauseReason       string
+
+	pauseTriggered bool
 }
 
 var _ principal.Port = (*Principal)(nil)
@@ -43,6 +52,21 @@ func (p *Principal) RunningAction(_ context.Context, _ string, s meeting.State) 
 	if s.Status != meeting.StatusRunning || s.CurrentRound <= 0 {
 		return principal.RunningIntervention{}, nil
 	}
+	if p.AbortWhenRoundGTE > 0 && s.CurrentRound >= p.AbortWhenRoundGTE {
+		reason := p.AbortReason
+		if reason == "" {
+			reason = "Principal 终止会议"
+		}
+		return principal.RunningIntervention{Kind: principal.RunningInterventionAbort, Reason: reason}, nil
+	}
+	if p.PauseWhenRoundGTE > 0 && s.CurrentRound >= p.PauseWhenRoundGTE && !p.pauseTriggered {
+		reason := p.PauseReason
+		if reason == "" {
+			reason = "Principal 暂停会议"
+		}
+		p.pauseTriggered = true
+		return principal.RunningIntervention{Kind: principal.RunningInterventionPause, Reason: reason}, nil
+	}
 	if s.IsDeliberation() {
 		if p.ForceSynthesisWhenRoundGTE > 0 && s.CurrentRound >= p.ForceSynthesisWhenRoundGTE {
 			reason := p.ForceSynthesisReason
@@ -63,4 +87,12 @@ func (p *Principal) RunningAction(_ context.Context, _ string, s meeting.State) 
 		}, nil
 	}
 	return principal.RunningIntervention{}, nil
+}
+
+// PausedAction implements principal.Port.
+func (p *Principal) PausedAction(_ context.Context, _ string, s meeting.State) (principal.RunningIntervention, error) {
+	if s.Status != meeting.StatusPaused {
+		return principal.RunningIntervention{}, nil
+	}
+	return principal.RunningIntervention{Kind: principal.RunningInterventionResume}, nil
 }

@@ -28,10 +28,10 @@ type synthesisLLMOutput struct {
 	OpenQuestions []string `json:"open_questions"`
 }
 
-func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.State) (summary string, openQuestions []string, usage *event.TokenUsage, err error) {
+func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.State) (summary string, openQuestions []string, usage *event.TokenUsage, agenda *synthesisAgendaOutput, err error) {
 	if e.Model == nil {
-		summary, openQuestions = moderatorSynthesizeFinal(s)
-		return summary, openQuestions, nil, nil
+		summary, openQuestions, agenda = moderatorSynthesizeFinal(s)
+		return summary, openQuestions, nil, agenda, nil
 	}
 
 	e.logf("◆ LLM synthesis (moderator)")
@@ -43,7 +43,7 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 	prompt := buildDeliberationSynthesisPrompt(s)
 	system, err := e.buildModeratorSynthesisSystem(s)
 	if err != nil {
-		return "", nil, nil, err
+		return "", nil, nil, nil, err
 	}
 
 	schema := synthesisSchema
@@ -71,8 +71,8 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 	})
 	if err != nil {
 		e.logf("◆ LLM synthesis failed (%v) — falling back to rule-based", err)
-		summary, openQuestions = moderatorSynthesizeFinal(s)
-		return summary, openQuestions, nil, nil
+		summary, openQuestions, agenda = moderatorSynthesizeFinal(s)
+		return summary, openQuestions, nil, agenda, nil
 	}
 	if onEnd != nil {
 		onEnd()
@@ -84,18 +84,18 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 		if agendaErr == nil {
 			summary, openQuestions = assembleDesignDraftFromAgenda(s, agendaOut)
 			usage = tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage)
-			return summary, openQuestions, usage, nil
+			return summary, openQuestions, usage, &agendaOut, nil
 		}
 		e.logf("◆ LLM agenda synthesis parse failed (%v) — falling back to rule-based", agendaErr)
-		summary, openQuestions = moderatorSynthesizeFinal(s)
-		return summary, openQuestions, tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage), nil
+		summary, openQuestions, agenda = moderatorSynthesizeFinal(s)
+		return summary, openQuestions, tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage), agenda, nil
 	}
 
 	out, parseErr := parseSynthesisOutput(raw.Content)
 	if parseErr != nil {
 		e.logf("◆ LLM synthesis parse failed (%v) — falling back to rule-based", parseErr)
-		summary, openQuestions = moderatorSynthesizeFinal(s)
-		return summary, openQuestions, tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage), nil
+		summary, openQuestions, agenda = moderatorSynthesizeFinal(s)
+		return summary, openQuestions, tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage), agenda, nil
 	}
 
 	coreItems := normalizeSynthesisStrings(out.CoreScheme, 6)
@@ -108,7 +108,7 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 	summary = assembleDesignDraft(s, coreScheme, decisions, openQuestions)
 
 	usage = tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage)
-	return summary, openQuestions, usage, nil
+	return summary, openQuestions, usage, nil, nil
 }
 
 func (e *Engine) buildModeratorSynthesisSystem(s meeting.State) (string, error) {

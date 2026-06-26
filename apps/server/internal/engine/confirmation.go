@@ -108,6 +108,40 @@ func prepareConfirmationBrief(s meeting.State) event.ConfirmationBrief {
 }
 
 func prepareDeliberationConfirmationBrief(s meeting.State) event.ConfirmationBrief {
+	if len(s.SynthesisSections) > 0 {
+		return prepareAgendaDeliberationConfirmationBrief(s)
+	}
+	return prepareFlatDeliberationConfirmationBrief(s)
+}
+
+func prepareAgendaDeliberationConfirmationBrief(s meeting.State) event.ConfirmationBrief {
+	items := make([]event.ConfirmationItem, 0, len(s.SynthesisSections)+1)
+	for i, sec := range s.SynthesisSections {
+		items = append(items, event.ConfirmationItem{
+			Index:       i + 1,
+			Title:       agendaTitleByID(s, sec.AgendaID),
+			Description: formatAgendaSectionBody(sec.Summary, sec.Decisions, sec.OpenQuestions),
+			Source:      fmt.Sprintf("SynthesisCompleted/%s", sec.AgendaID),
+		})
+	}
+	if s.SynthesisCrossCutting != nil {
+		desc := formatCrossCuttingSectionBody(s.SynthesisCrossCutting.Decisions, s.SynthesisCrossCutting.OpenQuestions)
+		if desc != "" {
+			items = append(items, event.ConfirmationItem{
+				Index:       len(items) + 1,
+				Title:       "跨议程事项",
+				Description: desc,
+				Source:      "SynthesisCompleted/cross_cutting",
+			})
+		}
+	}
+	return event.ConfirmationBrief{
+		ExecutiveSummary: fmt.Sprintf("%s — 专家团队已形成方案草案，请 Principal 按议程逐项审阅是否足够进入下一环节。", s.Topic),
+		Items:            items,
+	}
+}
+
+func prepareFlatDeliberationConfirmationBrief(s meeting.State) event.ConfirmationBrief {
 	desc := s.SynthesisSummary
 	if desc == "" {
 		desc = s.Topic

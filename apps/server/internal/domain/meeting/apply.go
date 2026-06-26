@@ -481,6 +481,13 @@ func applySynthesisCompleted(s State, env event.Envelope) (State, error) {
 	}
 	s.SynthesisSummary = p.Summary
 	s.SynthesisOpenQuestions = append([]string(nil), p.OpenQuestions...)
+	s.SynthesisSections = append([]event.SynthesisAgendaSectionPayload(nil), p.Sections...)
+	if p.CrossCutting != nil {
+		cc := *p.CrossCutting
+		s.SynthesisCrossCutting = &cc
+	} else {
+		s.SynthesisCrossCutting = nil
+	}
 	if p.TokenUsage != nil {
 		s = recordTokenUsage(s, *p.TokenUsage)
 	}

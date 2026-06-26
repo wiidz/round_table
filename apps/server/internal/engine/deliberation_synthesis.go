@@ -48,7 +48,7 @@ var deliberationStopTokens = map[string]bool{
 	"需要": true, "建议": true, "可以": true, "进行": true, "一个": true,
 }
 
-func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []string) {
+func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []string, agenda *synthesisAgendaOutput) {
 	decisions, spillover := collectDeliberationDecisions(s)
 	openQuestions = collectDeliberationOpenQuestions(s, decisions, spillover)
 	coreScheme := summarizeCoreScheme(s)
@@ -56,9 +56,10 @@ func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []
 	decisions = dedupeDecisionsAgainstCoreScheme(coreBullets, decisions)
 	if hasAgendaForSynthesis(s) {
 		out := ruleBasedAgendaSynthesis(s, coreBullets, decisions, openQuestions)
-		return assembleDesignDraftFromAgenda(s, out)
+		summary, openQuestions = assembleDesignDraftFromAgenda(s, out)
+		return summary, openQuestions, &out
 	}
-	return assembleDesignDraft(s, coreScheme, decisions, openQuestions), openQuestions
+	return assembleDesignDraft(s, coreScheme, decisions, openQuestions), openQuestions, nil
 }
 
 func assembleDesignDraft(s meeting.State, coreScheme string, decisions, openQuestions []string) string {

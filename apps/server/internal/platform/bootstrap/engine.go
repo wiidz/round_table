@@ -20,6 +20,8 @@ import (
 type PrincipalOptions struct {
 	ForceSynthesisAtRound int
 	ForceSynthesisReason  string
+	PauseAtRound          int
+	AbortAtRound          int
 }
 
 // NewEngine wires adapters from configuration for a real LLM-backed meeting run.
@@ -46,6 +48,8 @@ func NewEngine(cfg config.Config, principalOpts ...PrincipalOptions) (*engine.En
 		o := principalOpts[0]
 		prin.ForceSynthesisWhenRoundGTE = o.ForceSynthesisAtRound
 		prin.ForceSynthesisReason = o.ForceSynthesisReason
+		prin.PauseWhenRoundGTE = o.PauseAtRound
+		prin.AbortWhenRoundGTE = o.AbortAtRound
 	}
 
 	eng := engine.New(

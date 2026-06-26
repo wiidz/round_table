@@ -31,7 +31,7 @@ func TestModeratorSynthesizeFinal_executiveSummary(t *testing.T) {
 			2: "- 核心架构：独立网关\n- 实例下限 3",
 		},
 	}
-	summary, open := moderatorSynthesizeFinal(s)
+	summary, open, _ := moderatorSynthesizeFinal(s)
 	if !strings.Contains(summary, "## Executive Summary") {
 		t.Fatal("missing executive summary")
 	}
@@ -329,7 +329,7 @@ func TestModeratorSynthesizeFinal(t *testing.T) {
 		},
 		ModeratorSummaries: map[int]string{2: "提炼 round 2"},
 	}
-	summary, open := moderatorSynthesizeFinal(s)
+	summary, open, _ := moderatorSynthesizeFinal(s)
 	if summary == "" {
 		t.Fatal("empty summary")
 	}

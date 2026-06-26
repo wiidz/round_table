@@ -28,6 +28,8 @@ func main() {
 	maxFreeQuestions := flag.Int("max-free-dialogue-questions", -1, "questions per participant in free dialogue after Round 1 (-1=server.yaml default, 0=disable)")
 	agenda := flag.String("agenda", "", "deliberation agenda items: id:Title,id2:Title2 (optional)")
 	forceSynthesisAtRound := flag.Int("force-synthesis-at-round", 0, "deliberation: Principal forces synthesis when debate round >= N (0=disabled)")
+	pauseAtRound := flag.Int("pause-at-round", 0, "Principal pauses once when debate round >= N (0=disabled)")
+	abortAtRound := flag.Int("abort-at-round", 0, "Principal aborts when debate round >= N (0=disabled)")
 	flag.Parse()
 
 	if *topic == "" {
@@ -45,6 +47,8 @@ func main() {
 	eng, err := bootstrap.NewEngine(cfg, bootstrap.PrincipalOptions{
 		ForceSynthesisAtRound: *forceSynthesisAtRound,
 		ForceSynthesisReason:  "Principal 要求立即合成草案",
+		PauseAtRound:          *pauseAtRound,
+		AbortAtRound:          *abortAtRound,
 	})
 	if err != nil {
 		log.Fatalf("engine: %v", err)

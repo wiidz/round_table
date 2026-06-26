@@ -210,6 +210,76 @@ func assembleDesignDraftFromAgenda(s meeting.State, out synthesisAgendaOutput) (
 	return strings.TrimSpace(b.String()), openQuestions
 }
 
+func synthesisAgendaOutputToEvent(out synthesisAgendaOutput) ([]event.SynthesisAgendaSectionPayload, *event.SynthesisCrossCuttingPayload) {
+	sections := make([]event.SynthesisAgendaSectionPayload, 0, len(out.Sections))
+	for _, sec := range out.Sections {
+		sections = append(sections, event.SynthesisAgendaSectionPayload{
+			AgendaID:      sec.AgendaID,
+			Summary:       append([]string(nil), sec.Summary...),
+			Decisions:     append([]string(nil), sec.Decisions...),
+			OpenQuestions: append([]string(nil), sec.OpenQuestions...),
+		})
+	}
+	if len(out.CrossCutting.Decisions) == 0 && len(out.CrossCutting.OpenQuestions) == 0 {
+		return sections, nil
+	}
+	return sections, &event.SynthesisCrossCuttingPayload{
+		Decisions:     append([]string(nil), out.CrossCutting.Decisions...),
+		OpenQuestions: append([]string(nil), out.CrossCutting.OpenQuestions...),
+	}
+}
+
+func formatAgendaSectionBody(summary, decisions, openQuestions []string) string {
+	var b strings.Builder
+	b.WriteString("**方案要点**\n\n")
+	if len(summary) > 0 {
+		for _, line := range summary {
+			fmt.Fprintf(&b, "- %s\n", line)
+		}
+	} else {
+		b.WriteString("- （本议程项讨论不足 — 见详细记录）\n")
+	}
+	b.WriteByte('\n')
+
+	b.WriteString("**已决要点**\n\n")
+	if len(decisions) > 0 {
+		for _, d := range decisions {
+			fmt.Fprintf(&b, "- %s\n", d)
+		}
+	} else if len(summary) > 0 {
+		b.WriteString("- （已并入方案要点 — 见各轮发言）\n")
+	} else {
+		b.WriteString("- （未形成明确决议 — 见各轮发言）\n")
+	}
+	if len(openQuestions) > 0 {
+		b.WriteString("\n**待决事项**\n\n")
+		for _, q := range openQuestions {
+			fmt.Fprintf(&b, "- %s\n", q)
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func formatCrossCuttingSectionBody(decisions, openQuestions []string) string {
+	var b strings.Builder
+	if len(decisions) > 0 {
+		b.WriteString("**已决要点**\n\n")
+		for _, d := range decisions {
+			fmt.Fprintf(&b, "- %s\n", d)
+		}
+	}
+	if len(openQuestions) > 0 {
+		if b.Len() > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString("**待决事项**\n\n")
+		for _, q := range openQuestions {
+			fmt.Fprintf(&b, "- %s\n", q)
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
 func writeAgendaExecutiveSummary(b *strings.Builder, s meeting.State, out synthesisAgendaOutput) {
 	b.WriteString("## Executive Summary\n\n")
 	fmt.Fprintf(b, "**主题**：%s\n\n", s.Topic)
@@ -220,54 +290,14 @@ func writeAgendaExecutiveSummary(b *strings.Builder, s meeting.State, out synthe
 	for _, sec := range out.Sections {
 		title := agendaTitleByID(s, sec.AgendaID)
 		fmt.Fprintf(b, "### %s\n\n", title)
-
-		b.WriteString("**方案要点**\n\n")
-		if len(sec.Summary) > 0 {
-			for _, line := range sec.Summary {
-				fmt.Fprintf(b, "- %s\n", line)
-			}
-		} else {
-			b.WriteString("- （本议程项讨论不足 — 见详细记录）\n")
-		}
-		b.WriteByte('\n')
-
-		b.WriteString("**已决要点**\n\n")
-		if len(sec.Decisions) > 0 {
-			for _, d := range sec.Decisions {
-				fmt.Fprintf(b, "- %s\n", d)
-			}
-		} else if len(sec.Summary) > 0 {
-			b.WriteString("- （已并入方案要点 — 见各轮发言）\n")
-		} else {
-			b.WriteString("- （未形成明确决议 — 见各轮发言）\n")
-		}
-		b.WriteByte('\n')
-
-		if len(sec.OpenQuestions) > 0 {
-			b.WriteString("**待决事项**\n\n")
-			for _, q := range sec.OpenQuestions {
-				fmt.Fprintf(b, "- %s\n", q)
-			}
-			b.WriteByte('\n')
-		}
+		b.WriteString(formatAgendaSectionBody(sec.Summary, sec.Decisions, sec.OpenQuestions))
+		b.WriteString("\n\n")
 	}
 
 	if len(out.CrossCutting.Decisions) > 0 || len(out.CrossCutting.OpenQuestions) > 0 {
 		b.WriteString("### 跨议程事项\n\n")
-		if len(out.CrossCutting.Decisions) > 0 {
-			b.WriteString("**已决要点**\n\n")
-			for _, d := range out.CrossCutting.Decisions {
-				fmt.Fprintf(b, "- %s\n", d)
-			}
-			b.WriteByte('\n')
-		}
-		if len(out.CrossCutting.OpenQuestions) > 0 {
-			b.WriteString("**待决事项**\n\n")
-			for _, q := range out.CrossCutting.OpenQuestions {
-				fmt.Fprintf(b, "- %s\n", q)
-			}
-			b.WriteByte('\n')
-		}
+		b.WriteString(formatCrossCuttingSectionBody(out.CrossCutting.Decisions, out.CrossCutting.OpenQuestions))
+		b.WriteString("\n\n")
 	}
 
 	b.WriteString("> 完整发言与 Q&A 见下方「详细记录」。\n")
