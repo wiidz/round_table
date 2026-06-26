@@ -22,6 +22,8 @@ Meeting（聚合根）
 │   ├── Order
 │   ├── Responses[]
 │   └── Summary
+├── FreeDialogue（Round 1 后，可选）
+├── TokenUsage（LLM 调用统计）
 ├── Consensus
 ├── Confirmation（Principal 确认关，可选）
 ├── Minutes
@@ -47,7 +49,7 @@ Event 横切所有状态变更，是 Meeting State 的唯一来源。
 | Consensus | [consensus.md](./consensus.md) | Participant 之间是否达成一致 |
 | Confirmation | [confirmation.md](./confirmation.md) | Principal 确认关，审阅结论是否符合预期 |
 | Event | [event.md](./event.md) | 领域事件，驱动状态变更与审计 |
-| Workspace | [workspace.md](./workspace.md) | Meeting 文件产出区（Minutes、Artifacts） |
+| Workspace | [workspace.md](./workspace.md) | Meeting 文件产出区（Minutes、Artifacts、usage/） |
 | Profile | [profile.md](./profile.md) | Participant/Principal 身份文件（SOUL、USER） |
 | Knowledge | [knowledge.md](./knowledge.md) | 跨 Meeting 长期记忆 |
 

@@ -24,15 +24,20 @@ OpenClaw 用 **Workspace** 作为 Agent 的唯一 cwd：Markdown 文件承载上
 - **不入库**: 与 OpenClaw 一样，workspace 是运行时数据；可选手动 git backup
 - **与 config 分离**: `configs/` + `.env` 管服务配置；workspace 管讨论产出
 
-### 2. 标准文件布局（v0.1）
+### 2. 标准文件布局（v0.2，已实现）
 
 ```
 {meeting_id}/
 ├── MEETING.md
 ├── MINUTES.md
-├── action-items.md
-├── artifacts/
-└── rounds/
+├── pre-meeting/perspectives.md      # Round 0
+├── rounds/round-NNN.md              # 辩论轮 1+
+├── free-dialogue/after-round-001.md # Round 1 后 Q&A（可关闭）
+├── moderator/round-NNN-summary.md
+├── usage/summary.md                 # Token 统计
+├── usage/tokens.jsonl
+├── confirmation/brief.md            # 可选
+└── artifacts/
 ```
 
 不照搬 OpenClaw 的 `SOUL.md` / `AGENTS.md` / `USER.md` 进 **Meeting workspace**——身份与长期记忆分别在 Profile（ADR-0010）与 Knowledge（ADR-0006）。
@@ -109,12 +114,15 @@ workspace:
 
 ## 后果
 
+### 已实现（v0.2）
+
+- [x] `adapter/workspace/fs` 实现 + path jail 测试
+- [x] Engine：`MeetingCreated` → `EnsureMeeting` + `MEETING.md`
+- [x] Engine：`RoundCompleted` / `ModeratorSummarized` / `FreeDialogueCompleted` → 投影
+- [x] Engine：`ParticipantResponded` 等携带 `TokenUsage` → `usage/`
+- [x] Participant adapter：读 `MEETING.md` + Discussion context 作 prompt
 ### 待实现
 
-- [ ] `adapter/workspace/fs` 完整实现 + path jail 测试
-- [ ] Engine：`MeetingCreated` → `EnsureMeeting`
-- [ ] Engine：`RoundCompleted` / `ArtifactProduced` → 投影写文件
-- [ ] Participant adapter：读 `MEETING.md` + 相关 artifacts 作上下文
 - [ ] Transport：Principal 下载 artifacts / minutes API
 
 ### 正影响
@@ -122,6 +130,7 @@ workspace:
 - Discussion 有明确物理产出，Principal 可审阅 md
 - 与 OpenClaw Runtime 对接时有清晰文件契约
 - Event 仍可重建 workspace（投影可丢可重建）
+- Token 用量落盘 `usage/`，便于成本审计
 
 ---
 

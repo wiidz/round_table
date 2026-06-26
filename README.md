@@ -34,40 +34,53 @@ RoundTable 把复杂问题建模为一场 **Meeting（会议）**：
 
 ```
 Principal → Moderator → Participant → … → Consensus → Confirmation → Decision
-                                              ↑              │
-                                              └── Rejected ──┘
-                                                   （继续讨论）
+                              ↑              │
+                              └── Rejected ──┘
+                                   （继续讨论）
+```
+
+**单次 Meeting 内（Running）**：
+
+```
+Pre-meeting (R0) → Debate (R1…) → [R1 后 Free Dialogue] → Moderator 总结 → Consensus
 ```
 
 1. **Principal** 创建 Meeting，设定 Topic / Agenda  
-2. **Moderator** 按 Round 调度 Participant 发言  
+2. **Moderator** 调度 Pre-meeting、辩论 Round、Round 1 后自由对话、轮间总结  
 3. Participant 达成 **Consensus**（内部一致）  
 4. **Confirmation**（可选）：Moderator 整理确认清单，Principal 批准或驳回  
-5. 输出 **Minutes**、**Artifacts**、**Action Items**
+5. 输出 **Minutes**、**Artifacts**、**Action Items**、**usage/**（Token 统计）
 
-`confirmation_mode: skip` 时可跳过第 4 步，完全交由 Meeting 自行得出结论。
+`confirmation_mode: skip` 时可跳过第 4 步。`free_dialogue_max_questions: 0` 可跳过 Round 1 后 Q&A。
+
+本地端到端：`make meet-3round`（需 `DEEPSEEK_API_KEY`）。详见 [data/README.md](./data/README.md)。
 
 ---
 
 ## 项目状态
 
-🚧 **Phase 0 → Phase 1** — 领域文档与 ADR 已完成；Monorepo 骨架已初始化（`apps/server` + `go test ./apps/server/...`）。
+🚧 **Phase 1** — Meeting Engine 可本地端到端跑会（DeepSeek + `cmd/meet`）。
+
+已实现：Event Sourcing 主循环、Pre-meeting（Round 0）、多轮辩论、Round 1 自由对话、Moderator 轮间摘要、Consensus / Confirmation、Workspace 投影、Token 用量统计。
 
 ```
-apps/server/cmd/roundtable/     # 服务入口（/health）
-apps/server/internal/domain/    # 纯领域（Meeting、Event、Consensus）
-apps/server/internal/engine/    # Meeting Engine 编排
-apps/server/internal/scheduler/ # Moderator Fixed Order
-apps/server/internal/adapter/   # storage、participant 等端口
-apps/server/internal/platform/  # config、HTTP server（stdlib）
+apps/server/cmd/meet/            # 本地 CLI 跑会
+apps/server/cmd/roundtable/      # HTTP 服务入口（/health）
+apps/server/internal/domain/     # 纯领域（Meeting、Event、Consensus）
+apps/server/internal/engine/     # Meeting Engine 编排
+apps/server/internal/scheduler/  # Moderator Fixed Order
+apps/server/internal/adapter/    # model、participant、workspace、storage…
+apps/server/internal/platform/   # config、bootstrap
 ```
-
-结构说明见 [ADR-0008](./docs/architecture/ADR-0008-project-structure.md)。
 
 ```bash
-make test   # 运行测试
-make run    # 启动 :8080 /health
+make test          # 运行测试
+make run           # 启动 :7777 /health
+make meet-3round   # 三轮辩论场景（DeepSeek）
+make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y"'
 ```
+
+结构说明见 [ADR-0008](./docs/architecture/ADR-0008-project-structure.md)。数据目录见 [data/README.md](./data/README.md)。
 
 ---
 

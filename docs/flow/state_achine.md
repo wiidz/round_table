@@ -17,7 +17,7 @@ Created → Preparing → Running → Paused → Consensus → Confirmation → 
 |------|------|
 | **Created** | Meeting 已创建，尚未开始 |
 | **Preparing** | 分配 Participant、加载 Knowledge |
-| **Running** | 讨论进行中（Round 循环） |
+| **Running** | 讨论进行中（Round 0 → 辩论轮 → 可选 Free Dialogue → Moderator 总结 → 共识检查） |
 | **Paused** | 暂停，不发起新 Round |
 | **Consensus** | Participant 已达成一致，等待进入 Confirmation 或结束 |
 | **Confirmation** | Principal 审阅 Confirmation Brief（`confirmation_mode: required`） |
@@ -52,3 +52,20 @@ Consensus → Confirmation (cycle=1)
 ```
 
 详见 [confirmation.md](../domain/confirmation.md) 与 [ADR-0004](../architecture/ADR-0004-principal-confirmation.md)。
+
+---
+
+## Running 阶段子流程
+
+`Status=Running` 时，Engine 按序推进（非独立状态，见 [round.md](../domain/round.md)）：
+
+```
+Pre-meeting (Round 0)
+  → Debate Round 1
+  → Free Dialogue（Round 1 后，可配置）
+  → ModeratorSummarized (Round 1)
+  → Debate Round 2 … N
+  →（每轮后 ModeratorSummarized + Consensus 检查）
+```
+
+Confirmation 驳回后 `CurrentRound` 重置，从 Pre-meeting 重新进入新 segment；Free Dialogue 仅在首次 Round 1 后执行一次。
