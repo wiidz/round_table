@@ -105,6 +105,32 @@ Avoid:
 
 ---
 
+# Generic Solutions (Mandatory)
+
+RoundTable is a **domain-agnostic** Meeting Engine. When improving synthesis, parsing, prompts, or artifact quality:
+
+## Do NOT (case specialization)
+
+* Add **domain-specific** markers, keyword lists, or heuristics tuned to one workspace, scenario template, or Topic (e.g. a game class, a product name, PVP/balance jargon).
+* **Scrape** meeting text (free-dialogue answers, round transcripts) with phrase patterns to patch a bad LLM run.
+* Enforce **output quotas** in code (e.g. “at least N decisions”) or hard-fill empty sections with rule-extracted bullets.
+* Expand rule-based fallback with ever-growing marker tables after each `data/workspaces/mtg-*` review.
+
+## DO (generic pipeline)
+
+1. **LLM prompt + JSON schema** — define semantic roles (e.g. `core_scheme` = design snapshot, `decisions` = incremental agreements not already in core, may be empty).
+2. **Structural post-processing only** — JSON repair, normalize/dedupe by text overlap, split tentative items via generic deliberation phrasing (留待讨论 / 待确认 / 未表态).
+3. **Rule fallback** — same `assembleDesignDraft` shape; generic deliberation markers only (see `deliberation_synthesis.go` header comment), not topic-specific lists.
+4. **If quality is still insufficient** — improve Moderator `AGENTS.md` or synthesis prompt; propose ADR-level changes; **ask the user** before adding new heuristic layers.
+
+## Workspace reviews
+
+`data/workspaces/mtg-*` runs validate whether the **generic** pipeline works. They are **not** sources of new special-case rules. A empty “已决要点” after honest LLM synthesis is acceptable when everything landed in `core_scheme`.
+
+See **ADR-0011** §方案合成质量原则.
+
+---
+
 # Dependency Policy
 
 Prefer the Go Standard Library.

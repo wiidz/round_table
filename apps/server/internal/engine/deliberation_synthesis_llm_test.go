@@ -162,41 +162,6 @@ func TestDedupeDecisionsAgainstCoreScheme(t *testing.T) {
 	}
 }
 
-func TestDedupeDecisionsAgainstCoreScheme_incrementalFallback(t *testing.T) {
-	core := []string{
-		"简化操作模式（可选）：放宽影步判定范围30%、加长换位前摇至0.35秒，但降低换位伤害系数。",
-		"影步对Boss完全禁用换位，仅打断读条。",
-	}
-	decisions := []string{
-		"简化操作模式：默认关闭，玩家可随时切换，伤害降低约20%",
-		"不开放玩家自定义前摇时长，内测后通过配置表热更新",
-		"Boss禁用换位，仅打断读条",
-	}
-	got := dedupeDecisionsAgainstCoreScheme(core, decisions)
-	if len(got) == 0 {
-		t.Fatalf("expected incremental fallback, got none")
-	}
-	if len(got) >= len(decisions) {
-		t.Fatalf("expected dedupe, got all: %v", got)
-	}
-	hasCustomPref := false
-	hasBoss := false
-	for _, g := range got {
-		if strings.Contains(g, "前摇") {
-			hasCustomPref = true
-		}
-		if strings.Contains(g, "Boss") {
-			hasBoss = true
-		}
-	}
-	if !hasCustomPref {
-		t.Fatalf("expected incremental preheat decision in %v", got)
-	}
-	if hasBoss {
-		t.Fatalf("Boss duplicate should be removed: %v", got)
-	}
-}
-
 func TestDedupeDecisionsAgainstCoreScheme_emptyCore(t *testing.T) {
 	decisions := []string{"采用方案 A"}
 	got := dedupeDecisionsAgainstCoreScheme(nil, decisions)

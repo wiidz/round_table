@@ -18,7 +18,7 @@ const synthesisSchema = `Respond ONLY with a JSON object (no markdown fences).
 Do NOT use ASCII double quotes (") inside string values — use 「」 for emphasis if needed.
 {
   "core_scheme": ["3-6 bullets summarizing the latest substantive proposal, not engineering feasibility alone"],
-  "decisions": ["incremental agreements ONLY — trade-offs, rejected alternatives, free-dialogue outcomes; do NOT restate core_scheme bullets"],
+  "decisions": ["incremental agreements only — items not already covered in core_scheme; use [] if none"],
   "open_questions": ["unresolved or disputed items, including anything still needing confirmation, max 8 items"]
 }`
 
@@ -99,9 +99,9 @@ func (e *Engine) buildModeratorSynthesisSystem() (string, error) {
 	b.WriteString("You are the RoundTable Moderator synthesizing a deliberation meeting into a design draft.\n")
 	b.WriteString("Output JSON only. Write content in Chinese (简体中文).\n\n")
 	b.WriteString("Rules:\n")
-	b.WriteString("- core_scheme: design snapshot — what the final scheme looks like (定位, resources, mechanics, skills).\n")
-	b.WriteString("- decisions: incremental agreements ONLY — trade-offs, rejected alternatives, free-dialogue outcomes, numeric lock-ins. Do NOT repeat core_scheme bullets.\n")
-	b.WriteString("- decisions: exclude suggestions still debated and items with 留待讨论/待确认/未表态.\n")
+	b.WriteString("- core_scheme: design snapshot — what the final scheme looks like (structure, resources, mechanics).\n")
+	b.WriteString("- decisions: incremental agreements from the record that are NOT already in core_scheme. May be empty.\n")
+	b.WriteString("- decisions: exclude items with 留待讨论/待确认/未表态 (move those to open_questions).\n")
 	b.WriteString("- open_questions: unresolved, disputed, or needs-confirmation items; move tentative decisions here.\n")
 	b.WriteString("- Do not invent facts absent from the meeting record.\n\n")
 	if e.Profile != nil {

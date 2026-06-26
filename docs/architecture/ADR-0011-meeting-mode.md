@@ -77,6 +77,18 @@ completeDeliberation
 
 `decisions` 仅含已收敛共识；含「留待讨论 / 待确认 / 未表态」的条目归入 `open_questions`。
 
+#### 合成质量原则（禁止案例特化）
+
+| 层级 | 允许 | 禁止 |
+|------|------|------|
+| **LLM** | Moderator prompt / schema 定义字段语义；读 `AGENTS.md` | 在 prompt 里写死某场景 Topic 的字段示例 |
+| **代码后处理** | JSON 修复；`decisions` 与 `core_scheme` 文本去重（关键词重叠 / near-duplicate）；通用「待决」短语拆分 | 按 workspace 追加 domain marker；从 free-dialogue 抽句补已决；已决条数 quota |
+| **规则 fallback** | 通用研讨用语 marker（`decisionLineMarkers` 等，见 `deliberation_synthesis.go`） | 为 `game-class-design` 等模板单独分支 |
+
+**已决可为空**：若 LLM 已将共识写入 `core_scheme`，Executive Summary 中「已决要点」为空或占位文案是合法结果，不得用规则硬凑。
+
+质量不足时的优先顺序：改 Moderator prompt / `AGENTS.md` → ADR 设计 → 用户确认后再考虑新的**通用**结构处理（非 marker 堆叠）。
+
 ### 5. SynthesisCompleted 事件
 
 新增 `SynthesisCompleted`（与 `ConsensusReached` 并列），payload：
