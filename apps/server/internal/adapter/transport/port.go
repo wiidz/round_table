@@ -7,7 +7,8 @@ type Inbound struct {
 	Platform  string // e.g. discord
 	ChannelID string
 	GuildID   string // empty for DMs
-	AuthorID  string
+	AuthorID    string
+	AuthorName  string
 	MessageID string
 	Content   string
 }

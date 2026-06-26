@@ -70,10 +70,12 @@ type Transport struct {
 
 // DiscordTransport configures the Discord bot adapter.
 type DiscordTransport struct {
-	Enabled    bool   `yaml:"enabled"`
-	AllowDM    bool   `yaml:"allow_dm"`
-	AllowGuild bool   `yaml:"allow_guild"`
-	GuildID    string `yaml:"guild_id"` // optional: restrict to one server
+	Enabled        bool   `yaml:"enabled"`
+	AllowDM        bool   `yaml:"allow_dm"`
+	AllowGuild     bool   `yaml:"allow_guild"`
+	GuildID        string `yaml:"guild_id"` // optional: restrict to one server
+	CommandPrefix  string `yaml:"command_prefix"`
+	BindingsFile   string `yaml:"bindings_file"`
 }
 
 // Secrets are loaded only from .env / environment — never from YAML.
@@ -149,9 +151,11 @@ func defaults() Config {
 		},
 		Transport: Transport{
 			Discord: DiscordTransport{
-				Enabled:    false,
-				AllowDM:    true,
-				AllowGuild: true,
+				Enabled:       false,
+				AllowDM:       true,
+				AllowGuild:    true,
+				CommandPrefix: "!rt",
+				BindingsFile:  "./data/transport/discord-principal.json",
 			},
 		},
 	}
@@ -189,6 +193,8 @@ func applyEnv(cfg *Config) {
 	overrideBool(&cfg.Transport.Discord.AllowDM, "ROUND_TABLE_DISCORD_ALLOW_DM")
 	overrideBool(&cfg.Transport.Discord.AllowGuild, "ROUND_TABLE_DISCORD_ALLOW_GUILD")
 	overrideString(&cfg.Transport.Discord.GuildID, "ROUND_TABLE_DISCORD_GUILD_ID")
+	overrideString(&cfg.Transport.Discord.CommandPrefix, "ROUND_TABLE_DISCORD_COMMAND_PREFIX")
+	overrideString(&cfg.Transport.Discord.BindingsFile, "ROUND_TABLE_DISCORD_BINDINGS_FILE")
 }
 
 func loadSecrets() Secrets {

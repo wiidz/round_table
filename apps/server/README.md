@@ -72,6 +72,15 @@ DISCORD_BOT_TOKEN=your-bot-token
 make run-discord
 ```
 
-当前行为：收到消息后 echo 回复（`RoundTable 收到: …`），用于验证收发链路。
+当前行为：文本指令绑定 Principal（每个服务器或私信会话一位）。
+
+```
+!rt help
+!rt principal bind    # 绑定你自己为 Principal
+!rt principal whoami  # 查看绑定
+!rt principal unbind  # 解除绑定
+```
+
+绑定数据持久化在 `data/transport/discord-principal.json`（路径可在 server.yaml 配置）。
 
 结构说明见 [ADR-0008](../../docs/architecture/ADR-0008-project-structure.md)。

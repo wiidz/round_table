@@ -41,3 +41,5 @@ transport:
     allow_dm: true
     allow_guild: true
     guild_id: ""   # optional: restrict bot to one Discord server ID
+    command_prefix: "!rt"
+    bindings_file: ./data/transport/discord-principal.json

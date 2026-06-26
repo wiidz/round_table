@@ -63,6 +63,16 @@ export GOPROXY=https://goproxy.cn,direct
 
 `make test` / `make run` / `make tidy` already export this via the root Makefile.
 
+### Local network proxy (Discord / external APIs)
+
+When debugging **Discord Transport** or other calls to blocked endpoints (e.g. `discord.com`), export the local proxy first:
+
+```bash
+export https_proxy=http://127.0.0.1:7897 http_proxy=http://127.0.0.1:7897 all_proxy=socks5://127.0.0.1:7897
+```
+
+`make run-discord` sets these automatically. Go `net/http` (including discordgo) respects `HTTP_PROXY` / `HTTPS_PROXY`.
+
 ## Frontend
 
 * React

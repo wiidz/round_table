@@ -13,3 +13,11 @@ export GOPROXY=https://goproxy.cn,direct
 ```
 
 Or prefer **`make test`** / **`make tidy`** from the repo root (Makefile sets `GOPROXY` automatically).
+
+When debugging **Discord** or other blocked external APIs, set the local proxy (see **`.cursorrules` → Local network proxy**):
+
+```bash
+export https_proxy=http://127.0.0.1:7897 http_proxy=http://127.0.0.1:7897 all_proxy=socks5://127.0.0.1:7897
+```
+
+Or use **`make run-discord`** (proxy included).

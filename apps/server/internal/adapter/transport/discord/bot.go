@@ -68,12 +68,13 @@ func (b *Bot) Run(ctx context.Context, handler transport.MessageHandler) error {
 		}
 
 		in := transport.Inbound{
-			Platform:  "discord",
-			ChannelID: ev.ChannelID,
-			GuildID:   ev.GuildID,
-			AuthorID:  ev.Author.ID,
-			MessageID: ev.ID,
-			Content:   strings.TrimSpace(ev.Content),
+			Platform:   "discord",
+			ChannelID:  ev.ChannelID,
+			GuildID:    ev.GuildID,
+			AuthorID:   ev.Author.ID,
+			AuthorName: ev.Author.Username,
+			MessageID:  ev.ID,
+			Content:    strings.TrimSpace(ev.Content),
 		}
 		if in.Content == "" {
 			return

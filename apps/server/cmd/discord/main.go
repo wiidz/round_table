@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"round_table/apps/server/internal/adapter/transport"
 	discordtransport "round_table/apps/server/internal/adapter/transport/discord"
+	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	"round_table/apps/server/internal/platform/config"
 )
 
@@ -23,6 +23,11 @@ func main() {
 		os.Exit(2)
 	}
 
+	reg, err := principalbind.NewRegistry(dc.BindingsFile)
+	if err != nil {
+		log.Fatalf("discord: principal registry: %v", err)
+	}
+
 	bot, err := discordtransport.New(discordtransport.Options{
 		Token:      cfg.Secrets.DiscordBotToken,
 		AllowDM:    dc.AllowDM,
@@ -33,18 +38,15 @@ func main() {
 		log.Fatalf("discord: %v", err)
 	}
 
+	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg)
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	log.Printf("discord bot connected — allow_dm=%v allow_guild=%v guild_id=%q", dc.AllowDM, dc.AllowGuild, dc.GuildID)
-	log.Printf("send a message in an allowed channel; bot replies with echo")
+	log.Printf("discord bot connected — prefix=%q bindings=%s", cmd.Prefix, dc.BindingsFile)
+	log.Printf("try: %sprincipal bind | %sprincipal whoami | %shelp", cmd.Prefix, cmd.Prefix, cmd.Prefix)
 
-	handler := func(_ context.Context, msg transport.Inbound) (string, error) {
-		log.Printf("inbound channel=%s author=%s: %s", msg.ChannelID, msg.AuthorID, msg.Content)
-		return fmt.Sprintf("RoundTable 收到: %s", msg.Content), nil
-	}
-
-	if err := bot.Run(ctx, handler); err != nil {
+	if err := bot.Run(ctx, cmd.Handle); err != nil {
 		log.Fatalf("discord: %v", err)
 	}
 }

@@ -22,6 +22,7 @@ run:
 
 ## run-discord: start Discord transport bot (requires DISCORD_BOT_TOKEN in apps/server/.env)
 run-discord:
+	https_proxy=http://127.0.0.1:7897 http_proxy=http://127.0.0.1:7897 all_proxy=socks5://127.0.0.1:7897 \
 	go run $(DISCORD_CMD)/main.go
 
 ## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in apps/server/.env)
