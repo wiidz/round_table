@@ -34,6 +34,9 @@ func (e *Engine) advanceFreeDialogue(ctx context.Context, s meeting.State) (meet
 }
 
 func (e *Engine) inviteFreeDialogueAsk(ctx context.Context, s meeting.State) (meeting.State, error) {
+	if ns, handled, err := e.maybePrincipalFreeDialogueQuestion(ctx, s); err != nil || handled {
+		return ns, err
+	}
 	askerID, answererID := freeDialoguePair(s)
 	prompt := e.buildFreeDialogueAskPrompt(s, askerID, answererID)
 	detail := freeDialogueTurnLabel(s) + " ask " + askerID + "→" + answererID
@@ -151,16 +154,15 @@ func formatFreeDialogueContext(s meeting.State) string {
 		}
 	}
 	for _, ex := range s.FreeDialogueExchanges {
-		askRole := s.Participants[ex.AskerID].Role
+		fmt.Fprintf(&b, "%s asked ", formatFreeDialogueAskerLine(s, ex.AskerID, ex.PrincipalMediated))
 		ansRole := s.Participants[ex.AnswererID].Role
-		fmt.Fprintf(&b, "**%s** (%s) asked **%s** (%s): %s\n",
-			ex.AskerID, askRole, ex.AnswererID, ansRole, ex.Question)
+		fmt.Fprintf(&b, "**%s** (%s): %s\n", ex.AnswererID, ansRole, ex.Question)
 		fmt.Fprintf(&b, "**%s** answered: %s\n\n", ex.AnswererID, ex.Answer)
 	}
 	if pending := s.PendingFreeDialogue; pending != nil {
-		askRole := s.Participants[pending.AskerID].Role
-		fmt.Fprintf(&b, "**%s** (%s) asked: %s _(awaiting answer)_\n",
-			pending.AskerID, askRole, pending.Question)
+		fmt.Fprintf(&b, "%s asked ", formatFreeDialogueAskerLine(s, pending.AskerID, pending.PrincipalMediated))
+		fmt.Fprintf(&b, "**%s**: %s _(awaiting answer)_\n",
+			pending.AnswererID, pending.Question)
 	}
 	return strings.TrimSpace(b.String())
 }
@@ -169,10 +171,40 @@ func summarizeFreeDialogue(s meeting.State) string {
 	var b strings.Builder
 	b.WriteString("Free dialogue after Round 1\n\n")
 	for _, ex := range s.FreeDialogueExchanges {
-		askRole := s.Participants[ex.AskerID].Role
-		ansRole := s.Participants[ex.AnswererID].Role
-		fmt.Fprintf(&b, "**%s** (%s) → **%s** (%s)\n\n", ex.AskerID, askRole, ex.AnswererID, ansRole)
+		fmt.Fprintf(&b, "%s\n\n", formatFreeDialogueExchangeLine(s, ex))
 		fmt.Fprintf(&b, "Q: %s\n\nA: %s\n\n", ex.Question, ex.Answer)
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func (e *Engine) maybePrincipalFreeDialogueQuestion(ctx context.Context, s meeting.State) (meeting.State, bool, error) {
+	if e.Principal == nil || !s.InFreeDialogue || s.PendingFreeDialogue != nil {
+		return s, false, nil
+	}
+	question, ok, err := e.Principal.FreeDialogueQuestion(ctx, s.ID, s)
+	if err != nil || !ok || strings.TrimSpace(question) == "" {
+		return s, false, err
+	}
+	_, answererID := freeDialoguePair(s)
+	ns, err := e.append(ctx, s, eventFreeDialogueQuestionAskedByPrincipal(
+		answererID, s.FreeDialogueQuestionIndex, strings.TrimSpace(question),
+	))
+	return ns, true, err
+}
+
+func formatFreeDialogueExchangeLine(s meeting.State, ex meeting.FreeDialogueExchange) string {
+	if ex.PrincipalMediated {
+		ansRole := s.Participants[ex.AnswererID].Role
+		return fmt.Sprintf("**Principal** (via Moderator) → **%s** (%s)", ex.AnswererID, ansRole)
+	}
+	askRole := s.Participants[ex.AskerID].Role
+	ansRole := s.Participants[ex.AnswererID].Role
+	return fmt.Sprintf("**%s** (%s) → **%s** (%s)", ex.AskerID, askRole, ex.AnswererID, ansRole)
+}
+
+func formatFreeDialogueAskerLine(s meeting.State, askerID string, principalMediated bool) string {
+	if principalMediated {
+		return "**Principal** (via Moderator)"
+	}
+	return fmt.Sprintf("**%s** (%s)", askerID, s.Participants[askerID].Role)
 }

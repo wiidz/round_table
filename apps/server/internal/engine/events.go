@@ -149,6 +149,21 @@ func eventFreeDialogueQuestionAsked(askerID, answererID string, questionIndex in
 	}
 }
 
+func eventFreeDialogueQuestionAskedByPrincipal(answererID string, questionIndex int, content string) event.Envelope {
+	payload, _ := json.Marshal(event.FreeDialogueQuestionAskedPayload{
+		AskerID:           meeting.PrincipalRelayAskerID,
+		AnswererID:        answererID,
+		QuestionIndex:     questionIndex,
+		Content:           content,
+		PrincipalMediated: true,
+	})
+	return event.Envelope{
+		Type:    event.TypeFreeDialogueQuestion,
+		Payload: payload,
+		Actor:   event.ActorPrincipal,
+	}
+}
+
 func eventFreeDialogueAnswered(askerID, answererID string, questionIndex int, question, answer string, usage *event.TokenUsage) event.Envelope {
 	payload, _ := json.Marshal(event.FreeDialogueAnsweredPayload{
 		AskerID:       askerID,

@@ -59,13 +59,18 @@ func (e *Engine) logProgress(env event.Envelope, s meeting.State) {
 	case event.TypeFreeDialogueQuestion:
 		p, _ := decodePayload[event.FreeDialogueQuestionAskedPayload](env)
 		total := freeDialogueTotal(s)
-		e.logf("  ? question %d/%d %s → %s",
-			p.QuestionIndex+1, total, p.AskerID, p.AnswererID)
+		if p.PrincipalMediated {
+			e.logf("◆ free dialogue question %d/%d principal → %s\n%s",
+				p.QuestionIndex+1, total, p.AnswererID, strings.TrimSpace(p.Content))
+		} else {
+			e.logf("◆ free dialogue question %d/%d %s → %s\n%s",
+				p.QuestionIndex+1, total, p.AskerID, p.AnswererID, strings.TrimSpace(p.Content))
+		}
 	case event.TypeFreeDialogueAnswer:
 		p, _ := decodePayload[event.FreeDialogueAnsweredPayload](env)
 		total := freeDialogueTotal(s)
-		e.logf("  ✓ answer %d/%d %s answered %s",
-			p.QuestionIndex+1, total, p.AnswererID, p.AskerID)
+		e.logf("◆ free dialogue answer %d/%d %s → %s\n%s",
+			p.QuestionIndex+1, total, p.AnswererID, p.AskerID, strings.TrimSpace(p.Answer))
 	case event.TypeFreeDialogueCompleted:
 		e.logf("■ free dialogue completed (%d exchanges)", len(s.FreeDialogueExchanges))
 	case event.TypeModeratorSummarized:

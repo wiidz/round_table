@@ -81,6 +81,22 @@ func localizeProgressEN(line string) string {
 		return "⚡ " + line
 	case strings.HasPrefix(line, "◇ principal force consensus"):
 		return "🤝 " + line
+	case strings.HasPrefix(line, "▶ free dialogue after round"):
+		var round, total, maxQ int
+		if _, err := fmt.Sscanf(line, "▶ free dialogue after round %d (%d Q&A pairs, max_questions=%d/person)", &round, &total, &maxQ); err == nil {
+			return fmt.Sprintf("💬 Free dialogue after round %d · %d Q&A pairs · max %d/person\n\nPrincipal: send **ask …**", round, total, maxQ)
+		}
+		return line
+	case strings.HasPrefix(line, "◆ free dialogue question "):
+		return localizeFreeDialogueQuestionLine(line, LocaleEN)
+	case strings.HasPrefix(line, "◆ free dialogue answer "):
+		return localizeFreeDialogueAnswerLine(line, LocaleEN)
+	case strings.HasPrefix(line, "■ free dialogue completed"):
+		var n int
+		if _, err := fmt.Sscanf(line, "■ free dialogue completed (%d exchanges)", &n); err == nil {
+			return fmt.Sprintf("✅ Free dialogue completed · %d exchanges", n)
+		}
+		return line
 	default:
 		return line
 	}
@@ -121,8 +137,14 @@ func localizeProgressZH(line string) string {
 	case strings.HasPrefix(line, "▶ free dialogue after round"):
 		var round, total, maxQ int
 		if _, err := fmt.Sscanf(line, "▶ free dialogue after round %d (%d Q&A pairs, max_questions=%d/person)", &round, &total, &maxQ); err == nil {
-			return fmt.Sprintf("💬 第 %d 轮后自由问答 · %d 组问答 · 每人最多 %d 问", round, total, maxQ)
+			return fmt.Sprintf("💬 第 %d 轮后自由问答 · %d 组问答 · 每人最多 %d 问\n\nPrincipal 可发送 **提问 …**", round, total, maxQ)
 		}
+
+	case strings.HasPrefix(line, "◆ free dialogue question "):
+		return localizeFreeDialogueQuestionLine(line, LocaleZH)
+
+	case strings.HasPrefix(line, "◆ free dialogue answer "):
+		return localizeFreeDialogueAnswerLine(line, LocaleZH)
 
 	case strings.HasPrefix(line, "■ free dialogue completed"):
 		var n int
@@ -285,6 +307,81 @@ func localizeStreamDetail(detail string, loc Locale) string {
 		return "设计草案合成"
 	}
 	return detail
+}
+
+func localizeFreeDialogueQuestionLine(line string, loc Locale) string {
+	rest := strings.TrimPrefix(line, "◆ free dialogue question ")
+	parts := strings.SplitN(rest, "\n", 2)
+	header := parts[0]
+	body := ""
+	if len(parts) > 1 {
+		body = strings.TrimSpace(parts[1])
+	}
+	var idx, total int
+	var asker, answerer string
+	if strings.Contains(header, "principal →") {
+		if _, err := fmt.Sscanf(header, "%d/%d principal → %s", &idx, &total, &answerer); err != nil {
+			return line
+		}
+		if loc == LocaleZH {
+			msg := fmt.Sprintf("❓ 自由问答 %d/%d · **Principal**（主持人转达）→ **%s**",
+				idx, total, participantLabel(answerer, loc))
+			if body != "" {
+				msg += "\n\n" + body
+			}
+			return msg
+		}
+		msg := fmt.Sprintf("❓ Free dialogue %d/%d · **Principal** (via Moderator) → **%s**",
+			idx, total, answerer)
+		if body != "" {
+			msg += "\n\n" + body
+		}
+		return msg
+	}
+	if _, err := fmt.Sscanf(header, "%d/%d %s → %s", &idx, &total, &asker, &answerer); err != nil {
+		return line
+	}
+	if loc == LocaleZH {
+		msg := fmt.Sprintf("❓ 自由问答 %d/%d · **%s** → **%s**",
+			idx, total, participantLabel(asker, loc), participantLabel(answerer, loc))
+		if body != "" {
+			msg += "\n\n" + body
+		}
+		return msg
+	}
+	msg := fmt.Sprintf("❓ Free dialogue %d/%d · **%s** → **%s**", idx, total, asker, answerer)
+	if body != "" {
+		msg += "\n\n" + body
+	}
+	return msg
+}
+
+func localizeFreeDialogueAnswerLine(line string, loc Locale) string {
+	rest := strings.TrimPrefix(line, "◆ free dialogue answer ")
+	parts := strings.SplitN(rest, "\n", 2)
+	header := parts[0]
+	body := ""
+	if len(parts) > 1 {
+		body = strings.TrimSpace(parts[1])
+	}
+	var idx, total int
+	var answerer, asker string
+	if _, err := fmt.Sscanf(header, "%d/%d %s → %s", &idx, &total, &answerer, &asker); err != nil {
+		return line
+	}
+	if loc == LocaleZH {
+		msg := fmt.Sprintf("💡 自由问答 %d/%d · **%s** 回答 **%s**",
+			idx, total, participantLabel(answerer, loc), participantLabel(asker, loc))
+		if body != "" {
+			msg += "\n\n" + body
+		}
+		return msg
+	}
+	msg := fmt.Sprintf("💡 Free dialogue %d/%d · **%s** answers **%s**", idx, total, answerer, asker)
+	if body != "" {
+		msg += "\n\n" + body
+	}
+	return msg
 }
 
 func formatStreamStart(meta streamMeta, loc Locale) string {

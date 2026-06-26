@@ -52,4 +52,7 @@ type Port interface {
 	RunningAction(ctx context.Context, meetingID string, s meeting.State) (RunningIntervention, error)
 	// PausedAction returns resume or abort while Status=Paused. Default: resume immediately.
 	PausedAction(ctx context.Context, meetingID string, s meeting.State) (RunningIntervention, error)
+	// FreeDialogueQuestion returns a Principal question queued at a free-dialogue turn boundary.
+	// ok=false when none is queued.
+	FreeDialogueQuestion(ctx context.Context, meetingID string, s meeting.State) (question string, ok bool, err error)
 }

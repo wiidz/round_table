@@ -372,17 +372,25 @@ func applyFreeDialogueQuestionAsked(s State, env event.Envelope) (State, error) 
 	if p.QuestionIndex != s.FreeDialogueQuestionIndex {
 		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked index %d, want %d", s.ID, p.QuestionIndex, s.FreeDialogueQuestionIndex)
 	}
-	if !participantInOrder(s.ParticipantOrder, p.AskerID) || !participantInOrder(s.ParticipantOrder, p.AnswererID) {
+	if p.PrincipalMediated {
+		if p.AskerID != PrincipalRelayAskerID {
+			return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked principal_mediated asker %q, want %q", s.ID, p.AskerID, PrincipalRelayAskerID)
+		}
+		if !participantInOrder(s.ParticipantOrder, p.AnswererID) {
+			return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked unknown answerer", s.ID)
+		}
+	} else if !participantInOrder(s.ParticipantOrder, p.AskerID) || !participantInOrder(s.ParticipantOrder, p.AnswererID) {
 		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked unknown participant", s.ID)
 	}
 	if p.Content == "" {
 		return s, fmt.Errorf("meeting %s: FreeDialogueQuestionAsked empty content", s.ID)
 	}
 	s.PendingFreeDialogue = &PendingFreeDialogue{
-		AskerID:       p.AskerID,
-		AnswererID:    p.AnswererID,
-		QuestionIndex: p.QuestionIndex,
-		Question:      p.Content,
+		AskerID:           p.AskerID,
+		AnswererID:        p.AnswererID,
+		QuestionIndex:     p.QuestionIndex,
+		Question:          p.Content,
+		PrincipalMediated: p.PrincipalMediated,
 	}
 	if p.TokenUsage != nil {
 		s = recordTokenUsage(s, *p.TokenUsage)
@@ -409,11 +417,12 @@ func applyFreeDialogueAnswered(s State, env event.Envelope) (State, error) {
 		return s, fmt.Errorf("meeting %s: FreeDialogueAnswered empty answer", s.ID)
 	}
 	s.FreeDialogueExchanges = append(s.FreeDialogueExchanges, FreeDialogueExchange{
-		QuestionIndex: p.QuestionIndex,
-		AskerID:       p.AskerID,
-		AnswererID:    p.AnswererID,
-		Question:      p.Question,
-		Answer:        p.Answer,
+		QuestionIndex:     p.QuestionIndex,
+		AskerID:           p.AskerID,
+		AnswererID:        p.AnswererID,
+		Question:          p.Question,
+		Answer:            p.Answer,
+		PrincipalMediated: pending.PrincipalMediated,
 	})
 	s.PendingFreeDialogue = nil
 	s.FreeDialogueQuestionIndex++

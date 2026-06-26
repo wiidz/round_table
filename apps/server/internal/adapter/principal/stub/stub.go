@@ -107,3 +107,8 @@ func (p *Principal) PausedAction(_ context.Context, _ string, s meeting.State) (
 	}
 	return principal.RunningIntervention{Kind: principal.RunningInterventionResume}, nil
 }
+
+// FreeDialogueQuestion implements principal.Port.
+func (p *Principal) FreeDialogueQuestion(_ context.Context, _ string, _ meeting.State) (string, bool, error) {
+	return "", false, nil
+}

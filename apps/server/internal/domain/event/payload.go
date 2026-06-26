@@ -85,11 +85,12 @@ type FreeDialogueStartedPayload struct {
 
 // FreeDialogueQuestionAskedPayload records a question in free dialogue.
 type FreeDialogueQuestionAskedPayload struct {
-	AskerID       string `json:"asker_id"`
-	AnswererID    string `json:"answerer_id"`
-	QuestionIndex int        `json:"question_index"`
-	Content       string     `json:"content"`
-	TokenUsage    *TokenUsage `json:"token_usage,omitempty"`
+	AskerID           string      `json:"asker_id"`
+	AnswererID        string      `json:"answerer_id"`
+	QuestionIndex     int         `json:"question_index"`
+	Content           string      `json:"content"`
+	PrincipalMediated bool        `json:"principal_mediated,omitempty"`
+	TokenUsage        *TokenUsage `json:"token_usage,omitempty"`
 }
 
 // FreeDialogueAnsweredPayload records an answer in free dialogue.

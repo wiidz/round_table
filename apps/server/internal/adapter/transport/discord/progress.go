@@ -13,12 +13,20 @@ type channelProgress struct {
 	pool      *BotPool
 	channelID string
 	loc       Locale
+	principal *ChannelPrincipal
 }
 
 func (p *channelProgress) Logf(format string, args ...any) {
 	line := fmt.Sprintf(format, args...)
 	if strings.HasPrefix(line, moderatorSummaryPrefix) {
 		return
+	}
+	if p.principal != nil {
+		if strings.HasPrefix(line, "▶ free dialogue after round") {
+			p.principal.MarkFreeDialogue(p.channelID, true)
+		} else if strings.HasPrefix(line, "■ free dialogue completed") {
+			p.principal.MarkFreeDialogue(p.channelID, false)
+		}
 	}
 	if !shouldPostProgress(line) {
 		return
@@ -65,6 +73,12 @@ func shouldPostProgress(line string) bool {
 	}
 	if strings.Contains(line, "generating moderator summary") ||
 		strings.Contains(line, "generating deliberation summary") {
+		return false
+	}
+	// Free-dialogue Q&A body is posted by participant stream; skip progress duplicates.
+	// Principal questions are already shown in the queued ack — no Moderator relay line.
+	if strings.HasPrefix(line, "◆ free dialogue question ") ||
+		strings.HasPrefix(line, "◆ free dialogue answer ") {
 		return false
 	}
 	// Internal LLM status — stream output covers readiness/synthesis body.

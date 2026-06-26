@@ -225,6 +225,18 @@ func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string
 	return formatMeetLaunchAck(loc, meetingID, cfg, binding.DisplayName, maxConfirm), nil
 }
 
+// HandleFreeDialogueQuestion queues a Principal question during free dialogue.
+func (r *MeetRunner) HandleFreeDialogueQuestion(msg transport.Inbound) (string, error) {
+	if r.Principal == nil || !isFreeDialogueQuestionTrigger(msg.Content) {
+		return "", nil
+	}
+	loc := ParseLocale(r.Discord.Locale)
+	if _, active := r.sessions.active(msg.ChannelID); !active {
+		return freeDialogueQuestionWrongPhaseText(loc), nil
+	}
+	return r.Principal.DeliverFreeDialogueQuestion(msg.ChannelID, msg.AuthorID, msg.Content)
+}
+
 // HandleRunningIntervention processes Principal pause/abort/force commands during a meeting.
 func (r *MeetRunner) HandleRunningIntervention(msg transport.Inbound) (string, error) {
 	if r.Principal == nil || !isInterventionTrigger(msg.Content) {
@@ -257,7 +269,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		defer r.Principal.UnbindMeeting(meetingID)
 	}
 
-	chProgress := &channelProgress{pool: r.Bots, channelID: channelID, loc: loc}
+	chProgress := &channelProgress{pool: r.Bots, channelID: channelID, loc: loc, principal: r.Principal}
 	chStream := &channelStream{pool: r.Bots, channelID: channelID, loc: loc}
 
 	var eng *engine.Engine

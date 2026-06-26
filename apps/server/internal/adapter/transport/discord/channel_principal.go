@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	prin "round_table/apps/server/internal/adapter/principal"
@@ -30,6 +31,9 @@ type meetingBind struct {
 	pendingRunning prin.RunningIntervention
 	paused         bool
 	pausedReply    chan prin.RunningIntervention
+
+	inFreeDialogue              bool
+	pendingPrincipalQuestion    string
 }
 
 type confirmReply struct {
@@ -122,6 +126,76 @@ func (p *ChannelPrincipal) DeliverConfirmationReply(channelID, authorID, content
 		return confirmReceivedApproveText(p.Loc), nil
 	}
 	return confirmReceivedRejectText(p.Loc), nil
+}
+
+// MarkFreeDialogue updates whether a channel meeting is in the free-dialogue phase.
+func (p *ChannelPrincipal) MarkFreeDialogue(channelID string, active bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if wait := p.bindForChannelLocked(channelID); wait != nil {
+		wait.inFreeDialogue = active
+		if !active {
+			wait.pendingPrincipalQuestion = ""
+		}
+	}
+}
+
+// InFreeDialogue reports whether the channel's meeting is in free dialogue.
+func (p *ChannelPrincipal) InFreeDialogue(channelID string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	wait := p.bindForChannelLocked(channelID)
+	return wait != nil && wait.inFreeDialogue
+}
+
+// DeliverFreeDialogueQuestion queues a Principal question during free dialogue.
+func (p *ChannelPrincipal) DeliverFreeDialogueQuestion(channelID, authorID, content string) (string, error) {
+	question, ok := parseFreeDialogueQuestion(content)
+	if !ok {
+		return "", nil
+	}
+	if strings.TrimSpace(question) == "" {
+		return freeDialogueQuestionParseErrorText(p.Loc, errFreeDialogueQuestionEmpty), nil
+	}
+
+	p.mu.Lock()
+	wait := p.bindForChannelLocked(channelID)
+	if wait == nil {
+		p.mu.Unlock()
+		return "", nil
+	}
+	if authorID != wait.authorID {
+		p.mu.Unlock()
+		return freeDialogueQuestionNotOwnerText(p.Loc), nil
+	}
+	if wait.confirmCycle > 0 {
+		p.mu.Unlock()
+		return freeDialogueQuestionConfirmBlocksText(p.Loc), nil
+	}
+	if !wait.inFreeDialogue {
+		p.mu.Unlock()
+		return freeDialogueQuestionWrongPhaseText(p.Loc), nil
+	}
+	if wait.pendingPrincipalQuestion != "" {
+		p.mu.Unlock()
+		return freeDialogueQuestionAlreadyQueuedText(p.Loc), nil
+	}
+	wait.pendingPrincipalQuestion = strings.TrimSpace(question)
+	p.mu.Unlock()
+	return freeDialogueQuestionAckText(p.Loc, strings.TrimSpace(question)), nil
+}
+
+// FreeDialogueQuestion implements principal.Port.
+func (p *ChannelPrincipal) FreeDialogueQuestion(_ context.Context, meetingID string, _ meeting.State) (string, bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	wait, ok := p.sessions[meetingID]
+	if !ok || wait.pendingPrincipalQuestion == "" {
+		return "", false, nil
+	}
+	q := wait.pendingPrincipalQuestion
+	wait.pendingPrincipalQuestion = ""
+	return q, true, nil
 }
 
 // DeliverIntervention handles Principal running/paused control commands.

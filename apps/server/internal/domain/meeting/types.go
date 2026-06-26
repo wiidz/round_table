@@ -33,21 +33,26 @@ type RoundResponse struct {
 	ObjectReason string
 }
 
+// PrincipalRelayAskerID is the Moderator relay for Principal-mediated free dialogue questions.
+const PrincipalRelayAskerID = "moderator"
+
 // FreeDialogueExchange is one ask/answer pair after Round 1.
 type FreeDialogueExchange struct {
-	QuestionIndex int
-	AskerID       string
-	AnswererID    string
-	Question      string
-	Answer        string
+	QuestionIndex     int
+	AskerID           string
+	AnswererID        string
+	Question          string
+	Answer            string
+	PrincipalMediated bool
 }
 
 // PendingFreeDialogue tracks an unanswered question in free dialogue.
 type PendingFreeDialogue struct {
-	AskerID       string
-	AnswererID    string
-	QuestionIndex int
-	Question      string
+	AskerID           string
+	AnswererID        string
+	QuestionIndex     int
+	Question          string
+	PrincipalMediated bool
 }
 
 // TokenUsageRecord is one LLM call in the meeting.
