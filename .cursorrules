@@ -53,6 +53,16 @@ Do not use a one-line commit message unless the user explicitly requests it.
 * SQLite (v1)
 * PostgreSQL (future)
 
+### Go module proxy (local dev)
+
+When running `go` commands directly (outside `make`), set the module proxy first:
+
+```bash
+export GOPROXY=https://goproxy.cn,direct
+```
+
+`make test` / `make run` / `make tidy` already export this via the root Makefile.
+
 ## Frontend
 
 * React

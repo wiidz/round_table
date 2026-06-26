@@ -3,6 +3,9 @@ APP      := roundtable
 CMD      := $(SERVER)/cmd/roundtable
 BIN_DIR  := ./bin
 
+# China-friendly module proxy for local dev (see apps/server/README.md)
+export GOPROXY := https://goproxy.cn,direct
+
 .PHONY: run build test clean migrate tidy
 
 ## run: start the server

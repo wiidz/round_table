@@ -19,11 +19,24 @@ apps/server/
 └── go.mod
 ```
 
-仓库根目录 `go.work` 引用本 module。开发命令：
+仓库根目录 `go.work` 引用本 module。
+
+### 本地开发
+
+Go module 代理（国内网络建议先设置）：
 
 ```bash
-make test    # 从仓库根运行
-make run
+export GOPROXY=https://goproxy.cn,direct
+```
+
+配置分层：`configs/server.yaml`（默认）→ `.env`（secrets，见 `.env.example`）→ 环境变量。
+
+开发命令（仓库根目录；`make` 已内置 `GOPROXY`）：
+
+```bash
+make test
+make run     # :7777 /health
+make tidy
 ```
 
 结构说明见 [ADR-0008](../../docs/architecture/ADR-0008-project-structure.md)。

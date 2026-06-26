@@ -1,7 +1,7 @@
-# RoundTable server configuration (no secrets — use env for DSN)
+# RoundTable server configuration (no secrets — use .env or env vars)
 
 server:
-  addr: ":8080"
+  addr: ":7777"
   read_timeout_sec: 30
   write_timeout_sec: 30
 

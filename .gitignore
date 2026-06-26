@@ -17,6 +17,7 @@ coverage.out
 
 # Local config / secrets
 apps/server/configs/local.yaml
+apps/server/.env
 .env
 *.db
 
