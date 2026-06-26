@@ -38,20 +38,22 @@ Participant 之间**禁止**直接通信。
 
 - Moderator 不是 Main Agent、Boss Agent 或 TaskManager
 - Moderator 不替代 Participant 做专业决策
-- 调度逻辑属于 Domain；LLM 调用属于 Model Adapter
+- 调度逻辑属于 Domain；LLM 调用属于 Model Adapter（见 [ADR-0007](../architecture/ADR-0007-moderator-scheduling.md)）
 
 ---
 
-## 待决策
+## 已决议（ADR-0007）
 
-| 编号 | 问题 | 选项 / 备注 |
-|------|------|-------------|
-| D-Mod01 | Moderator 是否由 LLM 驱动 | 纯规则引擎 vs LLM 辅助调度 vs 混合 |
-| D-Mod02 | Choose Next Speaker 策略 | 固定顺序 / 动态优先级 / 基于 Agenda 进度 |
-| D-Mod03 | Summarize 粒度 | 每 Participant 回应后 / 每 Round 结束 / 两者兼有 |
-| D-Mod04 | Pause 时 Participant 状态 | 全部 Waiting vs 保留 Thinking 中间态 |
-| D-Mod05 | Moderator 僵局处理 | 触发 Vote、Moderator Decision 或请求 Principal 介入 |
-| D-Mod06 | Principal 介入点 | Principal 是否可 override 发言顺序或强制结束 Round |
+详见 [ADR-0007-moderator-scheduling.md](../architecture/ADR-0007-moderator-scheduling.md)。
+
+| 编号 | 决议 |
+|------|------|
+| D-Mod01 | v0.1 **纯规则引擎**；Summary/Brief 可选 LLM Adapter |
+| D-Mod02 | **Fixed Registration Order**，每 Round 相同顺序 |
+| D-Mod03 | 仅 **RoundCompleted** 时 Summary |
+| D-Mod04 | Pause 完成当前回应后冻结，Resume 从断点继续 |
+| D-Mod05 | 僵局 → Moderator Decision；不主动请求 Principal |
+| D-Mod06 | Principal 可 Force/Pause/Abort；v0.1 不可 reorder |
 
 ---
 
@@ -62,4 +64,4 @@ Participant 之间**禁止**直接通信。
 - 委托人：[principal.md](./principal.md)
 - 共识检测：[consensus.md](./consensus.md)
 - 确认关：[confirmation.md](./confirmation.md)
-- 事件：[event.md](./event.md)
+- 轮次终止：[ADR-0005](../architecture/ADR-0005-round-termination.md)

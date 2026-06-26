@@ -35,20 +35,22 @@ Round
 - Round 由 Moderator 开启和结束，对应 Event：`RoundStarted`、`RoundCompleted`
 - 一轮内 Participant 按 Order 依次发言，不抢话
 - Consensus Check 在每轮 Summary 之后；未达成则进入 Next Round
-- Round 数量应有上限或终止条件（待决策）
+- Round 数量受 `max_rounds_per_segment` 约束（见 [ADR-0005](../architecture/ADR-0005-round-termination.md)）
 
 ---
 
-## 待决策
+## 已决议（ADR-0005）
 
-| 编号 | 问题 | 选项 / 备注 |
-|------|------|-------------|
-| D-R01 | Round 与 Agenda Item 映射 | 一对一 / 一对多 / 多 Agenda 共享一轮 |
-| D-R02 | 单 Round 最大发言轮次 | 每人一次 vs 允许多轮 rebuttal |
-| D-R03 | Round 终止条件 | 固定 N 轮 / Consensus 达成 / Moderator 判定 / Principal 叫停 |
-| D-R04 | Round 内是否允许 Principal 插话 | 影响 Order 与 Event 模型 |
-| D-R05 | Summary 是否写入 Minutes 逐条 | 全文 vs 摘要 vs 结构化字段 |
-| D-R06 | 最后一轮无 Consensus 如何处理 | 强制 Moderator Decision / 标记 Partial Consensus / 回到 Running |
+详见 [ADR-0005-round-termination.md](../architecture/ADR-0005-round-termination.md)。
+
+| 编号 | 决议 |
+|------|------|
+| D-R01 | v0.1 Round 不映射 Agenda Item |
+| D-R02 | 每 Participant 每 Round 发言一次 |
+| D-R03 | 优先 Consensus；达上限 `max_rounds_per_segment`（默认 5）→ Moderator Decision |
+| D-R04 | v0.1 Principal 仅 Turn boundary 操作 |
+| D-R05 | Round Summary 结构化写入 Minutes |
+| D-R06 | 达上限用 Moderator Decision |
 
 ---
 
@@ -57,6 +59,6 @@ Round
 - 父索引：[README.md](./README.md)
 - 权威定义：[CONSTITUTION.md](../CONSTITUTION.md) § Core Concepts — Round
 - 宿主：[meeting.md](./meeting.md)
-- 调度：[moderator.md](./moderator.md)
+- 调度：[moderator.md](./moderator.md) — [ADR-0007](../architecture/ADR-0007-moderator-scheduling.md)
 - 共识：[consensus.md](./consensus.md)
 - 事件：[event.md](./event.md) — RoundStarted, RoundCompleted

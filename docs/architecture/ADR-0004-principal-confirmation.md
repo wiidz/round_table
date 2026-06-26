@@ -91,7 +91,7 @@ Principal 驳回时：
 4. Participant 针对 Feedback 继续发言，直至再次 Consensus
 5. 再次进入 Confirmation（`cycle` 递增）
 
-每轮驳回后追加的 Round 数量受 `rounds_per_cycle` 限制（默认与 Meeting 的 `max_rounds` 相同，详见 ADR-0005）。
+每轮驳回后追加的 Round 数量受 `max_rounds_per_segment` 限制（默认 5，详见 [ADR-0005](./ADR-0005-round-termination.md)）。
 
 ### 6. 循环上限
 

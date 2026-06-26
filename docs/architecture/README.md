@@ -13,6 +13,9 @@ Domain 概念见 [docs/domain/](../domain/README.md)，权威原则见 [CONSTITU
 | [ADR-0002](./ADR-0002-consensus-strategy.md) | Consensus 判定策略 | Accepted |
 | [ADR-0003](./ADR-0003-event-model.md) | Event 模型与持久化 | Accepted |
 | [ADR-0004](./ADR-0004-principal-confirmation.md) | Principal Confirmation 确认关 | Accepted |
+| [ADR-0005](./ADR-0005-round-termination.md) | Round 终止条件 | Accepted |
+| [ADR-0007](./ADR-0007-moderator-scheduling.md) | Moderator 调度策略 | Accepted |
+| [ADR-0008](./ADR-0008-project-structure.md) | Go 工程结构 | Accepted |
 
 ---
 
@@ -33,6 +36,4 @@ Domain 概念见 [docs/domain/](../domain/README.md)，权威原则见 [CONSTITU
 
 | 编号 | 主题 | 来源 |
 |------|------|------|
-| ADR-0004 | Moderator 调度策略 | [moderator.md](../domain/moderator.md) D-Mod* |
-| ADR-0005 | Round 终止条件 | [round.md](../domain/round.md) D-R* |
 | ADR-0006 | Knowledge 作用域 | [participant.md](../domain/participant.md) D-P01 |

@@ -1,0 +1,15 @@
+# RoundTable server configuration (no secrets — use env for DSN)
+
+server:
+  addr: ":8080"
+  read_timeout_sec: 30
+  write_timeout_sec: 30
+
+meeting:
+  max_rounds_per_segment: 5
+  max_confirmation_cycles: 3
+  confirmation_mode: required
+
+storage:
+  driver: memory  # memory | sqlite
+  sqlite_path: ./data/roundtable.db

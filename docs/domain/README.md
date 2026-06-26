@@ -111,6 +111,8 @@ Domain 层不得引用上述具体实现。
 | [ADR-0002](../architecture/ADR-0002-consensus-strategy.md) | Consensus 判定策略 | Accepted |
 | [ADR-0003](../architecture/ADR-0003-event-model.md) | Event 模型与持久化 | Accepted |
 | [ADR-0004](../architecture/ADR-0004-principal-confirmation.md) | Principal Confirmation 确认关 | Accepted |
+| [ADR-0005](../architecture/ADR-0005-round-termination.md) | Round 终止条件 | Accepted |
+| [ADR-0007](../architecture/ADR-0007-moderator-scheduling.md) | Moderator 调度策略 | Accepted |
 
 完整索引：[architecture/README.md](../architecture/README.md)
 
@@ -123,7 +125,8 @@ Domain 层不得引用上述具体实现。
 | D-001 | Consensus 判定策略 | Consensus, Moderator | ✅ ADR-0002 |
 | D-002 | Participant 知识作用域 | Participant, Knowledge | 待 ADR-0006 |
 | D-003 | Event 持久化与回放 | Event, Minutes | ✅ ADR-0003 |
-| D-004 | Round 终止条件 | Round, Consensus | 待 ADR-0005 |
+| D-004 | Round 终止条件 | Round, Consensus | ✅ ADR-0005 |
 | D-005 | Principal Confirmation 确认关 | Confirmation, Principal | ✅ ADR-0004 |
+| D-006 | Moderator 调度策略 | Moderator, Scheduler | ✅ ADR-0007 |
 
 各概念文档中的「已决议 / 待决策」栏为详细说明。

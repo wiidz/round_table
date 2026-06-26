@@ -68,7 +68,7 @@ ConsensusReached
 | 参数 | 默认 | 说明 |
 |------|------|------|
 | `max_confirmation_cycles` | 3 | Principal 驳回后最多重新确认的次数 |
-| `rounds_per_cycle` | 由 ADR-0005 定义 | 每轮驳回后追加的讨论 Round 上限 |
+| `rounds_per_cycle` | 由 ADR-0005 定义 | 每轮驳回后追加的讨论 Round 上限（= `max_rounds_per_segment`，默认 5） |
 
 ### 设计约束
 

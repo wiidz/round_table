@@ -1,0 +1,24 @@
+# Binaries
+/bin/
+*.exe
+
+# Go
+*.test
+*.out
+coverage.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Local config / secrets
+apps/server/configs/local.yaml
+.env
+*.db
+
+# Air
+tmp/

@@ -400,17 +400,23 @@ The project is organized around the domain.
 
 Never around frameworks.
 
-Recommended structure:
+Recommended structure (Monorepo):
 
 apps/
 
-internal/
+  server/     — Go Meeting Engine（全部 Go 代码）
 
-pkg/
+  web/        — React Principal UI
+
+  android/ / ios/ — 移动端（规划）
+
+pkg/          — 跨 app 共享库（Go SDK 等，v0.1 留空）
 
 docs/
 
 scripts/
+
+仓库根 `go.work` 引用 `apps/server` module。
 
 ---
 

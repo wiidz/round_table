@@ -23,7 +23,7 @@ v0.1 默认采用 **两层判定**：
 每 Round Summary 后
   → No Objection Check（无人明确反对 → ConsensusReached）
   → 若有人反对 → 进入 Next Round
-  → 达到 Round 上限仍无 Consensus → Moderator Decision（僵局兜底）
+  → 达到 Round 上限仍无 Consensus → Moderator Decision（僵局兜底，见 [ADR-0005](./ADR-0005-round-termination.md)，默认 `max_rounds_per_segment=5`）
 ```
 
 **No Objection** 作为默认主策略，理由：

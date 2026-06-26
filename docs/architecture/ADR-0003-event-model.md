@@ -58,7 +58,7 @@ type EventEnvelope struct {
 
 | Event | 触发者 | Payload 要点 |
 |-------|--------|--------------|
-| `MeetingCreated` | Principal / System | topic, agenda, strategy, confirmation_mode |
+| `MeetingCreated` | Principal / System | topic, agenda, strategy, confirmation_mode, max_rounds_per_segment |
 | `ParticipantInvited` | Moderator | participant_id, role, expertise, goal |
 | `RoundStarted` | Moderator | round_number, order[] |
 | `ParticipantResponded` | Participant | participant_id, round_number, content, stance |
@@ -185,8 +185,8 @@ type MeetingState struct {
 
 ### 待实现
 
-- [ ] `EventEnvelope` 与 v0.1 Event Type 常量
-- [ ] `Apply(event) → MeetingState` 纯函数
+- [x] `EventEnvelope` 与 v0.1 Event Type 常量
+- [x] `Apply(event) → MeetingState` 纯函数（`apps/server/internal/domain/meeting`）
 - [ ] Append-only log 接口 + 文件实现
 - [ ] Snapshot 触发与加载
 - [ ] 非法转换校验

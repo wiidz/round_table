@@ -72,6 +72,8 @@ OpinionUpdated 不纳入 v0.1——Stance 合并进 `ParticipantResponded`。
 | D-E05 | **Pause / Resume 纳入 v0.1** |
 | D-E06 | Knowledge 使用**独立 Event 流**；Meeting 仅持 `KnowledgeRef` |
 
+Apply 实现见 `apps/server/internal/domain/meeting/apply.go`。
+
 Event Envelope 的 `Actor` 字段取值：`principal` | `moderator` | `participant` | `system`。
 
 ---
