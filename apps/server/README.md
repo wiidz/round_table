@@ -9,6 +9,7 @@ apps/server/
 ├── cmd/
 │   ├── roundtable/     # HTTP/WS 服务入口
 │   ├── meet/           # 本地跑一场会议（DeepSeek LLM）
+│   ├── discord/        # Discord Transport bot（收发消息）
 │   └── migrate/        # SQLite 迁移 CLI
 ├── configs/            # 运行时配置（无 secret 入库）
 ├── internal/
@@ -54,5 +55,23 @@ make meet TOPIC="REST API 是否应采用 GraphQL"
 ```
 
 会议产出在 `data/workspaces/{meeting_id}/`（rounds、minutes、artifacts）。
+
+### Discord Transport（v0.2 切片）
+
+Bot Token 写在 **`apps/server/.env`**（勿提交 git）：
+
+```bash
+DISCORD_BOT_TOKEN=your-bot-token
+```
+
+非敏感选项在 **`apps/server/configs/server.yaml`** → `transport.discord`（`allow_dm` / `allow_guild` / `guild_id`）。
+
+在 [Discord Developer Portal](https://discord.com/developers/applications) 创建 Bot 并开启 **Message Content Intent**，邀请 Bot 进服务器后：
+
+```bash
+make run-discord
+```
+
+当前行为：收到消息后 echo 回复（`RoundTable 收到: …`），用于验证收发链路。
 
 结构说明见 [ADR-0008](../../docs/architecture/ADR-0008-project-structure.md)。

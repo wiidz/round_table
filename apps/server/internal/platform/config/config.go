@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +18,7 @@ type Config struct {
 	Workspace Workspace `yaml:"workspace"`
 	Profile   Profile   `yaml:"profile"`
 	Knowledge Knowledge `yaml:"knowledge"`
+	Transport Transport `yaml:"transport"`
 	Secrets   Secrets
 }
 
@@ -61,12 +63,26 @@ type Knowledge struct {
 	SharedEnabled bool   `yaml:"shared_enabled"`
 }
 
+// Transport holds external chat platform settings (non-secret).
+type Transport struct {
+	Discord DiscordTransport `yaml:"discord"`
+}
+
+// DiscordTransport configures the Discord bot adapter.
+type DiscordTransport struct {
+	Enabled    bool   `yaml:"enabled"`
+	AllowDM    bool   `yaml:"allow_dm"`
+	AllowGuild bool   `yaml:"allow_guild"`
+	GuildID    string `yaml:"guild_id"` // optional: restrict to one server
+}
+
 // Secrets are loaded only from .env / environment — never from YAML.
 type Secrets struct {
 	DatabaseDSN     string
 	OpenAIAPIKey    string
 	AnthropicAPIKey string
 	DeepSeekAPIKey  string
+	DiscordBotToken string
 }
 
 // Addr returns the HTTP listen address.
@@ -131,6 +147,13 @@ func defaults() Config {
 			Templates:     "./data/_templates/knowledge",
 			SharedEnabled: true,
 		},
+		Transport: Transport{
+			Discord: DiscordTransport{
+				Enabled:    false,
+				AllowDM:    true,
+				AllowGuild: true,
+			},
+		},
 	}
 }
 
@@ -161,6 +184,11 @@ func applyEnv(cfg *Config) {
 
 	overrideString(&cfg.Knowledge.Root, "ROUND_TABLE_KNOWLEDGE_ROOT")
 	overrideString(&cfg.Knowledge.Templates, "ROUND_TABLE_KNOWLEDGE_TEMPLATES")
+
+	overrideBool(&cfg.Transport.Discord.Enabled, "ROUND_TABLE_DISCORD_ENABLED")
+	overrideBool(&cfg.Transport.Discord.AllowDM, "ROUND_TABLE_DISCORD_ALLOW_DM")
+	overrideBool(&cfg.Transport.Discord.AllowGuild, "ROUND_TABLE_DISCORD_ALLOW_GUILD")
+	overrideString(&cfg.Transport.Discord.GuildID, "ROUND_TABLE_DISCORD_GUILD_ID")
 }
 
 func loadSecrets() Secrets {
@@ -169,6 +197,7 @@ func loadSecrets() Secrets {
 		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
 		DeepSeekAPIKey:  os.Getenv("DEEPSEEK_API_KEY"),
+		DiscordBotToken: os.Getenv("DISCORD_BOT_TOKEN"),
 	}
 }
 
@@ -183,6 +212,17 @@ func overrideInt(dst *int, key string) {
 		var n int
 		if _, err := fmt.Sscanf(v, "%d", &n); err == nil {
 			*dst = n
+		}
+	}
+}
+
+func overrideBool(dst *bool, key string) {
+	if v := os.Getenv(key); v != "" {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "1", "true", "yes", "on":
+			*dst = true
+		case "0", "false", "no", "off":
+			*dst = false
 		}
 	}
 }

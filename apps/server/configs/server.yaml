@@ -33,3 +33,11 @@ knowledge:
   root: ./data/knowledge
   templates: ./data/_templates/knowledge
   shared_enabled: true
+
+# Transport adapters (secrets in .env — see DISCORD_BOT_TOKEN)
+transport:
+  discord:
+    enabled: false
+    allow_dm: true
+    allow_guild: true
+    guild_id: ""   # optional: restrict bot to one Discord server ID

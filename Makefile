@@ -2,6 +2,7 @@ SERVER   := ./apps/server
 APP      := roundtable
 CMD      := $(SERVER)/cmd/roundtable
 MEET_CMD := $(SERVER)/cmd/meet
+DISCORD_CMD := $(SERVER)/cmd/discord
 BIN_DIR  := ./bin
 
 # China-friendly module proxy for local dev (see apps/server/README.md)
@@ -10,7 +11,7 @@ export GOPROXY := https://goproxy.cn,direct
 SCENARIO_GAME_CLASS := data/_templates/scenarios/game-class-design
 TOPIC_GAME_CLASS    := 设计新职业「影舞者」的核心技能与定位
 
-.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class
+.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord
 
 SCENARIO_3ROUND := data/_templates/scenarios/3-round-debate
 TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 撤销）并批准进入开发？
@@ -18,6 +19,10 @@ TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 
 ## run: start the server
 run:
 	go run $(CMD)/main.go
+
+## run-discord: start Discord transport bot (requires DISCORD_BOT_TOKEN in apps/server/.env)
+run-discord:
+	go run $(DISCORD_CMD)/main.go
 
 ## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in apps/server/.env)
 meet:
