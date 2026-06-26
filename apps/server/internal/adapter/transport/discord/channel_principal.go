@@ -34,6 +34,7 @@ type meetingBind struct {
 
 	inFreeDialogue              bool
 	pendingPrincipalQuestion    string
+	pendingPrincipalAnswerer    string
 }
 
 type confirmReply struct {
@@ -150,7 +151,7 @@ func (p *ChannelPrincipal) InFreeDialogue(channelID string) bool {
 
 // DeliverFreeDialogueQuestion queues a Principal question during free dialogue.
 func (p *ChannelPrincipal) DeliverFreeDialogueQuestion(channelID, authorID, content string) (string, error) {
-	question, ok := parseFreeDialogueQuestion(content)
+	question, answererID, ok := parseFreeDialogueQuestion(content)
 	if !ok {
 		return "", nil
 	}
@@ -181,21 +182,26 @@ func (p *ChannelPrincipal) DeliverFreeDialogueQuestion(channelID, authorID, cont
 		return freeDialogueQuestionAlreadyQueuedText(p.Loc), nil
 	}
 	wait.pendingPrincipalQuestion = strings.TrimSpace(question)
+	wait.pendingPrincipalAnswerer = strings.TrimSpace(answererID)
 	p.mu.Unlock()
-	return freeDialogueQuestionAckText(p.Loc, strings.TrimSpace(question)), nil
+	return freeDialogueQuestionAckText(p.Loc, strings.TrimSpace(question), answererID), nil
 }
 
 // FreeDialogueQuestion implements principal.Port.
-func (p *ChannelPrincipal) FreeDialogueQuestion(_ context.Context, meetingID string, _ meeting.State) (string, bool, error) {
+func (p *ChannelPrincipal) FreeDialogueQuestion(_ context.Context, meetingID string, _ meeting.State) (prin.FreeDialogueQuestionRequest, bool, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	wait, ok := p.sessions[meetingID]
 	if !ok || wait.pendingPrincipalQuestion == "" {
-		return "", false, nil
+		return prin.FreeDialogueQuestionRequest{}, false, nil
 	}
-	q := wait.pendingPrincipalQuestion
+	req := prin.FreeDialogueQuestionRequest{
+		Question:   wait.pendingPrincipalQuestion,
+		AnswererID: wait.pendingPrincipalAnswerer,
+	}
 	wait.pendingPrincipalQuestion = ""
-	return q, true, nil
+	wait.pendingPrincipalAnswerer = ""
+	return req, true, nil
 }
 
 // DeliverIntervention handles Principal running/paused control commands.

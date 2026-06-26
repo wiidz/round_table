@@ -624,8 +624,8 @@ func applyConfirmationRejected(s State, env event.Envelope) (State, error) {
 	if err != nil {
 		return s, err
 	}
-	if p.Feedback == "" {
-		return s, fmt.Errorf("meeting %s: ConfirmationRejected requires feedback", s.ID)
+	if p.Feedback == "" && len(p.ItemNotes) == 0 {
+		return s, fmt.Errorf("meeting %s: ConfirmationRejected requires feedback or item_notes", s.ID)
 	}
 	if s.Confirmation != nil && s.Confirmation.Cycle != p.Cycle {
 		return s, fmt.Errorf("meeting %s: ConfirmationRejected cycle %d, want %d", s.ID, p.Cycle, s.Confirmation.Cycle)
@@ -636,7 +636,7 @@ func applyConfirmationRejected(s State, env event.Envelope) (State, error) {
 	} else {
 		s.ConfirmationCycle++
 	}
-	s.PrincipalFeedback = p.Feedback
+	s.PrincipalFeedback = FormatPrincipalFeedback(p.Feedback, p.ItemNotes)
 	s.Consensus = nil
 	s.Confirmation = nil
 	s.SynthesisSummary = ""

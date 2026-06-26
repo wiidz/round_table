@@ -504,6 +504,137 @@ func TestEngine_Integration_confirmationLimitForceApprove(t *testing.T) {
 	}
 }
 
+func TestEngine_Integration_principalFreeDialogueQuestion(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{
+		FreeDialogueQuestionText:   "Principal 代问：数值边界？",
+		FreeDialogueQuestionTarget: "developer",
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:        "mtg-int-fd-principal",
+		Topic:            "Principal 自由问答",
+		ConfirmationMode: meeting.ConfirmationModeSkip,
+		Participants: []engine.ParticipantInput{
+			{ID: "architect", Role: "Architect"},
+			{ID: "developer", Role: "Developer"},
+		},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !final.FreeDialogueCompleted {
+		t.Fatal("expected free dialogue completed")
+	}
+	var principalExchange bool
+	for _, ex := range final.FreeDialogueExchanges {
+		if ex.PrincipalMediated && ex.AnswererID == "developer" {
+			principalExchange = true
+		}
+	}
+	if !principalExchange {
+		t.Fatalf("exchanges=%+v", final.FreeDialogueExchanges)
+	}
+	wsRoot := filepath.Join(dataRoot, "workspaces", spec.MeetingID)
+	assertFileContains(t, filepath.Join(wsRoot, "free-dialogue", "after-round-001.md"), "Principal")
+}
+
+func TestEngine_Integration_confirmationRejectItemNotes(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{
+		RejectUntilCycle: 2,
+		ItemNotes:        map[int]string{2: "技能树需重算"},
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:        "mtg-int-item-notes",
+		Topic:            "ItemNotes 驳回",
+		ConfirmationMode: meeting.ConfirmationModeRequired,
+		Participants:     []engine.ParticipantInput{{ID: "p1", Role: "Expert"}},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status=%s", final.Status)
+	}
+}
+
+func TestEngine_Integration_confirmationLimitContinue(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	maxCycles := 1
+	eng := newTestEngine(t, dataRoot, &stub.Participant{}, &prinstub.Principal{
+		RejectUntilCycle:      2,
+		LimitFallbackDecision: prin.DecisionLimitContinue,
+		Feedback:              "继续改草案",
+	}, nil)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:             "mtg-int-limit-continue",
+		Topic:                 "上限继续研讨",
+		ConfirmationMode:      meeting.ConfirmationModeRequired,
+		MaxConfirmationCycles: &maxCycles,
+		Participants:          []engine.ParticipantInput{{ID: "p1", Role: "Expert"}},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if final.Status != meeting.StatusCompleted {
+		t.Fatalf("status=%s outcome=%s", final.Status, final.Outcome)
+	}
+	if final.ConfirmationCycle != 0 {
+		t.Fatalf("confirmation cycle=%d, want reset after limit continue", final.ConfirmationCycle)
+	}
+}
+
+func TestEngine_Integration_deliberationOpenQuestionsArtifact(t *testing.T) {
+	ctx := context.Background()
+	dataRoot := t.TempDir()
+	llm := integrationPhaseModel{
+		readiness: `{"ready": true, "rationale": "ok", "gaps": []}`,
+		synthesis: `{"core_scheme":["x"],"decisions":[],"open_questions":["Q1?","Q2?"]}`,
+	}
+	eng := newTestEngine(t, dataRoot, &stub.Participant{Stance: "agree", Content: "ok"}, nil, llm)
+
+	spec := engine.CreateMeetingInput{
+		MeetingID:                "mtg-delib-open",
+		Topic:                    "开放问题 artifact",
+		MeetingMode:              meeting.MeetingModeDeliberation,
+		ConfirmationMode:         meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment:      2,
+		MinRoundsBeforeSynthesis: intPtr(2),
+		FreeDialogueMaxQuestions: intPtr(0),
+		Participants:             []engine.ParticipantInput{{ID: "a", Role: "A"}, {ID: "b", Role: "B"}},
+	}
+	if _, err := eng.CreateMeeting(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	final, err := eng.Run(ctx, spec.MeetingID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(final.SynthesisOpenQuestions) == 0 {
+		t.Fatal("expected open questions in state")
+	}
+	wsRoot := filepath.Join(dataRoot, "workspaces", spec.MeetingID)
+	assertFileContains(t, filepath.Join(wsRoot, "artifacts", "open-questions.md"), "Q1")
+}
+
 func TestEngine_Integration_confirmationLimitAbort(t *testing.T) {
 	ctx := context.Background()
 	dataRoot := t.TempDir()

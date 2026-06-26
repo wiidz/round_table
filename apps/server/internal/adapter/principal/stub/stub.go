@@ -2,6 +2,7 @@ package stub
 
 import (
 	"context"
+	"strings"
 
 	"round_table/apps/server/internal/adapter/principal"
 	"round_table/apps/server/internal/domain/event"
@@ -30,6 +31,15 @@ type Principal struct {
 	PauseWhenRoundGTE int
 	PauseReason       string
 
+	// ItemNotes returned on Confirm when set.
+	ItemNotes map[int]string
+
+	// FreeDialogueQuestionText is consumed once at the next free-dialogue ask turn.
+	FreeDialogueQuestionText   string
+	FreeDialogueQuestionTarget string
+
+	approveAfterLimitContinue bool
+
 	pauseTriggered bool
 }
 
@@ -46,16 +56,30 @@ func (p *Principal) Confirm(ctx context.Context, _ string, brief event.Confirmat
 			decision = principal.DecisionLimitForceApprove
 		}
 		fb := p.Feedback
+		if decision == principal.DecisionLimitContinue {
+			p.approveAfterLimitContinue = true
+		}
 		return principal.Response{Decision: decision, Feedback: fb}, nil
+	}
+	if p.approveAfterLimitContinue {
+		return principal.Response{Decision: principal.DecisionApproved}, nil
 	}
 	if p.RejectUntilCycle > 0 && cycle < p.RejectUntilCycle {
 		fb := p.Feedback
-		if fb == "" {
+		if fb == "" && len(p.ItemNotes) == 0 {
 			fb = "需要更多细节"
 		}
-		return principal.Response{Decision: principal.DecisionRejected, Feedback: fb}, nil
+		return principal.Response{
+			Decision:  principal.DecisionRejected,
+			Feedback:  fb,
+			ItemNotes: p.ItemNotes,
+		}, nil
 	}
-	return principal.Response{Decision: principal.DecisionApproved}, nil
+	notes := p.ItemNotes
+	if notes == nil {
+		notes = map[int]string{}
+	}
+	return principal.Response{Decision: principal.DecisionApproved, ItemNotes: notes}, nil
 }
 
 // RunningAction implements principal.Port.
@@ -109,6 +133,15 @@ func (p *Principal) PausedAction(_ context.Context, _ string, s meeting.State) (
 }
 
 // FreeDialogueQuestion implements principal.Port.
-func (p *Principal) FreeDialogueQuestion(_ context.Context, _ string, _ meeting.State) (string, bool, error) {
-	return "", false, nil
+func (p *Principal) FreeDialogueQuestion(_ context.Context, _ string, _ meeting.State) (principal.FreeDialogueQuestionRequest, bool, error) {
+	if strings.TrimSpace(p.FreeDialogueQuestionText) == "" {
+		return principal.FreeDialogueQuestionRequest{}, false, nil
+	}
+	req := principal.FreeDialogueQuestionRequest{
+		Question:   strings.TrimSpace(p.FreeDialogueQuestionText),
+		AnswererID: strings.TrimSpace(p.FreeDialogueQuestionTarget),
+	}
+	p.FreeDialogueQuestionText = ""
+	p.FreeDialogueQuestionTarget = ""
+	return req, true, nil
 }

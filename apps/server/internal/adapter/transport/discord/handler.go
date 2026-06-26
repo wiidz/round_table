@@ -45,6 +45,14 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 	}
 
 	if h.Meet != nil {
+		if reply, err := h.Meet.HandleArtifactFetch(msg); err != nil {
+			return "", err
+		} else if reply != "" {
+			return reply, nil
+		}
+	}
+
+	if h.Meet != nil {
 		if reply, err := h.Meet.HandleFreeDialogueQuestion(msg); err != nil {
 			return "", err
 		} else if reply != "" {

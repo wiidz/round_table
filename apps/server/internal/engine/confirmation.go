@@ -61,7 +61,7 @@ func (e *Engine) advanceConfirmation(ctx context.Context, s meeting.State) (meet
 			return e.presentConfirmationLimitFallback(ctx, s, fb)
 		}
 		fb := resp.Feedback
-		if fb == "" {
+		if fb == "" && len(resp.ItemNotes) == 0 {
 			fb = "需要修订"
 		}
 		cycle := s.Confirmation.Cycle

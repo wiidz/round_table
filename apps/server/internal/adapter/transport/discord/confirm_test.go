@@ -50,13 +50,15 @@ func TestParseConfirmationReply(t *testing.T) {
 		in       string
 		decision prin.Decision
 		feedback string
+		notes    map[int]string
 	}{
-		{"批准", prin.DecisionApproved, ""},
-		{"1", prin.DecisionApproved, ""},
-		{"驳回", prin.DecisionRejected, ""},
-		{"驳回 技能数值需重算", prin.DecisionRejected, "技能数值需重算"},
-		{"2", prin.DecisionRejected, ""},
-		{"reject need more detail", prin.DecisionRejected, "need more detail"},
+		{"批准", prin.DecisionApproved, "", nil},
+		{"1", prin.DecisionApproved, "", nil},
+		{"驳回", prin.DecisionRejected, "", nil},
+		{"驳回 技能数值需重算", prin.DecisionRejected, "技能数值需重算", nil},
+		{"2: 技能树需重算", prin.DecisionRejected, "", map[int]string{2: "技能树需重算"}},
+		{"2", prin.DecisionRejected, "", nil},
+		{"reject need more detail", prin.DecisionRejected, "need more detail", nil},
 	}
 	for _, tc := range cases {
 		got, err := parseConfirmationReply(tc.in)
@@ -65,6 +67,14 @@ func TestParseConfirmationReply(t *testing.T) {
 		}
 		if got.Decision != tc.decision || got.Feedback != tc.feedback {
 			t.Fatalf("in=%q got=%+v want decision=%s feedback=%q", tc.in, got, tc.decision, tc.feedback)
+		}
+		if len(tc.notes) != len(got.ItemNotes) {
+			t.Fatalf("in=%q notes=%v got=%v", tc.in, tc.notes, got.ItemNotes)
+		}
+		for k, v := range tc.notes {
+			if got.ItemNotes[k] != v {
+				t.Fatalf("in=%q note[%d]=%q want %q", tc.in, k, got.ItemNotes[k], v)
+			}
 		}
 	}
 }

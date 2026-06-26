@@ -38,6 +38,7 @@ func (e *Engine) inviteFreeDialogueAsk(ctx context.Context, s meeting.State) (me
 		return ns, err
 	}
 	askerID, answererID := freeDialoguePair(s)
+	e.logFreeDialogueTurn(s, answererID)
 	prompt := e.buildFreeDialogueAskPrompt(s, askerID, answererID)
 	detail := freeDialogueTurnLabel(s) + " ask " + askerID + "→" + answererID
 	e.logLLMWaiting("free-dialogue-ask", askerID, detail)
@@ -181,15 +182,36 @@ func (e *Engine) maybePrincipalFreeDialogueQuestion(ctx context.Context, s meeti
 	if e.Principal == nil || !s.InFreeDialogue || s.PendingFreeDialogue != nil {
 		return s, false, nil
 	}
-	question, ok, err := e.Principal.FreeDialogueQuestion(ctx, s.ID, s)
-	if err != nil || !ok || strings.TrimSpace(question) == "" {
+	req, ok, err := e.Principal.FreeDialogueQuestion(ctx, s.ID, s)
+	if err != nil || !ok || strings.TrimSpace(req.Question) == "" {
 		return s, false, err
 	}
-	_, answererID := freeDialoguePair(s)
+	answererID := strings.TrimSpace(req.AnswererID)
+	if answererID == "" {
+		_, answererID = freeDialoguePair(s)
+	} else if !participantInOrder(s.ParticipantOrder, answererID) {
+		return s, false, fmt.Errorf("meeting %s: principal free dialogue unknown answerer %q", s.ID, answererID)
+	}
+	e.logFreeDialogueTurn(s, answererID)
 	ns, err := e.append(ctx, s, eventFreeDialogueQuestionAskedByPrincipal(
-		answererID, s.FreeDialogueQuestionIndex, strings.TrimSpace(question),
+		answererID, s.FreeDialogueQuestionIndex, strings.TrimSpace(req.Question),
 	))
 	return ns, true, err
+}
+
+func (e *Engine) logFreeDialogueTurn(s meeting.State, answererID string) {
+	total := freeDialogueTotal(s)
+	e.logf("▶ free dialogue turn %d/%d answerer=%s",
+		s.FreeDialogueQuestionIndex+1, total, answererID)
+}
+
+func participantInOrder(order []string, id string) bool {
+	for _, p := range order {
+		if p == id {
+			return true
+		}
+	}
+	return false
 }
 
 func formatFreeDialogueExchangeLine(s meeting.State, ex meeting.FreeDialogueExchange) string {

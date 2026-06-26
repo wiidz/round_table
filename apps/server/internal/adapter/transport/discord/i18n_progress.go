@@ -81,6 +81,13 @@ func localizeProgressEN(line string) string {
 		return "⚡ " + line
 	case strings.HasPrefix(line, "◇ principal force consensus"):
 		return "🤝 " + line
+	case strings.HasPrefix(line, "▶ free dialogue turn"):
+		var idx, total int
+		var answerer string
+		if _, err := fmt.Sscanf(line, "▶ free dialogue turn %d/%d answerer=%s", &idx, &total, &answerer); err == nil {
+			return fmt.Sprintf("💬 Free dialogue %d/%d · **%s** answering", idx, total, answerer)
+		}
+		return line
 	case strings.HasPrefix(line, "▶ free dialogue after round"):
 		var round, total, maxQ int
 		if _, err := fmt.Sscanf(line, "▶ free dialogue after round %d (%d Q&A pairs, max_questions=%d/person)", &round, &total, &maxQ); err == nil {
@@ -133,6 +140,13 @@ func localizeProgressZH(line string) string {
 			return fmt.Sprintf("✅ 第 %d 轮研讨结束", round)
 		}
 		return "✅ " + line
+
+	case strings.HasPrefix(line, "▶ free dialogue turn"):
+		var idx, total int
+		var answerer string
+		if _, err := fmt.Sscanf(line, "▶ free dialogue turn %d/%d answerer=%s", &idx, &total, &answerer); err == nil {
+			return fmt.Sprintf("💬 自由问答 %d/%d · 轮到 **%s** 回答", idx, total, participantLabel(answerer, LocaleZH))
+		}
 
 	case strings.HasPrefix(line, "▶ free dialogue after round"):
 		var round, total, maxQ int

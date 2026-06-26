@@ -227,6 +227,24 @@ Principal 可按 Item 编号逐项确认或驳回（`ItemNotes`）。
 
 ---
 
+## v0.2 补充：Principal 自由对话代问（已实现）
+
+Round 1 完成后的 **Free Dialogue** 阶段，Principal 可在 Participant turn boundary 排队代问：
+
+```
+Principal → principal.Port.FreeDialogueQuestion
+  → FreeDialogueQuestionAsked (principal_mediated, asker=moderator relay)
+  → Participant 回答
+```
+
+| 约束 | 说明 |
+|------|------|
+| ADR-0004 | Participant 与 Principal 不直连；Domain 用 `principal_mediated` + Moderator relay |
+| ADR-0005 §6 | 仅在 turn boundary 消费，不破坏 Order |
+| Transport | Discord：`提问 [participant] …`；频道只展示 ack + Participant stream，不重复 Moderator 复述 |
+
+---
+
 ## 关联
 
 - [consensus.md](../domain/consensus.md) — 仅 `decision` 模式适用

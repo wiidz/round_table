@@ -4,21 +4,23 @@ import "testing"
 
 func TestParseFreeDialogueQuestion(t *testing.T) {
 	tests := []struct {
-		in       string
-		wantQ    string
-		wantOK   bool
+		in         string
+		wantQ      string
+		wantTarget string
+		wantOK     bool
 	}{
-		{"提问 技能数值合理吗", "技能数值合理吗", true},
-		{"提问：上线风险有哪些？", "上线风险有哪些？", true},
-		{"ask what about pacing?", "what about pacing?", true},
-		{"question: scope?", "scope?", true},
-		{"提问", "", true},
-		{"暂停会议", "", false},
+		{"提问 技能数值合理吗", "技能数值合理吗", "", true},
+		{"提问 designer 数值怎么定", "数值怎么定", "designer", true},
+		{"ask player: scope?", "scope?", "player", true},
+		{"question: scope?", "scope?", "", true},
+		{"提问", "", "", true},
+		{"暂停会议", "", "", false},
 	}
 	for _, tc := range tests {
-		got, ok := parseFreeDialogueQuestion(tc.in)
-		if ok != tc.wantOK || got != tc.wantQ {
-			t.Fatalf("parseFreeDialogueQuestion(%q) = (%q, %v), want (%q, %v)", tc.in, got, ok, tc.wantQ, tc.wantOK)
+		q, target, ok := parseFreeDialogueQuestion(tc.in)
+		if ok != tc.wantOK || q != tc.wantQ || target != tc.wantTarget {
+			t.Fatalf("parseFreeDialogueQuestion(%q) = (%q, %q, %v), want (%q, %q, %v)",
+				tc.in, q, target, ok, tc.wantQ, tc.wantTarget, tc.wantOK)
 		}
 	}
 }
@@ -33,5 +35,16 @@ func TestShouldPostProgress_freeDialogue(t *testing.T) {
 	start := "▶ free dialogue after round 1 (2 Q&A pairs, max_questions=1/person)"
 	if !shouldPostProgress(start) {
 		t.Fatal("expected free dialogue start marker to post")
+	}
+	turn := "▶ free dialogue turn 1/2 answerer=designer"
+	if !shouldPostProgress(turn) {
+		t.Fatal("expected free dialogue turn marker to post")
+	}
+}
+
+func TestParseConfirmationItemNotes(t *testing.T) {
+	notes := parseConfirmationItemNotes("2: 技能树需重算")
+	if notes[2] != "技能树需重算" {
+		t.Fatalf("notes=%v", notes)
 	}
 }

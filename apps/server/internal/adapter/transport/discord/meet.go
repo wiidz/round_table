@@ -33,8 +33,9 @@ type MeetRunner struct {
 }
 
 type meetSessions struct {
-	mu        sync.Mutex
-	byChannel map[string]string
+	mu            sync.Mutex
+	byChannel     map[string]string
+	lastByChannel map[string]string
 }
 
 func (m *meetSessions) tryStart(channelID, meetingID string) error {
@@ -54,6 +55,22 @@ func (m *meetSessions) clear(channelID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.byChannel, channelID)
+}
+
+func (m *meetSessions) setLast(channelID, meetingID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.lastByChannel == nil {
+		m.lastByChannel = make(map[string]string)
+	}
+	m.lastByChannel[channelID] = meetingID
+}
+
+func (m *meetSessions) last(channelID string) (string, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id, ok := m.lastByChannel[channelID]
+	return id, ok
 }
 
 func (m *meetSessions) active(channelID string) (string, bool) {
@@ -225,6 +242,20 @@ func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string
 	return formatMeetLaunchAck(loc, meetingID, cfg, binding.DisplayName, maxConfirm), nil
 }
 
+// HandleArtifactFetch posts a full artifact excerpt for the last completed meeting in a channel.
+func (r *MeetRunner) HandleArtifactFetch(msg transport.Inbound) (string, error) {
+	kind, ok := isArtifactFetchTrigger(msg.Content)
+	if !ok {
+		return "", nil
+	}
+	loc := ParseLocale(r.Discord.Locale)
+	meetingID, ok := r.sessions.last(msg.ChannelID)
+	if !ok {
+		return artifactFetchNoMeetingText(loc), nil
+	}
+	return r.fetchArtifact(context.Background(), msg.ChannelID, meetingID, kind, loc)
+}
+
 // HandleFreeDialogueQuestion queues a Principal question during free dialogue.
 func (r *MeetRunner) HandleFreeDialogueQuestion(msg transport.Inbound) (string, error) {
 	if r.Principal == nil || !isFreeDialogueQuestionTrigger(msg.Content) {
@@ -329,6 +360,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 	summary := formatMeetDone(final, r.Cfg.Workspace.Root, meetingID, loc)
 	SendLong(r.Bots.Default, ctx, channelID, summary)
 	r.postMeetArtifacts(ctx, channelID, final, meetingID, loc)
+	r.sessions.setLast(channelID, meetingID)
 }
 
 func extractBusyMeetingID(err error) string {

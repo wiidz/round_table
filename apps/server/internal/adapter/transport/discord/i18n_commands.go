@@ -23,7 +23,8 @@ func (h *CommandHandler) helpText() string {
 - `+"`开始会议`"+` / `+"`新会议`"+` / `+"`会议开始`"+` — 发起会议（无需前缀，主持人逐步引导）
 - `+"`取消会议`"+` — 取消待确认的会议配置
 - **会议进行中**：`+"`暂停会议`"+` · `+"`恢复会议`"+` · `+"`终止会议`"+` · `+"`立即合成`"+`（研讨）· `+"`强制共识`"+`（裁决）
-- **自由问答阶段**：`+"`提问 …`"+` — Principal 向参会者提问
+- **自由问答阶段**：`+"`提问 …`"+` / `+"`提问 designer …`"+` — 指定参与者提问
+- **会议结束后**：`+"`获取纪要`"+` · `+"`获取草案`"+` · `+"`获取待决`"+` · `+"`获取结论`"+`
 - `+"`%smeet [-mode decision|deliberation] 主题`"+` — 同上（带主题时可跳过主题输入）
 - `+"`%smeet cancel`"+` — 取消待确认的会议配置`, p, p, p, p, p, p, p)
 	}
@@ -38,7 +39,8 @@ Prefix: `+"`%s`"+`
 - `+"`开始会议`"+` / `+"`新会议`"+` / `+"`会议开始`"+` — Start a meeting (no prefix; Moderator guides you)
 - `+"`取消会议`"+` — Cancel pending meet setup
 - **While meeting runs:** `+"`暂停会议`"+` · `+"`恢复会议`"+` · `+"`终止会议`"+` · `+"`立即合成`"+` (deliberation) · `+"`强制共识`"+` (decision)
-- **During free dialogue:** `+"`ask …`"+` / `+"`提问 …`"+` — Principal asks participants
+- **During free dialogue:** `+"`ask …`"+` / `+"`提问 designer …`"+` — ask a participant
+- **After meeting:** `+"`get minutes`"+` · `+"`get draft`"+` · `+"`get open`"+` · `+"`get conclusion`"+`
 - `+"`%smeet [-mode decision|deliberation] topic`"+` — Same (topic inline skips topic prompt)
 - `+"`%smeet cancel`"+` — Cancel pending meet setup`, p, p, p, p, p, p, p)
 }

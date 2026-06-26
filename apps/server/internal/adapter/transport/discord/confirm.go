@@ -2,11 +2,15 @@ package discord
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	prin "round_table/apps/server/internal/adapter/principal"
 	"round_table/apps/server/internal/domain/event"
 )
+
+var confirmationItemNoteRE = regexp.MustCompile(`(?:^|\s)(\d+)\s*[：:]\s*([^\n]+)`)
 
 func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief event.ConfirmationBrief) string {
 	if brief.LimitFallback {
@@ -36,7 +40,8 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 		}
 		b.WriteString("请审阅方案草案，回复：\n")
 		b.WriteString("**批准** — 通过并归档\n")
-		b.WriteString("**驳回** — 追加 1 轮研讨（可附修改意见，如：`驳回 技能数值需重算`）\n\n")
+		b.WriteString("**驳回** — 追加 1 轮研讨（可附修改意见，如：`驳回 技能数值需重算`）\n")
+		b.WriteString("**逐项附注** — 如：`1: 通过  2: 技能树需重算`\n\n")
 		b.WriteString("也可回复 **1** 批准 · **2** 驳回")
 		return strings.TrimRight(b.String(), "\n")
 	}
@@ -62,6 +67,7 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 	}
 	b.WriteString("Reply:\n**approve** / **1** — accept and finish\n")
 	b.WriteString("**reject** / **2** — resume debate (optional feedback)\n")
+	b.WriteString("**Item notes** — e.g. `1: ok  2: rework skill tree`\n")
 	b.WriteString("Example: `reject need more detail on cooldowns`")
 	return strings.TrimRight(b.String(), "\n")
 }
@@ -179,30 +185,61 @@ func parseConfirmationReply(content string) (prin.Response, error) {
 	}
 	norm := normalizeASCIIForms(s)
 	lower := strings.ToLower(norm)
+	itemNotes := parseConfirmationItemNotes(s)
 
 	if confirmApproveExact[norm] || confirmApproveExact[lower] {
-		return prin.Response{Decision: prin.DecisionApproved}, nil
+		return prin.Response{Decision: prin.DecisionApproved, ItemNotes: itemNotes}, nil
 	}
 	if confirmRejectExact[norm] || confirmRejectExact[lower] {
-		return prin.Response{Decision: prin.DecisionRejected}, nil
+		return prin.Response{Decision: prin.DecisionRejected, ItemNotes: itemNotes}, nil
 	}
 
 	for _, prefix := range []string{"驳回", "拒绝", "退回", "reject", "rejected"} {
 		if strings.HasPrefix(lower, prefix) {
-			fb := strings.TrimSpace(s[len(prefix):])
+			fb := strings.TrimSpace(stripConfirmationItemNotes(s[len(prefix):]))
 			fb = strings.TrimPrefix(fb, "：")
 			fb = strings.TrimPrefix(fb, ":")
 			fb = strings.TrimSpace(fb)
-			return prin.Response{Decision: prin.DecisionRejected, Feedback: fb}, nil
+			return prin.Response{
+				Decision:  prin.DecisionRejected,
+				Feedback:  fb,
+				ItemNotes: itemNotes,
+			}, nil
 		}
 	}
 	for _, prefix := range []string{"批准", "通过", "同意", "approve", "approved"} {
 		if strings.HasPrefix(lower, prefix) {
-			return prin.Response{Decision: prin.DecisionApproved}, nil
+			return prin.Response{Decision: prin.DecisionApproved, ItemNotes: itemNotes}, nil
 		}
 	}
 
+	if len(itemNotes) > 0 {
+		return prin.Response{
+			Decision:  prin.DecisionRejected,
+			ItemNotes: itemNotes,
+		}, nil
+	}
+
 	return prin.Response{}, errConfirmReplyUnrecognized
+}
+
+func parseConfirmationItemNotes(content string) map[int]string {
+	notes := make(map[int]string)
+	for _, m := range confirmationItemNoteRE.FindAllStringSubmatch(content, -1) {
+		idx, err := strconv.Atoi(m[1])
+		if err != nil || idx <= 0 {
+			continue
+		}
+		notes[idx] = strings.TrimSpace(m[2])
+	}
+	if len(notes) == 0 {
+		return nil
+	}
+	return notes
+}
+
+func stripConfirmationItemNotes(s string) string {
+	return strings.TrimSpace(confirmationItemNoteRE.ReplaceAllString(s, ""))
 }
 
 func confirmNotOwnerText(loc Locale) string {

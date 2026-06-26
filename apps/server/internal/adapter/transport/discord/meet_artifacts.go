@@ -11,7 +11,8 @@ import (
 	"round_table/apps/server/internal/domain/meeting"
 )
 
-const artifactExcerptRunes = 1800
+const artifactExcerptRunes = 800
+const artifactFetchExcerptRunes = 1800
 
 func (r *MeetRunner) postMeetArtifacts(ctx context.Context, channelID string, final meeting.State, meetingID string, loc Locale) {
 	if r.Bots == nil || r.Bots.Default == nil || r.Cfg.Workspace.Root == "" {
@@ -42,8 +43,51 @@ func (r *MeetRunner) postMeetArtifacts(ctx context.Context, channelID string, fi
 		}
 		header := formatArtifactHeader(loc, spec.title, spec.path, meetingID)
 		body := excerptArtifact(string(data), artifactExcerptRunes, loc)
-		SendLong(r.Bots.Default, ctx, channelID, header+"\n\n"+body)
+		footer := artifactFetchHint(loc)
+		SendLong(r.Bots.Default, ctx, channelID, header+"\n\n"+body+"\n\n"+footer)
 	}
+}
+
+func (r *MeetRunner) fetchArtifact(ctx context.Context, channelID, meetingID string, kind string, loc Locale) (string, error) {
+	if r.Bots == nil || r.Bots.Default == nil || r.Cfg.Workspace.Root == "" {
+		return "", nil
+	}
+	ws := wsfs.NewStore(r.Cfg.Workspace.Root)
+	path, kindKey, ok := artifactPathForKind(kind)
+	if !ok {
+		return artifactFetchUsageText(loc), nil
+	}
+	data, err := ws.Read(meetingID, path)
+	if err != nil || len(strings.TrimSpace(string(data))) == 0 {
+		return artifactFetchMissingText(loc, kind, meetingID), nil
+	}
+	displayTitle := artifactTitle(loc, kindKey)
+	header := formatArtifactHeader(loc, displayTitle, path, meetingID)
+	body := excerptArtifact(string(data), artifactFetchExcerptRunes, loc)
+	SendLong(r.Bots.Default, ctx, channelID, header+"\n\n"+body)
+	return artifactFetchSentText(loc, kindKey), nil
+}
+
+func artifactPathForKind(kind string) (path, title string, ok bool) {
+	switch kind {
+	case "minutes":
+		return workspace.FileMinutes, "minutes", true
+	case "draft":
+		return "artifacts/design-draft.md", "draft", true
+	case "open":
+		return "artifacts/open-questions.md", "open", true
+	case "conclusion":
+		return "artifacts/minutes.md", "conclusion", true
+	default:
+		return "", "", false
+	}
+}
+
+func artifactFetchHint(loc Locale) string {
+	if loc == LocaleZH {
+		return "📎 完整版：**获取纪要** · **获取草案** · **获取待决** · **获取结论**"
+	}
+	return "📎 Full text: **get minutes** · **get draft** · **get open** · **get conclusion**"
 }
 
 func artifactTitle(loc Locale, kind string) string {

@@ -45,6 +45,12 @@ type RunningIntervention struct {
 	Reason string
 }
 
+// FreeDialogueQuestionRequest is a Principal question queued for free dialogue.
+type FreeDialogueQuestionRequest struct {
+	Question   string
+	AnswererID string // optional; empty uses the current pair's answerer
+}
+
 // Port represents the Principal at Confirmation and optional Running turn boundaries.
 type Port interface {
 	Confirm(ctx context.Context, meetingID string, brief event.ConfirmationBrief, cycle int) (Response, error)
@@ -54,5 +60,5 @@ type Port interface {
 	PausedAction(ctx context.Context, meetingID string, s meeting.State) (RunningIntervention, error)
 	// FreeDialogueQuestion returns a Principal question queued at a free-dialogue turn boundary.
 	// ok=false when none is queued.
-	FreeDialogueQuestion(ctx context.Context, meetingID string, s meeting.State) (question string, ok bool, err error)
+	FreeDialogueQuestion(ctx context.Context, meetingID string, s meeting.State) (FreeDialogueQuestionRequest, bool, error)
 }
