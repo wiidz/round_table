@@ -203,6 +203,20 @@ func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string
 	return formatMeetLaunchAck(loc, meetingID, cfg, binding.DisplayName), nil
 }
 
+// HandleRunningIntervention processes Principal pause/abort/force commands during a meeting.
+func (r *MeetRunner) HandleRunningIntervention(msg transport.Inbound) (string, error) {
+	if r.Principal == nil || !isInterventionTrigger(msg.Content) {
+		return "", nil
+	}
+	loc := ParseLocale(r.Discord.Locale)
+	_, active := r.sessions.active(msg.ChannelID)
+	paused := r.Principal.PendingPaused(msg.ChannelID)
+	if !active && !paused {
+		return interventionNoMeetingText(loc), nil
+	}
+	return r.Principal.DeliverIntervention(msg.ChannelID, msg.AuthorID, msg.Content)
+}
+
 // HandleConfirmationReply processes Principal confirmation while a meeting waits.
 func (r *MeetRunner) HandleConfirmationReply(msg transport.Inbound) (string, error) {
 	if r.Principal == nil {
@@ -226,7 +240,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 
 	var eng *engine.Engine
 	var err error
-	if r.Principal != nil && cfg.Confirmation == meeting.ConfirmationModeRequired {
+	if r.Principal != nil {
 		eng, err = bootstrap.NewEngineWithPrincipal(r.Cfg, r.Principal)
 	} else {
 		eng, err = bootstrap.NewEngine(r.Cfg)
@@ -275,6 +289,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 
 	summary := formatMeetDone(final, r.Cfg.Workspace.Root, meetingID, loc)
 	SendLong(r.Bots.Default, ctx, channelID, summary)
+	r.postMeetArtifacts(ctx, channelID, final, meetingID, loc)
 }
 
 func extractBusyMeetingID(err error) string {
@@ -308,12 +323,6 @@ func formatMeetDone(s meeting.State, workspaceRoot, meetingID string, loc Locale
 		} else if s.Consensus != nil {
 			fmt.Fprintf(&b, "- 🤝 共识：%s\n", resolvedByLabel(s.Consensus.ResolvedBy, loc))
 		}
-		if s.IsDeliberation() && len(s.SynthesisOpenQuestions) > 0 {
-			fmt.Fprintf(&b, "- ❓ 开放问题：%d 条\n", len(s.SynthesisOpenQuestions))
-			for i, q := range s.SynthesisOpenQuestions {
-				fmt.Fprintf(&b, "  %d. %s\n", i+1, q)
-			}
-		}
 		fmt.Fprintf(&b, "- 🔄 研讨轮次：%d\n", s.DebateRoundCount())
 		fmt.Fprintf(&b, "- 📁 工作区：`%s/%s`", strings.TrimSuffix(workspaceRoot, "/"), meetingID)
 		if s.TokenUsageTotals.CallCount > 0 {
@@ -331,12 +340,6 @@ func formatMeetDone(s meeting.State, workspaceRoot, meetingID string, loc Locale
 		fmt.Fprintf(&b, "- Synthesis: resolved_by=%s\n", s.Consensus.ResolvedBy)
 	} else if s.Consensus != nil {
 		fmt.Fprintf(&b, "- Consensus: resolved_by=%s\n", s.Consensus.ResolvedBy)
-	}
-	if s.IsDeliberation() && len(s.SynthesisOpenQuestions) > 0 {
-		fmt.Fprintf(&b, "- Open questions: %d\n", len(s.SynthesisOpenQuestions))
-		for i, q := range s.SynthesisOpenQuestions {
-			fmt.Fprintf(&b, "  %d. %s\n", i+1, q)
-		}
 	}
 	fmt.Fprintf(&b, "- Debate rounds: %d\n", s.DebateRoundCount())
 	fmt.Fprintf(&b, "- Workspace: `%s/%s`", strings.TrimSuffix(workspaceRoot, "/"), meetingID)

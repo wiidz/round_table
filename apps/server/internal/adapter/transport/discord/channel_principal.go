@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	prin "round_table/apps/server/internal/adapter/principal"
-	prinstub "round_table/apps/server/internal/adapter/principal/stub"
 	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
 )
@@ -17,15 +16,19 @@ type ChannelPrincipal struct {
 	Loc  Locale
 
 	mu       sync.Mutex
-	sessions map[string]*confirmWait // meetingID → wait state
-	stub     prinstub.Principal
+	sessions map[string]*meetingBind // meetingID → bind state
 }
 
-type confirmWait struct {
+type meetingBind struct {
 	channelID string
 	authorID  string
-	cycle     int
-	replyCh   chan confirmReply
+
+	confirmCycle int
+	confirmReply chan confirmReply
+
+	pendingRunning prin.RunningIntervention
+	paused         bool
+	pausedReply    chan prin.RunningIntervention
 }
 
 type confirmReply struct {
@@ -38,7 +41,7 @@ func NewChannelPrincipal(bots *BotPool, locale string) *ChannelPrincipal {
 	return &ChannelPrincipal{
 		Bots:     bots,
 		Loc:      ParseLocale(locale),
-		sessions: make(map[string]*confirmWait),
+		sessions: make(map[string]*meetingBind),
 	}
 }
 
@@ -46,10 +49,11 @@ func NewChannelPrincipal(bots *BotPool, locale string) *ChannelPrincipal {
 func (p *ChannelPrincipal) BindMeeting(meetingID, channelID, authorID string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.sessions[meetingID] = &confirmWait{
-		channelID: channelID,
-		authorID:  authorID,
-		replyCh:   make(chan confirmReply, 1),
+	p.sessions[meetingID] = &meetingBind{
+		channelID:    channelID,
+		authorID:     authorID,
+		confirmReply: make(chan confirmReply, 1),
+		pausedReply:  make(chan prin.RunningIntervention, 1),
 	}
 }
 
@@ -65,11 +69,23 @@ func (p *ChannelPrincipal) PendingConfirmation(channelID string) (meetingID stri
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for id, w := range p.sessions {
-		if w.channelID == channelID && w.cycle > 0 {
+		if w.channelID == channelID && w.confirmCycle > 0 {
 			return id, w.authorID, true
 		}
 	}
 	return "", "", false
+}
+
+// PendingPaused reports whether a channel meeting is paused waiting for resume/abort.
+func (p *ChannelPrincipal) PendingPaused(channelID string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for _, w := range p.sessions {
+		if w.channelID == channelID && w.paused {
+			return true
+		}
+	}
+	return false
 }
 
 // DeliverConfirmationReply parses a Principal message and unblocks Confirm.
@@ -77,16 +93,8 @@ func (p *ChannelPrincipal) DeliverConfirmationReply(channelID, authorID, content
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	var wait *confirmWait
-	var meetingID string
-	for id, w := range p.sessions {
-		if w.channelID == channelID && w.cycle > 0 {
-			wait = w
-			meetingID = id
-			break
-		}
-	}
-	if wait == nil {
+	wait := p.bindForChannelLocked(channelID)
+	if wait == nil || wait.confirmCycle == 0 {
 		return "", nil
 	}
 	if authorID != wait.authorID {
@@ -99,15 +107,65 @@ func (p *ChannelPrincipal) DeliverConfirmationReply(channelID, authorID, content
 	}
 
 	select {
-	case wait.replyCh <- confirmReply{resp: resp}:
+	case wait.confirmReply <- confirmReply{resp: resp}:
 	default:
 		return confirmAlreadyAnsweredText(p.Loc), nil
 	}
-	_ = meetingID
 	if resp.Decision == prin.DecisionApproved {
 		return confirmReceivedApproveText(p.Loc), nil
 	}
 	return confirmReceivedRejectText(p.Loc), nil
+}
+
+// DeliverIntervention handles Principal running/paused control commands.
+func (p *ChannelPrincipal) DeliverIntervention(channelID, authorID, content string) (string, error) {
+	p.mu.Lock()
+	wait := p.bindForChannelLocked(channelID)
+	if wait == nil {
+		p.mu.Unlock()
+		return "", nil
+	}
+	if authorID != wait.authorID {
+		p.mu.Unlock()
+		return interventionNotOwnerText(p.Loc), nil
+	}
+	if wait.confirmCycle > 0 {
+		p.mu.Unlock()
+		return interventionConfirmBlocksText(p.Loc), nil
+	}
+
+	action, ok := parseIntervention(content)
+	if !ok {
+		p.mu.Unlock()
+		return interventionParseErrorText(p.Loc, errInterventionUnrecognized), nil
+	}
+
+	if wait.paused {
+		if action.Kind != prin.RunningInterventionResume && action.Kind != prin.RunningInterventionAbort {
+			p.mu.Unlock()
+			return interventionParseErrorText(p.Loc, fmt.Errorf("会议已暂停，请发送恢复或终止")), nil
+		}
+		select {
+		case wait.pausedReply <- action:
+		default:
+			p.mu.Unlock()
+			return interventionAlreadyQueuedText(p.Loc), nil
+		}
+		p.mu.Unlock()
+		return interventionAckText(p.Loc, action.Kind), nil
+	}
+
+	if action.Kind == prin.RunningInterventionResume {
+		p.mu.Unlock()
+		return interventionNoMeetingText(p.Loc), nil
+	}
+	if wait.pendingRunning.Kind != "" {
+		p.mu.Unlock()
+		return interventionAlreadyQueuedText(p.Loc), nil
+	}
+	wait.pendingRunning = action
+	p.mu.Unlock()
+	return interventionAckText(p.Loc, action.Kind), nil
 }
 
 // Confirm implements principal.Port.
@@ -118,9 +176,9 @@ func (p *ChannelPrincipal) Confirm(ctx context.Context, meetingID string, brief 
 		p.mu.Unlock()
 		return prin.Response{}, fmt.Errorf("discord: no channel binding for meeting %s", meetingID)
 	}
-	wait.cycle = cycle
+	wait.confirmCycle = cycle
 	channelID := wait.channelID
-	replyCh := wait.replyCh
+	replyCh := wait.confirmReply
 	p.mu.Unlock()
 
 	if p.Bots == nil || p.Bots.Default == nil {
@@ -134,6 +192,11 @@ func (p *ChannelPrincipal) Confirm(ctx context.Context, meetingID string, brief 
 	case <-ctx.Done():
 		return prin.Response{}, ctx.Err()
 	case r := <-replyCh:
+		p.mu.Lock()
+		if w, ok := p.sessions[meetingID]; ok {
+			w.confirmCycle = 0
+		}
+		p.mu.Unlock()
 		if r.err != nil {
 			return prin.Response{}, r.err
 		}
@@ -141,12 +204,57 @@ func (p *ChannelPrincipal) Confirm(ctx context.Context, meetingID string, brief 
 	}
 }
 
-// RunningAction delegates to stub (CLI-style interventions not wired on Discord yet).
-func (p *ChannelPrincipal) RunningAction(ctx context.Context, meetingID string, s meeting.State) (prin.RunningIntervention, error) {
-	return p.stub.RunningAction(ctx, meetingID, s)
+// RunningAction implements principal.Port.
+func (p *ChannelPrincipal) RunningAction(_ context.Context, meetingID string, _ meeting.State) (prin.RunningIntervention, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	wait, ok := p.sessions[meetingID]
+	if !ok {
+		return prin.RunningIntervention{}, nil
+	}
+	action := wait.pendingRunning
+	if action.Kind == "" {
+		return prin.RunningIntervention{}, nil
+	}
+	wait.pendingRunning = prin.RunningIntervention{}
+	return action, nil
 }
 
-// PausedAction delegates to stub.
-func (p *ChannelPrincipal) PausedAction(ctx context.Context, meetingID string, s meeting.State) (prin.RunningIntervention, error) {
-	return p.stub.PausedAction(ctx, meetingID, s)
+// PausedAction implements principal.Port.
+func (p *ChannelPrincipal) PausedAction(ctx context.Context, meetingID string, _ meeting.State) (prin.RunningIntervention, error) {
+	p.mu.Lock()
+	wait, ok := p.sessions[meetingID]
+	if !ok {
+		p.mu.Unlock()
+		return prin.RunningIntervention{}, fmt.Errorf("discord: no channel binding for meeting %s", meetingID)
+	}
+	wait.paused = true
+	channelID := wait.channelID
+	replyCh := wait.pausedReply
+	p.mu.Unlock()
+
+	if p.Bots != nil && p.Bots.Default != nil {
+		_ = p.Bots.Default.Send(ctx, channelID, formatPausedWaitPrompt(p.Loc))
+	}
+
+	select {
+	case <-ctx.Done():
+		return prin.RunningIntervention{}, ctx.Err()
+	case action := <-replyCh:
+		p.mu.Lock()
+		if w, ok := p.sessions[meetingID]; ok {
+			w.paused = false
+		}
+		p.mu.Unlock()
+		return action, nil
+	}
+}
+
+func (p *ChannelPrincipal) bindForChannelLocked(channelID string) *meetingBind {
+	for _, w := range p.sessions {
+		if w.channelID == channelID {
+			return w
+		}
+	}
+	return nil
 }

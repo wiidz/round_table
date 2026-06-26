@@ -22,6 +22,7 @@ func (h *CommandHandler) helpText() string {
 - `+"`%sprincipal unbind`"+` — 解除 Principal 绑定
 - `+"`开始会议`"+` / `+"`新会议`"+` / `+"`会议开始`"+` — 发起会议（无需前缀，主持人逐步引导）
 - `+"`取消会议`"+` — 取消待确认的会议配置
+- **会议进行中**：`+"`暂停会议`"+` · `+"`恢复会议`"+` · `+"`终止会议`"+` · `+"`立即合成`"+`（研讨）· `+"`强制共识`"+`（裁决）
 - `+"`%smeet [-mode decision|deliberation] 主题`"+` — 同上（带主题时可跳过主题输入）
 - `+"`%smeet cancel`"+` — 取消待确认的会议配置`, p, p, p, p, p, p, p)
 	}
@@ -35,6 +36,7 @@ Prefix: `+"`%s`"+`
 - `+"`%sprincipal unbind`"+` — Remove Principal binding
 - `+"`开始会议`"+` / `+"`新会议`"+` / `+"`会议开始`"+` — Start a meeting (no prefix; Moderator guides you)
 - `+"`取消会议`"+` — Cancel pending meet setup
+- **While meeting runs:** `+"`暂停会议`"+` · `+"`恢复会议`"+` · `+"`终止会议`"+` · `+"`立即合成`"+` (deliberation) · `+"`强制共识`"+` (decision)
 - `+"`%smeet [-mode decision|deliberation] topic`"+` — Same (topic inline skips topic prompt)
 - `+"`%smeet cancel`"+` — Cancel pending meet setup`, p, p, p, p, p, p, p)
 }

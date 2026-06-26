@@ -68,6 +68,12 @@ func localizeProgressEN(line string) string {
 			return fmt.Sprintf("↩ Principal rejected · cycle %d · adding one round", cycleOnly)
 		}
 		return line
+	case strings.HasPrefix(line, "⏸ principal pause"):
+		return "⏸ " + line
+	case strings.HasPrefix(line, "◇ principal force synthesis"):
+		return "⚡ " + line
+	case strings.HasPrefix(line, "◇ principal force consensus"):
+		return "🤝 " + line
 	default:
 		return line
 	}
@@ -201,6 +207,21 @@ func localizeProgressZH(line string) string {
 		reason := strings.TrimPrefix(line, "■ principal abort (")
 		reason = strings.TrimSuffix(reason, ")")
 		return fmt.Sprintf("🛑 Principal 中止会议 · %s", reason)
+
+	case strings.HasPrefix(line, "⏸ principal pause"):
+		reason := strings.TrimPrefix(line, "⏸ principal pause (")
+		reason = strings.TrimSuffix(reason, ")")
+		return fmt.Sprintf("⏸ Principal 暂停会议 · %s", reason)
+
+	case strings.HasPrefix(line, "◇ principal force synthesis"):
+		reason := strings.TrimPrefix(line, "◇ principal force synthesis (")
+		reason = strings.TrimSuffix(reason, ")")
+		return fmt.Sprintf("⚡ Principal 要求立即合成 · %s", reason)
+
+	case strings.HasPrefix(line, "◇ principal force consensus"):
+		reason := strings.TrimPrefix(line, "◇ principal force consensus (")
+		reason = strings.TrimSuffix(reason, ")")
+		return fmt.Sprintf("🤝 Principal 强制共识 · %s", reason)
 	}
 
 	return line

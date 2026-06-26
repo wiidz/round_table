@@ -102,7 +102,7 @@ func TestChannelPrincipal_wrongAuthor(t *testing.T) {
 	p := NewChannelPrincipal(&BotPool{Default: &captureSender{}}, "zh")
 	p.BindMeeting("mtg-1", "ch1", "user-1")
 	p.mu.Lock()
-	p.sessions["mtg-1"].cycle = 1
+	p.sessions["mtg-1"].confirmCycle = 1
 	p.mu.Unlock()
 
 	reply, err := p.DeliverConfirmationReply("ch1", "user-2", "批准")

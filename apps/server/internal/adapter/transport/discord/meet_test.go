@@ -61,32 +61,20 @@ func TestFormatStreamForDiscord_synthesis(t *testing.T) {
 	}
 }
 
-func TestFormatMeetDone_allOpenQuestions(t *testing.T) {
-	qs := []string{
-		"失败条件待定",
-		"奖励曲线待定",
-		"资源平衡待定",
-		"兑换边界待定",
-		"热修资源待定",
-		"账号打通待定",
-		"阶段解锁待定",
-		"测试资格待定",
-	}
+func TestFormatMeetDone_noInlineOpenQuestions(t *testing.T) {
 	s := meeting.State{
 		Status:                 meeting.StatusCompleted,
 		Outcome:                "completed",
 		MeetingMode:            meeting.MeetingModeDeliberation,
-		SynthesisOpenQuestions: qs,
+		SynthesisOpenQuestions: []string{"失败条件待定", "奖励曲线待定"},
 		Consensus:              &meeting.ConsensusState{ResolvedBy: "synthesis"},
 	}
 	got := formatMeetDone(s, "./data/workspaces", "mtg-test", LocaleZH)
-	if strings.Contains(got, "另有") {
-		t.Fatalf("should list all questions, got:\n%s", got)
+	if strings.Contains(got, "失败条件待定") {
+		t.Fatalf("open questions should be in artifact push, not summary:\n%s", got)
 	}
-	for i, q := range qs {
-		if !strings.Contains(got, q) {
-			t.Fatalf("missing question %d: %q", i+1, q)
-		}
+	if !strings.Contains(got, "会议结束") {
+		t.Fatalf("got=%q", got)
 	}
 }
 
