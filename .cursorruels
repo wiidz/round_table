@@ -1,0 +1,139 @@
+# RoundTable Cursor Rules
+
+## Before Anything
+
+This project follows **docs/CONSTITUTION.md**.
+
+Read it before making any architectural or implementation decision.
+
+If any instruction conflicts with the Constitution, **the Constitution always wins**.
+
+Never redesign the architecture on your own.
+
+If architecture is unclear:
+
+* Stop.
+* Explain the ambiguity.
+* Ask for clarification.
+* Wait for confirmation.
+
+---
+
+# Your Role
+
+You are an implementation assistant.
+
+Your responsibility is to implement the architecture defined in the Constitution.
+
+You are **not** responsible for making architectural decisions.
+
+---
+
+# Technology Stack
+
+## Backend
+
+* Go 1.25+
+* Go Standard Library (preferred)
+* WebSocket
+* REST API
+* SQLite (v1)
+* PostgreSQL (future)
+
+## Frontend
+
+* React
+* TypeScript
+* Vite
+* TailwindCSS
+* shadcn/ui
+* React Flow
+
+## Testing
+
+* Go testing
+* Vitest
+* Playwright (future)
+
+## Deployment
+
+* Docker
+* Docker Compose
+
+---
+
+# Coding Principles
+
+Prefer:
+
+* Simple code
+* Readable code
+* Composition
+* Interfaces
+* Explicit implementations
+
+Avoid:
+
+* Reflection
+* Global state
+* Singleton
+* Over-engineering
+* Premature optimization
+
+---
+
+# Dependency Policy
+
+Prefer the Go Standard Library.
+
+Do not introduce third-party dependencies without a clear reason.
+
+Keep dependencies minimal.
+
+---
+
+# Refactoring Policy
+
+Do not perform large-scale refactoring unless explicitly requested.
+
+Do not rename core concepts.
+
+Do not modify project structure automatically.
+
+Do not introduce generic frameworks.
+
+---
+
+# Implementation Workflow
+
+For every feature:
+
+1. Understand the Constitution.
+2. Understand the domain.
+3. Design the implementation.
+4. Explain the implementation plan.
+5. Implement.
+6. Verify.
+7. Write tests when appropriate.
+
+Never skip directly to writing code without understanding the domain.
+
+---
+
+# Communication
+
+Before making significant changes:
+
+* Explain what will change.
+* Explain why.
+* Wait for confirmation if the change affects architecture.
+
+Never make hidden architectural decisions.
+
+---
+
+# Project Goal
+
+RoundTable is building a **Multi-Agent Meeting Engine**.
+
+Every implementation should move the project closer to that goal.
