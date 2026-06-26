@@ -17,11 +17,13 @@ git clone <your-repo-url> round_table
 cd round_table
 ```
 
-## 2. 配置密钥
+## 2. 配置密钥与数据目录
 
 ```bash
 cp deploy/.env.example .env
 nano .env   # 填入 DEEPSEEK_API_KEY、DISCORD_BOT_TOKEN 等
+
+sh deploy/init-data-dirs.sh   # 创建 ./data/workspaces 等目录
 ```
 
 非敏感选项（参与者列表、locale、预设默认值）在镜像内 `apps/server/configs/server.yaml`；如需自定义，可挂载覆盖：
@@ -57,28 +59,25 @@ discord participant bots: 4/4 connected
 2. 频道发送：`!rt principal bind`
 3. 发送：`新会议` → 按主持人引导完成一场会
 
-## 数据持久化
+## 数据持久化（bind mount → 项目 `data/`）
 
-Compose 使用命名卷，重启/升级镜像后保留：
+会议产出直接写在宿主机 **`./data/`** 下（与本地开发路径一致）：
 
-| 卷 | 内容 |
-|----|------|
-| `workspaces` | 会议产出（MINUTES、artifacts） |
-| `profiles` | Participant / Principal Profile |
-| `knowledge` | 长期记忆 |
-| `transport` | Principal 绑定 `discord-principal.json` |
+| 宿主机路径 | 内容 |
+|------------|------|
+| `data/workspaces/` | 会议产出（MINUTES、artifacts） |
+| `data/profiles/` | Participant / Principal Profile |
+| `data/knowledge/` | 长期记忆 |
+| `data/transport/` | Principal 绑定 `discord-principal.json` |
 
-查看卷位置：
+示例：`/mnt/data1/projects/round_table/data/workspaces/mtg-xxx/`
 
-```bash
-docker volume inspect roundtable_workspaces
-```
+> 此前若用过 **Docker 命名卷**，旧数据在 `docker volume inspect roundtable_workspaces`，需手动拷贝到 `data/workspaces/` 后删除旧卷。
 
-备份示例：
+备份：
 
 ```bash
-docker run --rm -v roundtable_workspaces:/data -v $(pwd):/backup alpine \
-  tar czf /backup/workspaces-$(date +%F).tar.gz -C /data .
+tar czf workspaces-$(date +%F).tar.gz -C data workspaces
 ```
 
 ## 可选：HTTP 健康检查服务
@@ -94,11 +93,8 @@ curl http://127.0.0.1:7777/health
 # 重建镜像并滚动重启
 docker compose up -d --build discord
 
-# 停止
+# 停止（不删 data/ 下文件）
 docker compose down
-
-# 停止并删除数据卷（慎用）
-docker compose down -v
 
 # 进入容器排查
 docker compose exec discord sh
@@ -149,18 +145,21 @@ volumes:
 | Bot 在线但不回消息 | Message Content Intent；`guild_id` 是否匹配 |
 | LLM 报错 | `DEEPSEEK_API_KEY`；容器内 `wget -O- https://api.deepseek.com` |
 | 重启后 Principal 要重新 bind | `transport` 卷是否挂载；是否用了 `docker compose down -v` |
-| 会议跑完但无 workspace 文件 | 命名卷 root 属主；重建镜像后 entrypoint 会自动 `chown`（见下） |
+| 会议跑完但 `data/workspaces` 空 | 是否仍用旧命名卷；`git pull` 后 bind mount + `sh deploy/init-data-dirs.sh` 重建 |
+| entrypoint `cannot write to /app/data/workspaces` | 宿主机 `data/workspaces` 权限；`sudo chown -R 1000:1000 data/` |
 
 ## 数据卷权限（entrypoint）
 
-镜像启动时会以 root **一次性** `chown` 挂载目录给 `roundtable`（uid 1000），再降权运行进程。升级后：
+启动时会 `chown` bind mount 目录为 uid **1000** 并做写入自检。升级后：
 
 ```bash
 git pull
+sh deploy/init-data-dirs.sh
 docker compose up -d --build --force-recreate discord
+ls -la data/workspaces
 ```
 
-无需对宿主机 `data/` 或命名卷手动 `chmod 777`。
+无需 `chmod 777`。
 
 ## 文件说明
 

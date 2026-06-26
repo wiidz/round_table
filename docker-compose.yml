@@ -1,11 +1,11 @@
 # RoundTable — Docker Compose (Ubuntu / Linux server)
 #
+# Data is bind-mounted to ./data/ on the host (not Docker named volumes).
+#
 # Quick start:
 #   cp deploy/.env.example .env
+#   sh deploy/init-data-dirs.sh
 #   docker compose up -d --build discord
-#
-# Build behind ShellCrash (mixed-port 4567 on host):
-#   HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567 docker compose build discord
 
 name: roundtable
 
@@ -21,7 +21,6 @@ services:
     image: roundtable/server:latest
     container_name: roundtable-discord
     restart: unless-stopped
-    # Share host network so 127.0.0.1:4567 reaches ShellCrash (mixed-port often binds localhost only).
     network_mode: host
     command: ["roundtable-discord"]
     env_file:
@@ -42,10 +41,10 @@ services:
       no_proxy: ${no_proxy:-localhost,127.0.0.1}
       NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
     volumes:
-      - workspaces:/app/data/workspaces
-      - profiles:/app/data/profiles
-      - knowledge:/app/data/knowledge
-      - transport:/app/data/transport
+      - ./data/workspaces:/app/data/workspaces
+      - ./data/profiles:/app/data/profiles
+      - ./data/knowledge:/app/data/knowledge
+      - ./data/transport:/app/data/transport
     logging:
       driver: json-file
       options:
@@ -79,9 +78,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-volumes:
-  workspaces:
-  profiles:
-  knowledge:
-  transport:
