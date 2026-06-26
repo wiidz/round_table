@@ -8,14 +8,15 @@ import (
 
 // Participant returns fixed responses for engine integration tests.
 type Participant struct {
-	Content string
-	Stance  string
+	Content      string
+	Stance       string
+	ObjectReason string
 }
 
 var _ participant.Port = (*Participant)(nil)
 
 // Respond implements participant.Port.
-func (p *Participant) Respond(ctx context.Context, _, _ string, _ string) (participant.Response, error) {
+func (p *Participant) Respond(ctx context.Context, _, participantID string, _ string) (participant.Response, error) {
 	if err := ctx.Err(); err != nil {
 		return participant.Response{}, err
 	}
@@ -28,7 +29,9 @@ func (p *Participant) Respond(ctx context.Context, _, _ string, _ string) (parti
 		content = "同意当前方案。"
 	}
 	return participant.Response{
-		Content: content,
-		Stance:  stance,
+		ParticipantID: participantID,
+		Content:       content,
+		Stance:        stance,
+		ObjectReason:  p.ObjectReason,
 	}, nil
 }
