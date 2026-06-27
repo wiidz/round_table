@@ -1,0 +1,192 @@
+/* RoundTable · Design tokens — Light & Dark */
+
+:root {
+  --font-family-sans: Inter, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  --font-family-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+
+  /* Brand — Principal actions */
+  --brand-color: #e85d04;
+  --brand-color-hover: #f97316;
+  --brand-soft: rgba(232, 93, 4, 0.1);
+
+  /* AI — Participant / Moderator output */
+  --ai-color: #6e56f8;
+  --ai-color-hover: #7d67f9;
+  --ai-color-muted: #9b6cf6;
+  --ai-soft: rgba(110, 86, 248, 0.08);
+  --ai-soft-strong: rgba(110, 86, 248, 0.14);
+  --ai-gradient: linear-gradient(135deg, #6e56f8 0%, #9b6cf6 100%);
+  --ai-glow-shadow:
+    0 0 0 1px rgba(110, 86, 248, 0.25),
+    0 8px 32px rgba(110, 86, 248, 0.18);
+  --ai-foreground: #ffffff;
+
+  /* Neutral — Light */
+  --canvas: #fbfbfc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --border-subtle: #ededf0;
+  --text-primary: #16181d;
+  --text-secondary: #5b5f66;
+  --text-tertiary: #8a8f98;
+
+  /* Semantic */
+  --semantic-success: #2fb67c;
+  --semantic-success-soft: rgba(47, 182, 124, 0.1);
+  --semantic-info: #3da8f5;
+  --semantic-info-soft: rgba(61, 168, 245, 0.1);
+  --semantic-warning: #f5a623;
+  --semantic-warning-soft: rgba(245, 166, 35, 0.1);
+  --semantic-danger: #f2545b;
+  --semantic-danger-soft: rgba(242, 84, 91, 0.1);
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+
+  /* Spacing */
+  --section-gap: 32px;
+
+  /* Elevation */
+  --shadow-raised:
+    0 1px 2px rgba(16, 18, 29, 0.04),
+    0 4px 12px rgba(16, 18, 29, 0.04);
+  --shadow-overlay: 0 8px 40px rgba(16, 18, 29, 0.16);
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 280ms;
+  --motion-ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* High-End Flat · field / panel surfaces */
+  --field-ring: rgba(0, 0, 0, 0.06);
+  --field-inset-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --field-hover-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 4px 16px -10px rgba(232, 93, 4, 0.22);
+  --field-focus-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 6px 20px -10px rgba(232, 93, 4, 0.28);
+  --panel-shell-ring: rgba(255, 255, 255, 0.7);
+  --panel-shell-shadow:
+    0 1px 2px rgba(16, 18, 29, 0.04),
+    0 8px 32px -8px rgba(16, 18, 29, 0.08);
+  --panel-hover-shadow:
+    0 4px 24px -8px rgba(232, 93, 4, 0.18),
+    0 8px 32px -12px rgba(16, 18, 29, 0.1);
+
+  /* shadcn mapping — Light */
+  --background: var(--canvas);
+  --foreground: var(--text-primary);
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--brand-color);
+  --primary-foreground: #ffffff;
+  --secondary: var(--border-subtle);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--border-subtle);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--border-subtle);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--semantic-danger);
+  --destructive-foreground: #ffffff;
+  --border: #e2e2e6;
+  --input: #e2e2e6;
+  --ring: var(--brand-color);
+  --radius: var(--radius-md);
+}
+
+html.dark {
+  --canvas: #0b0c0e;
+  --surface: #16181d;
+  --surface-raised: #1c1f26;
+  --border-subtle: #23262e;
+  --text-primary: #f4f5f7;
+  --text-secondary: #a6abb5;
+  --text-tertiary: #6e747f;
+
+  --brand-soft: rgba(232, 93, 4, 0.15);
+  --ai-soft: rgba(110, 86, 248, 0.12);
+  --ai-soft-strong: rgba(110, 86, 248, 0.18);
+  --ai-glow-shadow:
+    0 0 0 1px rgba(110, 86, 248, 0.32),
+    0 8px 32px rgba(110, 86, 248, 0.22);
+
+  --semantic-success-soft: rgba(47, 182, 124, 0.14);
+  --semantic-info-soft: rgba(61, 168, 245, 0.14);
+  --semantic-warning-soft: rgba(245, 166, 35, 0.14);
+  --semantic-danger-soft: rgba(242, 84, 91, 0.14);
+
+  --shadow-raised:
+    0 1px 2px rgba(0, 0, 0, 0.24),
+    0 4px 12px rgba(0, 0, 0, 0.18);
+  --shadow-overlay: 0 8px 40px rgba(0, 0, 0, 0.45);
+
+  --field-ring: var(--border-subtle);
+  --field-inset-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --field-hover-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 4px 16px -12px rgba(232, 93, 4, 0.2);
+  --field-focus-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 6px 20px -12px rgba(232, 93, 4, 0.24);
+  --panel-shell-ring: rgba(255, 255, 255, 0.08);
+  --panel-shell-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 8px 32px -8px rgba(0, 0, 0, 0.35);
+  --panel-hover-shadow:
+    0 4px 24px -8px rgba(232, 93, 4, 0.22),
+    0 8px 32px -12px rgba(0, 0, 0, 0.4);
+
+  --background: var(--canvas);
+  --foreground: var(--text-primary);
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--brand-color);
+  --primary-foreground: #ffffff;
+  --secondary: var(--border-subtle);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--border-subtle);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--border-subtle);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--semantic-danger);
+  --destructive-foreground: #ffffff;
+  --border: #2c2f38;
+  --input: #2c2f38;
+  --ring: var(--brand-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-normal: 0ms;
+    --motion-slow: 0ms;
+  }
+}
+
+.ds-shadow-raised {
+  box-shadow: var(--shadow-raised);
+}
+
+.ds-shadow-overlay {
+  box-shadow: var(--shadow-overlay);
+}
+
+.ds-ai-surface {
+  background: var(--ai-soft);
+}
+
+.ds-brand-soft {
+  background: var(--brand-soft);
+}
