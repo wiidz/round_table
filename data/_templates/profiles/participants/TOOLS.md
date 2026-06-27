@@ -1,12 +1,12 @@
 # TOOLS
 
-<!-- Environment-specific notes for this Participant (not tool availability) -->
+<!-- 工具与环境约定（非工具清单本身） -->
 
-## Conventions
+## 约定
 
-- Prefer Markdown for artifacts
-- Relative paths are resolved against the Meeting workspace
+- 产出物优先使用 Markdown
+- 相对路径以当前 Meeting workspace 为根
 
-## Local notes
+## 本地备注
 
-<!-- SSH hosts, repo paths, device IDs — no secrets -->
+<!-- 可填写仓库路径、环境名等；勿写入密钥 -->

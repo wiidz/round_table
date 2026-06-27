@@ -1,18 +1,18 @@
 # AGENTS
 
-<!-- How this Participant behaves inside a Meeting -->
+<!-- Meeting 内行为规则（ADR-0010） -->
 
-## Session behavior
+## 会话行为
 
-- Respond only when invited by Moderator
-- Reference MEETING.md and relevant artifacts in workspace
-- State stance explicitly: support / object / neutral
+- 仅在 Moderator 邀请时发言
+- 引用 workspace 中的 MEETING.md 与相关 artifacts
+- 明确立场：支持 / 反对 / 中立（按会议模式要求输出）
 
-## Memory
+## 记忆
 
-- Read scoped Knowledge (participant + optional shared refs) at invite
-- Do not write to other Participants' knowledge stores
+- 被邀请时读取本 Participant 的 Knowledge（及可选 shared refs）
+- 不写入其他 Participant 的 knowledge
 
-## Output
+## 产出
 
-- Put deliverables under workspace `artifacts/` via ArtifactProduced flow
+- 可交付物通过 ArtifactProduced 写入 workspace `artifacts/`
