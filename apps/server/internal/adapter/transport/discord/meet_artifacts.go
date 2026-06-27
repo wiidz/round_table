@@ -15,10 +15,10 @@ const artifactExcerptRunes = 800
 const artifactFetchExcerptRunes = 1800
 
 func (r *MeetRunner) postMeetArtifacts(ctx context.Context, channelID string, final meeting.State, meetingID string, loc Locale) {
-	if r.Bots == nil || r.Bots.Default == nil || r.Cfg.Workspace.Root == "" {
+	if r.Bots == nil || r.Bots.Default == nil || r.activeCfg().Workspace.Root == "" {
 		return
 	}
-	ws := wsfs.NewStore(r.Cfg.Workspace.Root)
+	ws := wsfs.NewStore(r.activeCfg().Workspace.Root)
 
 	type artifactSpec struct {
 		title string
@@ -49,10 +49,10 @@ func (r *MeetRunner) postMeetArtifacts(ctx context.Context, channelID string, fi
 }
 
 func (r *MeetRunner) fetchArtifact(ctx context.Context, channelID, meetingID string, kind string, loc Locale) (string, error) {
-	if r.Bots == nil || r.Bots.Default == nil || r.Cfg.Workspace.Root == "" {
+	if r.Bots == nil || r.Bots.Default == nil || r.activeCfg().Workspace.Root == "" {
 		return "", nil
 	}
-	ws := wsfs.NewStore(r.Cfg.Workspace.Root)
+	ws := wsfs.NewStore(r.activeCfg().Workspace.Root)
 	path, kindKey, ok := artifactPathForKind(kind)
 	if !ok {
 		return artifactFetchUsageText(loc), nil

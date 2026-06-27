@@ -38,6 +38,23 @@ func TestBotPool_SenderFor(t *testing.T) {
 	}
 }
 
+func TestBotPool_SenderFor_binding(t *testing.T) {
+	shared := stubSender{id: "shared"}
+	pool := &BotPool{
+		Default: stubSender{id: "main"},
+		byID:    map[string]ChannelSender{"shared": shared},
+		participantBotID: func(participantID string) string {
+			if participantID == "analyst" {
+				return "shared"
+			}
+			return ""
+		},
+	}
+	if pool.SenderFor("analyst") != shared {
+		t.Fatal("expected shared bot via binding")
+	}
+}
+
 func TestParticipantBotEnvKey(t *testing.T) {
 	if ParticipantBotEnvKey("game-designer") != "DISCORD_BOT_TOKEN_GAME_DESIGNER" {
 		t.Fatal("unexpected env key")

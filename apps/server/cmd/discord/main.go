@@ -7,20 +7,39 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	discordtransport "round_table/apps/server/internal/adapter/transport/discord"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
+	"round_table/apps/server/internal/platform/bootstrap"
 	"round_table/apps/server/internal/platform/config"
 )
 
 func main() {
-	cfg := config.Load()
-	dc := cfg.Transport.Discord
+	startedAt := time.Now()
+	base := config.Load()
+	dc := base.Transport.Discord
 
-	if cfg.Secrets.DiscordBotToken == "" {
-		fmt.Fprintln(os.Stderr, "discord: set DISCORD_BOT_TOKEN in apps/server/.env")
+	log.Printf("[discord] 正在启动 RoundTable Discord Transport…")
+
+	if base.Secrets.DiscordBotToken == "" {
+		fmt.Fprintln(os.Stderr, "discord: configure Moderator bot token in Web 设置 → IM → Discord")
 		fmt.Fprintln(os.Stderr, "       optional: transport.discord.* in apps/server/configs/server.yaml")
 		os.Exit(2)
+	}
+
+	store, err := bootstrap.OpenStorage(base.Storage)
+	if err != nil {
+		log.Fatalf("discord: storage: %v", err)
+	}
+	var configSvc *config.Service
+	if s, ok := store.(config.SettingsStore); ok {
+		configSvc, err = config.NewService(s)
+		if err != nil {
+			log.Fatalf("discord: config: %v", err)
+		}
+		base = configSvc.Current()
+		dc = base.Transport.Discord
 	}
 
 	reg, err := principalbind.NewRegistry(dc.BindingsFile)
@@ -28,19 +47,25 @@ func main() {
 		log.Fatalf("discord: principal registry: %v", err)
 	}
 
+	loc := base.Locale()
+	log.Printf("[discord] 配置已加载 · locale=%s · prefix=%q", loc, dc.CommandPrefix)
+
 	botOpts := discordtransport.Options{
 		AllowDM:    dc.AllowDM,
 		AllowGuild: dc.AllowGuild,
 		GuildID:    dc.GuildID,
-		Locale:     dc.Locale,
+		Locale:     loc,
 	}
 
+	participantTotal := len(config.DiscordBotApplicationIDs(base))
+	log.Printf("[discord] 正在连接 Discord Gateway…")
+
 	bot, err := discordtransport.New(discordtransport.Options{
-		Token:      cfg.Secrets.DiscordBotToken,
+		Token:      base.Secrets.DiscordBotToken,
 		AllowDM:    dc.AllowDM,
 		AllowGuild: dc.AllowGuild,
 		GuildID:    dc.GuildID,
-		Locale:     dc.Locale,
+		Locale:     loc,
 	})
 	if err != nil {
 		log.Fatalf("discord: %v", err)
@@ -49,7 +74,17 @@ func main() {
 	pool, err := discordtransport.OpenBotPool(discordtransport.PoolOptions{
 		Default: bot,
 		BotOpts: botOpts,
-		Mapping: discordtransport.ParseParticipantBotMapping(dc.ParticipantBots),
+		BotIDs:  config.DiscordBotApplicationIDs(base),
+		Mapping: nil,
+		ResolveToken: func(botID string) string {
+			if base.Secrets.DiscordParticipantTokens == nil {
+				return ""
+			}
+			return base.Secrets.DiscordParticipantTokens[botID]
+		},
+		ParticipantBotID: func(participantID string) string {
+			return config.DiscordBotForParticipant(base.Transport.Discord.ParticipantIMBindings, participantID)
+		},
 	})
 	if err != nil {
 		log.Fatalf("discord: participant bots: %v", err)
@@ -57,17 +92,18 @@ func main() {
 	defer pool.Close()
 
 	meet := &discordtransport.MeetRunner{
-		Cfg:       cfg,
+		Cfg:       base,
+		ConfigSvc: configSvc,
 		Discord:   dc,
 		Registry:  reg,
 		Bots:      pool,
-		Principal: discordtransport.NewChannelPrincipal(pool, dc.Locale),
+		Principal: discordtransport.NewChannelPrincipal(pool, loc),
 	}
 
-	loc := discordtransport.ParseLocale(dc.Locale)
+	locale := discordtransport.ParseLocale(loc)
 	bot.SetOnGatewayResumed(func() {
 		for _, chID := range meet.ActiveMeetingChannelIDs() {
-			_ = bot.Send(context.Background(), chID, discordtransport.GatewayResumedText(loc))
+			_ = bot.Send(context.Background(), chID, discordtransport.GatewayResumedText(locale))
 		}
 	})
 
@@ -76,10 +112,17 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	log.Printf("discord bot connected — prefix=%q bindings=%s", cmd.Prefix, dc.BindingsFile)
-	log.Printf("discord participant bots: %d/%d connected",
-		pool.Count(), len(discordtransport.ParseParticipantBotMapping(dc.ParticipantBots)))
-	log.Printf("try: 新会议 | %sprincipal bind | %shelp", cmd.Prefix, cmd.Prefix)
+	for _, line := range discordtransport.StartupReadyLogLines(cmd, discordtransport.StartupInfo{
+		StartedAt:            startedAt,
+		Prefix:               cmd.Prefix,
+		BindingsFile:         dc.BindingsFile,
+		Locale:               discordtransport.ParseLocale(loc),
+		ModeratorUsername:    bot.DisplayName(),
+		ParticipantConnected:   pool.Count(),
+		ParticipantTotal:     participantTotal,
+	}) {
+		log.Print(line)
+	}
 
 	if err := bot.Run(ctx, cmd.Handle); err != nil {
 		log.Fatalf("discord: %v", err)

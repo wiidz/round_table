@@ -94,7 +94,7 @@ func TestCommandHandler_naturalMeetTrigger(t *testing.T) {
 		Platform: "discord", GuildID: "g1", AuthorID: "u1",
 		ChannelID: "ch1", Content: "影舞者设计",
 	})
-	if err != nil || !strings.Contains(reply, "请选择会议方案") || !strings.Contains(reply, "影舞者设计") {
+	if err != nil || !strings.Contains(reply, "请选择会议方案") || !strings.Contains(reply, "直接开始（默认）") {
 		t.Fatalf("reply=%q err=%v", reply, err)
 	}
 }

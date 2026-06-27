@@ -5,111 +5,63 @@ import (
 	"strings"
 
 	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/platform/config"
 )
 
 type meetPreset struct {
-	ID   string
-	Icon string
-	Name string
-	Hint string
-	Make func(topic string) meetLaunchConfig
+	ID      string
+	Name    string
+	Hint    string
+	Command string
+	Make    func(topic string) meetLaunchConfig
 }
 
-func deliberationPresets(defaultCfg meetLaunchConfig, loc Locale) []meetPreset {
-	return []meetPreset{
-		{
-			ID: "1", Icon: "⚡", Name: presetName(loc, "直接开始（默认）", "Start now (default)"),
-			Hint: presetHint(loc, defaultCfg.MaxRounds, defaultCfg.Confirmation, 0, defaultCfg.Mode == meeting.MeetingModeDeliberation),
-			Make: func(t string) meetLaunchConfig {
-				cfg := defaultCfg
-				cfg.Topic = t
-				cfg.FreeDialogueQuestions = 0
-				return cfg
-			},
-		},
-		{
-			ID: "2", Icon: "🌩️", Name: presetName(loc, "闪电研讨", "Flash"),
-			Hint: presetHint(loc, 1, meeting.ConfirmationModeSkip, 0, true),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDeliberation, 1, meeting.ConfirmationModeSkip, 0)
-			},
-		},
-		{
-			ID: "3", Icon: "📐", Name: presetName(loc, "标准研讨", "Standard"),
-			Hint: presetHint(loc, 3, meeting.ConfirmationModeSkip, 0, true),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDeliberation, 3, meeting.ConfirmationModeSkip, 0)
-			},
-		},
-		{
-			ID: "4", Icon: "💬", Name: presetName(loc, "研讨 + 自由对话", "Deliberation + Q&A"),
-			Hint: presetHintFree(loc, 3, meeting.ConfirmationModeSkip, 1),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDeliberation, 3, meeting.ConfirmationModeSkip, 1)
-			},
-		},
-		{
-			ID: "5", Icon: "✅", Name: presetName(loc, "研讨 + 需确认", "Deliberation + review"),
-			Hint: presetHint(loc, 3, meeting.ConfirmationModeRequired, 1, true),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDeliberation, 3, meeting.ConfirmationModeRequired, 1)
-			},
-		},
-		{
-			ID: "6", Icon: "🔬", Name: presetName(loc, "深度研讨", "Deep"),
-			Hint: presetHint(loc, 5, meeting.ConfirmationModeRequired, 1, true),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDeliberation, 5, meeting.ConfirmationModeRequired, 1)
-			},
-		},
+func launchConfigFromPreset(p config.MeetPresetConfig, topic string) meetLaunchConfig {
+	minRounds := 2
+	if p.MaxRounds < minRounds {
+		minRounds = p.MaxRounds
+	}
+	return meetLaunchConfig{
+		Topic:                    topic,
+		Mode:                     p.Mode,
+		MaxRounds:                p.MaxRounds,
+		MinRoundsBeforeSynthesis: minRounds,
+		Confirmation:             p.Confirmation,
+		FreeDialogueQuestions:    p.FreeDialogueQuestions,
 	}
 }
 
-func decisionPresets(loc Locale) []meetPreset {
-	return []meetPreset{
-		{
-			ID: "J1", Icon: "🌩️", Name: presetName(loc, "闪电裁决", "Flash"),
-			Hint: presetHint(loc, 1, meeting.ConfirmationModeSkip, 0, false),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDecision, 1, meeting.ConfirmationModeSkip, 0)
-			},
-		},
-		{
-			ID: "J2", Icon: "⚡", Name: presetName(loc, "快速裁决", "Quick"),
-			Hint: presetHint(loc, 2, meeting.ConfirmationModeSkip, 0, false),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDecision, 2, meeting.ConfirmationModeSkip, 0)
-			},
-		},
-		{
-			ID: "J3", Icon: "📋", Name: presetName(loc, "标准裁决", "Standard"),
-			Hint: presetHint(loc, 3, meeting.ConfirmationModeSkip, 0, false),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDecision, 3, meeting.ConfirmationModeSkip, 0)
-			},
-		},
-		{
-			ID: "J4", Icon: "✅", Name: presetName(loc, "裁决 + 需确认", "Decision + review"),
-			Hint: presetHint(loc, 3, meeting.ConfirmationModeRequired, 1, false),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDecision, 3, meeting.ConfirmationModeRequired, 1)
-			},
-		},
-		{
-			ID: "J5", Icon: "🔬", Name: presetName(loc, "深度裁决", "Deep"),
-			Hint: presetHint(loc, 5, meeting.ConfirmationModeRequired, 1, false),
-			Make: func(t string) meetLaunchConfig {
-				return presetLaunchConfig(t, meeting.MeetingModeDecision, 5, meeting.ConfirmationModeRequired, 1)
-			},
-		},
+func buildMeetPresets(stored []config.MeetPresetConfig, loc Locale) []meetPreset {
+	if len(stored) == 0 {
+		stored = config.DefaultMeetPresets(config.Config{})
 	}
+	out := make([]meetPreset, 0, len(stored))
+	for _, p := range stored {
+		p := p
+		out = append(out, meetPreset{
+			ID:      p.ID,
+			Name:    presetName(loc, config.PresetMenuNameZH(p), p.NameEN),
+			Hint:    presetHint(loc, p.MaxRounds, p.Confirmation, p.FreeDialogueQuestions, p.Mode == meeting.MeetingModeDeliberation),
+			Command: p.Command,
+			Make: func(topic string) meetLaunchConfig {
+				return launchConfigFromPreset(p, topic)
+			},
+		})
+	}
+	return out
 }
 
-func presetName(loc Locale, zh, en string) string {
-	if loc == LocaleZH {
-		return zh
+func filterMeetPresets(all []meetPreset, group string) []meetPreset {
+	out := make([]meetPreset, 0, len(all))
+	for _, p := range all {
+		if group == "deliberation" && !strings.HasPrefix(strings.ToUpper(p.ID), "J") {
+			out = append(out, p)
+		}
+		if group == "decision" && strings.HasPrefix(strings.ToUpper(p.ID), "J") {
+			out = append(out, p)
+		}
 	}
-	return en
+	return out
 }
 
 func presetHint(loc Locale, rounds int, confirmation string, free int, deliberation bool) string {
@@ -135,46 +87,45 @@ func presetHint(loc Locale, rounds int, confirmation string, free int, deliberat
 	return fmt.Sprintf("%s · %d rounds · confirm %s%s", mode, rounds, confirmation, freePart)
 }
 
-func presetHintFree(loc Locale, rounds int, confirmation string, free int) string {
-	if loc == LocaleZH {
-		return fmt.Sprintf("研讨 · %d 轮 · 自由对话 %d 轮/人 · 确认%s", rounds, free, confirmationModeLabel(confirmation, loc))
-	}
-	return fmt.Sprintf("deliberation · %d rounds · free %d Q · confirm %s", rounds, free, confirmation)
-}
-
-func formatModeratorSetupPrompt(loc Locale, prefix string, defaultCfg meetLaunchConfig) string {
-	delib := deliberationPresets(defaultCfg, loc)
-	decide := decisionPresets(loc)
+func formatModeratorSetupPrompt(loc Locale, prefix string, all []meetPreset) string {
+	delib := filterMeetPresets(all, "deliberation")
+	decide := filterMeetPresets(all, "decision")
 	var b strings.Builder
 
 	if loc == LocaleZH {
-		fmt.Fprintf(&b, "🎙️ **主持人** — 请选择会议方案\n\n📌 **主题：** %s\n", defaultCfg.Topic)
-		b.WriteString("\n━━━━━━━━━━━━━━━━\n")
-		b.WriteString("📋 **研讨** · 出方案草案\n")
-		b.WriteString("回复 **1–6** 数字\n\n")
+		b.WriteString("🎙️ **主持人** — 请选择会议方案\n\n")
+		if len(delib) > 0 {
+			b.WriteString("━━━━━━━━━━━━━━━━\n")
+			b.WriteString("📋 **研讨** · 出方案草案\n")
+			b.WriteString("回复 **1–6** 数字\n\n")
+		}
 	} else {
-		fmt.Fprintf(&b, "🎙️ **Moderator** — pick a preset\n\n📌 **Topic:** %s\n", defaultCfg.Topic)
-		b.WriteString("\n━━━━━━━━━━━━━━━━\n")
-		b.WriteString("📋 **Deliberation** · design draft\n")
-		b.WriteString("Reply **1–6**\n\n")
+		b.WriteString("🎙️ **Moderator** — pick a preset\n\n")
+		if len(delib) > 0 {
+			b.WriteString("━━━━━━━━━━━━━━━━\n")
+			b.WriteString("📋 **Deliberation** · design draft\n")
+			b.WriteString("Reply **1–6**\n\n")
+		}
 	}
 
 	for _, p := range delib {
-		fmt.Fprintf(&b, "**%s** %s **%s**\n    └ %s\n\n", p.ID, p.Icon, p.Name, p.Hint)
+		fmt.Fprintf(&b, "%s", formatPresetMenuLine(p))
 	}
 
-	if loc == LocaleZH {
-		b.WriteString("━━━━━━━━━━━━━━━━\n")
-		b.WriteString("⚖️ **裁决** · 投票拍板\n")
-		b.WriteString("回复 **J1–J5**（字母 J + 数字）\n\n")
-	} else {
-		b.WriteString("━━━━━━━━━━━━━━━━\n")
-		b.WriteString("⚖️ **Decision** · vote & conclude\n")
-		b.WriteString("Reply **J1–J5** (letter J + number)\n\n")
+	if len(decide) > 0 {
+		if loc == LocaleZH {
+			b.WriteString("━━━━━━━━━━━━━━━━\n")
+			b.WriteString("⚖️ **裁决** · 投票拍板\n")
+			b.WriteString("回复 **J1–J5**（字母 J + 数字）\n\n")
+		} else {
+			b.WriteString("━━━━━━━━━━━━━━━━\n")
+			b.WriteString("⚖️ **Decision** · vote & conclude\n")
+			b.WriteString("Reply **J1–J5** (letter J + number)\n\n")
+		}
 	}
 
 	for _, p := range decide {
-		fmt.Fprintf(&b, "**%s** %s **%s**\n    └ %s\n\n", p.ID, p.Icon, p.Name, p.Hint)
+		fmt.Fprintf(&b, "%s", formatPresetMenuLine(p))
 	}
 
 	if loc == LocaleZH {
@@ -191,73 +142,42 @@ func formatModeratorSetupPrompt(loc Locale, prefix string, defaultCfg meetLaunch
 	return strings.TrimRight(b.String(), "\n")
 }
 
+func formatPresetMenuLine(p meetPreset) string {
+	primary := p.ID
+	if cmd := strings.TrimSpace(p.Command); cmd != "" {
+		primary = cmd
+	}
+	return fmt.Sprintf("**%s** **%s**\n    └ %s\n\n", primary, p.Name, p.Hint)
+}
+
 func normalizePresetChoice(content string) string {
 	s := strings.TrimSpace(content)
 	if s == "" {
 		return ""
 	}
-	s = normalizeASCIIForms(s)
-	lower := strings.ToLower(s)
-	if lower == "开始" || lower == "默认" || lower == "start" || lower == "default" || lower == "ok" {
-		return "1"
-	}
-	s = strings.ReplaceAll(s, " ", "")
-	s = strings.ToUpper(s)
-	if len(s) >= 2 && s[0] == 'J' {
-		end := 1
-		for end < len(s) && s[end] >= '0' && s[end] <= '9' {
-			end++
-		}
-		if end > 1 {
-			return s[:end]
-		}
-	}
-	return s
+	return config.NormalizePresetCommandKey(s)
 }
 
-func normalizeASCIIForms(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		switch r {
-		case '０', '0':
-			b.WriteByte('0')
-		case '１', '1':
-			b.WriteByte('1')
-		case '２', '2':
-			b.WriteByte('2')
-		case '３', '3':
-			b.WriteByte('3')
-		case '４', '4':
-			b.WriteByte('4')
-		case '５', '5':
-			b.WriteByte('5')
-		case '６', '6':
-			b.WriteByte('6')
-		case '７', '7':
-			b.WriteByte('7')
-		case '８', '8':
-			b.WriteByte('8')
-		case '９', '9':
-			b.WriteByte('9')
-		case 'Ｊ', 'J', 'j':
-			b.WriteByte('J')
-		default:
-			b.WriteRune(r)
-		}
+func lookupPreset(choice string, all []meetPreset) (meetPreset, bool) {
+	key := normalizePresetChoice(choice)
+	if key == "" {
+		return meetPreset{}, false
 	}
-	return b.String()
-}
-
-func lookupPreset(choice string, defaultCfg meetLaunchConfig, loc Locale) (meetPreset, bool) {
-	for _, p := range deliberationPresets(defaultCfg, loc) {
-		if p.ID == choice {
-			return p, true
-		}
-	}
-	for _, p := range decisionPresets(loc) {
-		if p.ID == choice {
+	for _, p := range all {
+		if config.NormalizePresetCommandKey(p.Command) == key {
 			return p, true
 		}
 	}
 	return meetPreset{}, false
+}
+
+func normalizeASCIIForms(s string) string {
+	return config.NormalizePresetASCIIForms(s)
+}
+
+func presetName(loc Locale, zh, en string) string {
+	if loc == LocaleZH {
+		return zh
+	}
+	return en
 }

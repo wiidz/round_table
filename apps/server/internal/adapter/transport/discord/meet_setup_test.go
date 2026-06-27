@@ -8,27 +8,35 @@ import (
 	"round_table/apps/server/internal/platform/config"
 )
 
+func testMeetPresets(cfg config.Config) []meetPreset {
+	return buildMeetPresets(config.DefaultMeetPresets(cfg), LocaleZH)
+}
+
 func TestDefaultLaunchConfig(t *testing.T) {
+	base := config.Config{
+		Meeting: config.Meeting{
+			DefaultMode:              meeting.MeetingModeDeliberation,
+			MaxRoundsPerSegment:      5,
+			MinRoundsBeforeSynthesis: 2,
+			ConfirmationMode:         meeting.ConfirmationModeSkip,
+			FreeDialogueMaxQuestions: 0,
+		},
+	}
 	r := &MeetRunner{
 		Cfg: config.Config{
 			Meeting: config.Meeting{
-				MaxRoundsPerSegment:      5,
-				MinRoundsBeforeSynthesis: 2,
+				MeetPresets: config.DefaultMeetPresets(base),
 			},
 		},
 		Discord: config.DiscordTransport{
-			MeetMode:                  meeting.MeetingModeDeliberation,
-			MeetMaxRounds:             2,
-			MeetConfirmation:          meeting.ConfirmationModeSkip,
-			MeetFreeDialogueQuestions: 0,
-			MeetParticipants:          "designer:游戏策划:gameplay,player:玩家代表:experience",
+			MeetParticipants: "designer:游戏策划:gameplay,player:玩家代表:experience",
 		},
 	}
 	cfg := r.defaultLaunchConfig("测试会议", "")
 	if cfg.Topic != "测试会议" || cfg.Mode != meeting.MeetingModeDeliberation {
 		t.Fatalf("cfg=%+v", cfg)
 	}
-	if cfg.MaxRounds != 2 || cfg.MinRoundsBeforeSynthesis != 2 || cfg.FreeDialogueQuestions != 0 {
+	if cfg.MaxRounds != 5 || cfg.MinRoundsBeforeSynthesis != 2 || cfg.FreeDialogueQuestions != 0 {
 		t.Fatalf("rounds/free = %+v", cfg)
 	}
 	if !strings.Contains(cfg.ParticipantsSummary, "designer·游戏策划") {
@@ -46,28 +54,37 @@ func TestNormalizeSetupChoice(t *testing.T) {
 }
 
 func TestHandlePresetMenu_startDefault(t *testing.T) {
-	defaultCfg := meetLaunchConfig{
-		Topic: "测试", Mode: meeting.MeetingModeDeliberation, MaxRounds: 2,
-		MinRoundsBeforeSynthesis: 2, Confirmation: meeting.ConfirmationModeSkip,
-		FreeDialogueQuestions: 1,
+	base := config.Config{
+		Meeting: config.Meeting{
+			DefaultMode:              meeting.MeetingModeDecision,
+			MaxRoundsPerSegment:      5,
+			ConfirmationMode:         meeting.ConfirmationModeRequired,
+			FreeDialogueMaxQuestions: 2,
+		},
 	}
+	all := testMeetPresets(base)
+	defaultCfg := meetLaunchConfig{Topic: "测试"}
 	sess := meetSetupSession{config: defaultCfg, step: setupStepPresetMenu}
-	got, err := handlePresetMenu(sess, "1", LocaleZH, "!rt ", defaultCfg)
+	got, err := handlePresetMenu(sess, "1", LocaleZH, "!rt ", all)
 	if err != nil || !got.launch {
 		t.Fatalf("got=%+v err=%v", got, err)
 	}
-	if got.config.FreeDialogueQuestions != 0 {
-		t.Fatalf("default preset should disable free dialogue, got=%d", got.config.FreeDialogueQuestions)
+	if got.config.Mode != meeting.MeetingModeDecision {
+		t.Fatalf("mode=%q want decision", got.config.Mode)
+	}
+	if got.config.MaxRounds != 5 || got.config.Confirmation != meeting.ConfirmationModeRequired {
+		t.Fatalf("config=%+v", got.config)
+	}
+	if got.config.FreeDialogueQuestions != 2 {
+		t.Fatalf("option 1 free dialogue = %d want 2", got.config.FreeDialogueQuestions)
 	}
 }
 
 func TestHandlePresetMenu_flashDeliberation(t *testing.T) {
-	defaultCfg := meetLaunchConfig{
-		Topic: "测试", Mode: meeting.MeetingModeDeliberation, MaxRounds: 2,
-		MinRoundsBeforeSynthesis: 2, Confirmation: meeting.ConfirmationModeSkip,
-	}
+	all := testMeetPresets(config.Config{})
+	defaultCfg := meetLaunchConfig{Topic: "测试"}
 	sess := meetSetupSession{config: defaultCfg, step: setupStepPresetMenu}
-	got, err := handlePresetMenu(sess, "2", LocaleZH, "!rt ", defaultCfg)
+	got, err := handlePresetMenu(sess, "2", LocaleZH, "!rt ", all)
 	if err != nil || !got.launch {
 		t.Fatalf("got=%+v err=%v", got, err)
 	}
@@ -80,50 +97,49 @@ func TestHandlePresetMenu_flashDeliberation(t *testing.T) {
 }
 
 func TestHandlePresetMenu_customWizard(t *testing.T) {
+	all := testMeetPresets(config.Config{})
 	defaultCfg := meetLaunchConfig{Topic: "测试", Mode: meeting.MeetingModeDeliberation, MaxRounds: 2}
 	sess := meetSetupSession{config: defaultCfg, step: setupStepPresetMenu}
-	got, err := handlePresetMenu(sess, "0", LocaleZH, "!rt ", defaultCfg)
+	got, err := handlePresetMenu(sess, "0", LocaleZH, "!rt ", all)
 	if err != nil || got.launch || got.step != setupStepCustomMode {
 		t.Fatalf("got=%+v err=%v", got, err)
 	}
 
 	sess = meetSetupSession{config: defaultCfg, step: setupStepCustomMode}
-	got, err = handleCustomMode(sess, "1", LocaleZH, "!rt ", defaultCfg)
+	got, err = handleCustomMode(sess, "1", LocaleZH, "!rt ", all)
 	if err != nil || got.step != setupStepCustomRounds {
 		t.Fatalf("mode step: got=%+v err=%v", got, err)
 	}
 
 	sess = meetSetupSession{config: got.config, step: setupStepCustomRounds}
-	got, err = handleCustomRounds(sess, "3", LocaleZH, "!rt ", defaultCfg)
+	got, err = handleCustomRounds(sess, "3", LocaleZH, "!rt ", all)
 	if err != nil || got.config.MaxRounds != 3 {
 		t.Fatalf("rounds: got=%+v err=%v", got, err)
 	}
 
 	sess = meetSetupSession{config: got.config, step: setupStepCustomConfirmation}
-	got, err = handleCustomConfirmation(sess, "1", LocaleZH, "!rt ", defaultCfg)
+	got, err = handleCustomConfirmation(sess, "1", LocaleZH, "!rt ", all)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	sess = meetSetupSession{config: got.config, step: setupStepCustomFree}
-	got, err = handleCustomFree(sess, "1", LocaleZH, "!rt ", defaultCfg)
+	got, err = handleCustomFree(sess, "1", LocaleZH, "!rt ", all)
 	if err != nil || got.step != setupStepCustomConfirm {
 		t.Fatalf("free: got=%+v err=%v", got, err)
 	}
 
 	sess = meetSetupSession{config: got.config, step: setupStepCustomConfirm}
-	got, err = handleCustomConfirm(sess, "1", LocaleZH, "!rt ", defaultCfg)
+	got, err = handleCustomConfirm(sess, "1", LocaleZH, "!rt ", all)
 	if err != nil || !got.launch {
 		t.Fatalf("confirm: got=%+v err=%v", got, err)
 	}
 }
 
 func TestFormatModeratorSetupPrompt(t *testing.T) {
-	got := formatModeratorSetupPrompt(LocaleZH, "!rt ", meetLaunchConfig{
-		Topic: "测试会议", Mode: meeting.MeetingModeDeliberation, MaxRounds: 2,
-		MinRoundsBeforeSynthesis: 2, Confirmation: meeting.ConfirmationModeSkip,
-	})
-	for _, want := range []string{"测试会议", "研讨", "J1", "J5", "0"} {
+	all := testMeetPresets(config.Config{})
+	got := formatModeratorSetupPrompt(LocaleZH, "!rt ", all)
+	for _, want := range []string{"研讨", "J1", "J5", "0"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in:\n%s", want, got)
 		}

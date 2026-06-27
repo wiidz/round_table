@@ -4,7 +4,7 @@ import "fmt"
 
 func (h *CommandHandler) locale() Locale {
 	if h.Meet != nil {
-		return ParseLocale(h.Meet.Discord.Locale)
+		return h.Meet.locale()
 	}
 	return LocaleEN
 }

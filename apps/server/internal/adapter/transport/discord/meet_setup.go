@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/platform/config"
 )
 
 // meetLaunchConfig is the resolved configuration for starting a meeting.
@@ -72,52 +73,31 @@ func (s *meetSetupSessions) pending(channelID string) bool {
 	return ok
 }
 
-func (r *MeetRunner) defaultLaunchConfig(topic, modeOverride string) meetLaunchConfig {
-	mode := r.Discord.MeetMode
-	if mode == "" {
-		mode = meeting.MeetingModeDecision
-	}
-	if modeOverride != "" {
-		mode = modeOverride
-	}
-
-	rounds := r.Discord.MeetMaxRounds
-	if rounds <= 0 {
-		rounds = r.Cfg.Meeting.MaxRoundsPerSegment
-	}
-	minRounds := r.Cfg.Meeting.MinRoundsBeforeSynthesis
-	if minRounds <= 0 {
-		minRounds = 2
-	}
-	confirmation := r.Discord.MeetConfirmation
-	if confirmation == "" {
-		confirmation = meeting.ConfirmationModeSkip
-	}
-
-	return meetLaunchConfig{
-		Topic:                    topic,
-		Mode:                     mode,
-		MaxRounds:                rounds,
-		MinRoundsBeforeSynthesis: minRounds,
-		Confirmation:             confirmation,
-		FreeDialogueQuestions:    r.Discord.MeetFreeDialogueQuestions,
-		ParticipantsSummary:      summarizeParticipants(r.Discord.MeetParticipants),
-	}
+func (r *MeetRunner) meetPresets(loc Locale) []meetPreset {
+	return buildMeetPresets(r.activeCfg().Meeting.MeetPresets, loc)
 }
 
-func presetLaunchConfig(topic string, mode string, rounds int, confirmation string, free int) meetLaunchConfig {
-	minRounds := 2
-	if rounds < minRounds {
-		minRounds = rounds
+func (r *MeetRunner) defaultLaunchConfig(topic, modeOverride string) meetLaunchConfig {
+	presets := r.activeCfg().Meeting.MeetPresets
+	if len(presets) == 0 {
+		presets = config.DefaultMeetPresets(r.activeCfg())
 	}
-	return meetLaunchConfig{
-		Topic:                    topic,
-		Mode:                     mode,
-		MaxRounds:                rounds,
-		MinRoundsBeforeSynthesis: minRounds,
-		Confirmation:             confirmation,
-		FreeDialogueQuestions:    free,
+	for _, p := range presets {
+		if p.ID == "1" {
+			cfg := launchConfigFromPreset(p, topic)
+			if modeOverride != "" {
+				cfg.Mode = modeOverride
+			}
+			cfg.ParticipantsSummary = summarizeParticipants(r.dc().MeetParticipants)
+			return cfg
+		}
 	}
+	cfg := launchConfigFromPreset(presets[0], topic)
+	if modeOverride != "" {
+		cfg.Mode = modeOverride
+	}
+	cfg.ParticipantsSummary = summarizeParticipants(r.dc().MeetParticipants)
+	return cfg
 }
 
 func summarizeParticipants(raw string) string {
@@ -303,7 +283,7 @@ func normalizeSetupChoice(content string) string {
 	return s
 }
 
-func handleSetupStep(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
+func handleSetupStep(sess meetSetupSession, choice string, loc Locale, prefix string, all []meetPreset) (setupHandleResult, error) {
 	if sess.step == setupStepPresetMenu {
 		choice = normalizePresetChoice(choice)
 	} else {
@@ -315,23 +295,23 @@ func handleSetupStep(sess meetSetupSession, choice string, loc Locale, prefix st
 
 	switch sess.step {
 	case setupStepPresetMenu:
-		return handlePresetMenu(sess, choice, loc, prefix, defaultCfg)
+		return handlePresetMenu(sess, choice, loc, prefix, all)
 	case setupStepCustomMode:
-		return handleCustomMode(sess, choice, loc, prefix, defaultCfg)
+		return handleCustomMode(sess, choice, loc, prefix, all)
 	case setupStepCustomRounds:
-		return handleCustomRounds(sess, choice, loc, prefix, defaultCfg)
+		return handleCustomRounds(sess, choice, loc, prefix, all)
 	case setupStepCustomConfirmation:
-		return handleCustomConfirmation(sess, choice, loc, prefix, defaultCfg)
+		return handleCustomConfirmation(sess, choice, loc, prefix, all)
 	case setupStepCustomFree:
-		return handleCustomFree(sess, choice, loc, prefix, defaultCfg)
+		return handleCustomFree(sess, choice, loc, prefix, all)
 	case setupStepCustomConfirm:
-		return handleCustomConfirm(sess, choice, loc, prefix, defaultCfg)
+		return handleCustomConfirm(sess, choice, loc, prefix, all)
 	default:
 		return setupHandleResult{}, errSetupReplyUnrecognized
 	}
 }
 
-func handlePresetMenu(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
+func handlePresetMenu(sess meetSetupSession, choice string, loc Locale, prefix string, all []meetPreset) (setupHandleResult, error) {
 	topic := sess.config.Topic
 	participants := sess.config.ParticipantsSummary
 
@@ -344,7 +324,7 @@ func handlePresetMenu(sess meetSetupSession, choice string, loc Locale, prefix s
 		}, nil
 	}
 
-	preset, ok := lookupPreset(choice, defaultCfg, loc)
+	preset, ok := lookupPreset(choice, all)
 	if !ok {
 		return setupHandleResult{}, errSetupInvalidChoice
 	}
@@ -357,12 +337,12 @@ func handlePresetMenu(sess meetSetupSession, choice string, loc Locale, prefix s
 	return setupHandleResult{launch: true, config: cfg}, nil
 }
 
-func handleCustomMode(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
+func handleCustomMode(sess meetSetupSession, choice string, loc Locale, prefix string, all []meetPreset) (setupHandleResult, error) {
 	switch choice {
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, defaultCfg),
+			reply:  formatModeratorSetupPrompt(loc, prefix, all),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -381,13 +361,13 @@ func handleCustomMode(sess meetSetupSession, choice string, loc Locale, prefix s
 	}, nil
 }
 
-func handleCustomRounds(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
+func handleCustomRounds(sess meetSetupSession, choice string, loc Locale, prefix string, all []meetPreset) (setupHandleResult, error) {
 	var rounds int
 	switch choice {
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, defaultCfg),
+			reply:  formatModeratorSetupPrompt(loc, prefix, all),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -415,12 +395,12 @@ func handleCustomRounds(sess meetSetupSession, choice string, loc Locale, prefix
 	}, nil
 }
 
-func handleCustomConfirmation(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
+func handleCustomConfirmation(sess meetSetupSession, choice string, loc Locale, prefix string, all []meetPreset) (setupHandleResult, error) {
 	switch choice {
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, defaultCfg),
+			reply:  formatModeratorSetupPrompt(loc, prefix, all),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -439,12 +419,12 @@ func handleCustomConfirmation(sess meetSetupSession, choice string, loc Locale, 
 	}, nil
 }
 
-func handleCustomFree(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
+func handleCustomFree(sess meetSetupSession, choice string, loc Locale, prefix string, all []meetPreset) (setupHandleResult, error) {
 	switch choice {
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, defaultCfg),
+			reply:  formatModeratorSetupPrompt(loc, prefix, all),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -466,12 +446,12 @@ func handleCustomFree(sess meetSetupSession, choice string, loc Locale, prefix s
 	}, nil
 }
 
-func handleCustomConfirm(sess meetSetupSession, choice string, loc Locale, prefix string, defaultCfg meetLaunchConfig) (setupHandleResult, error) {
+func handleCustomConfirm(sess meetSetupSession, choice string, loc Locale, prefix string, all []meetPreset) (setupHandleResult, error) {
 	switch choice {
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, defaultCfg),
+			reply:  formatModeratorSetupPrompt(loc, prefix, all),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil

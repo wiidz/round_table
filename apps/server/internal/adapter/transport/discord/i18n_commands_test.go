@@ -8,7 +8,7 @@ import (
 func TestHelpTextZH(t *testing.T) {
 	h := &CommandHandler{Prefix: "!rt "}
 	h.Meet = &MeetRunner{}
-	h.Meet.Discord.Locale = "zh"
+	h.Meet.Cfg.Server.Locale = "zh"
 	got := h.helpText()
 	for _, want := range []string{"RoundTable Discord 指令", "principal bind", "meet"} {
 		if !strings.Contains(got, want) {
@@ -20,7 +20,7 @@ func TestHelpTextZH(t *testing.T) {
 func TestHelpTextEN(t *testing.T) {
 	h := &CommandHandler{Prefix: "!rt "}
 	h.Meet = &MeetRunner{}
-	h.Meet.Discord.Locale = "en"
+	h.Meet.Cfg.Server.Locale = "en"
 	got := h.helpText()
 	for _, want := range []string{"RoundTable Discord commands", "principal bind", "meet"} {
 		if !strings.Contains(got, want) {

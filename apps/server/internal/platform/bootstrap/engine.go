@@ -10,7 +10,6 @@ import (
 	"round_table/apps/server/internal/adapter/principal"
 	prinstub "round_table/apps/server/internal/adapter/principal/stub"
 	profilefs "round_table/apps/server/internal/adapter/profile/fs"
-	"round_table/apps/server/internal/adapter/storage/memory"
 	wsfs "round_table/apps/server/internal/adapter/workspace/fs"
 	"round_table/apps/server/internal/domain/consensus"
 	"round_table/apps/server/internal/engine"
@@ -70,8 +69,13 @@ func newEngine(cfg config.Config, prin principal.Port, stubOpts PrincipalOptions
 		prin = stub
 	}
 
+	store, err := OpenStorage(cfg.Storage)
+	if err != nil {
+		return nil, fmt.Errorf("bootstrap: storage: %w", err)
+	}
+
 	eng := engine.New(
-		memory.New(),
+		store,
 		consensus.NoObjection{},
 		parts,
 		prin,
@@ -90,7 +94,7 @@ func resolveAPIKey(cfg config.Config) (string, error) {
 	switch cfg.Model.Provider {
 	case "deepseek", "":
 		if cfg.Secrets.DeepSeekAPIKey == "" {
-			return "", fmt.Errorf("bootstrap: DEEPSEEK_API_KEY required (set in apps/server/.env)")
+			return "", fmt.Errorf("bootstrap: DEEPSEEK_API_KEY required (set in deploy/.env)")
 		}
 		return cfg.Secrets.DeepSeekAPIKey, nil
 	case "openai":

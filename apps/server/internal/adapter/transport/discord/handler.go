@@ -171,7 +171,7 @@ func (h *CommandHandler) handleMeet(msg transport.Inbound, args []string) (strin
 		}
 		return meetSetupNothingToCancelText(loc), nil
 	}
-	defaultMode := h.Meet.Discord.MeetMode
+	defaultMode := h.Meet.activeCfg().Meeting.DefaultMode
 	if defaultMode == "" {
 		defaultMode = meeting.MeetingModeDecision
 	}

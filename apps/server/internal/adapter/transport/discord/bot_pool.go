@@ -9,16 +9,20 @@ import (
 
 // BotPool routes outbound messages to participant-specific Discord bots.
 type BotPool struct {
-	Default ChannelSender
-	byID    map[string]ChannelSender
-	closer  []func() error
+	Default              ChannelSender
+	byID                 map[string]ChannelSender
+	participantBotID     func(participantID string) string
+	closer               []func() error
 }
 
 // PoolOptions configures participant bot connections.
 type PoolOptions struct {
-	Default   ChannelSender
-	BotOpts   Options
-	Mapping   map[string]string // participant_id -> env var name for token
+	Default              ChannelSender
+	BotOpts              Options
+	BotIDs               []string
+	Mapping              map[string]string // legacy: bot_id -> env key name
+	ResolveToken         func(botID string) string
+	ParticipantBotID     func(participantID string) string // participant -> bound bot id
 }
 
 // ParticipantBotEnvKey returns the default env var for a participant bot token.
@@ -59,13 +63,38 @@ func OpenBotPool(opts PoolOptions) (*BotPool, error) {
 		return nil, fmt.Errorf("discord: bot pool default sender required")
 	}
 	pool := &BotPool{
-		Default: opts.Default,
-		byID:    make(map[string]ChannelSender),
+		Default:          opts.Default,
+		byID:             make(map[string]ChannelSender),
+		participantBotID: opts.ParticipantBotID,
 	}
-	for id, envKey := range opts.Mapping {
-		token := strings.TrimSpace(os.Getenv(envKey))
+
+	botIDs := opts.BotIDs
+	if len(botIDs) == 0 && len(opts.Mapping) > 0 {
+		for id := range opts.Mapping {
+			botIDs = append(botIDs, id)
+		}
+	}
+
+	for _, botID := range botIDs {
+		botID = strings.TrimSpace(botID)
+		if botID == "" {
+			continue
+		}
+		token := ""
+		if opts.ResolveToken != nil {
+			token = strings.TrimSpace(opts.ResolveToken(botID))
+		}
 		if token == "" {
-			log.Printf("discord: participant bot %q skipped — set %s in .env", id, envKey)
+			envKey := ParticipantBotEnvKey(botID)
+			if opts.Mapping != nil {
+				if mapped, ok := opts.Mapping[botID]; ok && strings.TrimSpace(mapped) != "" {
+					envKey = strings.TrimSpace(mapped)
+				}
+			}
+			token = strings.TrimSpace(os.Getenv(envKey))
+		}
+		if token == "" {
+			log.Printf("discord: participant bot %q skipped — no token configured", botID)
 			continue
 		}
 		bot, err := New(Options{
@@ -75,14 +104,21 @@ func OpenBotPool(opts PoolOptions) (*BotPool, error) {
 			GuildID:    opts.BotOpts.GuildID,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("discord: participant bot %q: %w", id, err)
+			return nil, fmt.Errorf("discord: participant bot %q: %w", botID, err)
 		}
-		pool.byID[id] = bot
+		pool.byID[botID] = bot
 		name := bot.DisplayName()
 		pool.closer = append(pool.closer, bot.Close)
-		log.Printf("discord participant bot connected id=%q name=%q env=%s", id, name, envKey)
+		log.Printf("discord participant bot connected id=%q name=%q", botID, name)
 	}
 	return pool, nil
+}
+
+func (p *BotPool) boundBotID(participantID string) string {
+	if p == nil || p.participantBotID == nil {
+		return strings.TrimSpace(participantID)
+	}
+	return strings.TrimSpace(p.participantBotID(participantID))
 }
 
 // SenderFor returns the bot for a participant, or Default when unmapped.
@@ -90,9 +126,12 @@ func (p *BotPool) SenderFor(participantID string) ChannelSender {
 	if p == nil {
 		return nil
 	}
-	id := strings.TrimSpace(participantID)
-	if id != "" {
-		if s, ok := p.byID[id]; ok {
+	botID := p.boundBotID(participantID)
+	if botID == "" {
+		botID = strings.TrimSpace(participantID)
+	}
+	if botID != "" {
+		if s, ok := p.byID[botID]; ok {
 			return s
 		}
 	}
@@ -104,11 +143,14 @@ func (p *BotPool) HasBot(participantID string) bool {
 	if p == nil {
 		return false
 	}
-	id := strings.TrimSpace(participantID)
-	if id == "" {
+	botID := p.boundBotID(participantID)
+	if botID == "" {
+		botID = strings.TrimSpace(participantID)
+	}
+	if botID == "" {
 		return false
 	}
-	_, ok := p.byID[id]
+	_, ok := p.byID[botID]
 	return ok
 }
 

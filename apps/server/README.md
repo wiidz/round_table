@@ -31,7 +31,7 @@ Go module 代理（国内网络建议先设置）：
 export GOPROXY=https://goproxy.cn,direct
 ```
 
-配置分层：`configs/server.yaml` → `.env` → 环境变量。
+配置分层：`configs/server.yaml` → **`deploy/.env`** → 环境变量。
 
 运行时数据三层（见 [data/README.md](../../data/README.md)）：
 
@@ -48,8 +48,8 @@ make test
 make run     # :7777 /health
 make tidy
 
-# 跑一场真实 LLM 会议（需 apps/server/.env 中配置 DEEPSEEK_API_KEY）
-cp apps/server/.env.example apps/server/.env   # 填入 key
+# 跑一场真实 LLM 会议（需 deploy/.env 中配置 DEEPSEEK_API_KEY）
+cp deploy/.env.example deploy/.env   # 填入 key
 make meet TOPIC="REST API 是否应采用 GraphQL"
 # 可选：MEET_FLAGS="-max-rounds 2 -participants architect:Architect:design,dev:Developer:backend"
 ```
@@ -64,7 +64,7 @@ go test ./apps/server/internal/engine/... -timeout 5m
 
 ### Discord Transport（v0.2）
 
-Bot Token 写在 **`apps/server/.env`**（勿提交 git）：
+Bot Token 写在 **`deploy/.env`**（勿提交 git）：
 
 ```bash
 DISCORD_BOT_TOKEN=your-bot-token

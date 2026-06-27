@@ -71,7 +71,7 @@ func (r *MeetRunner) HandleInputStatus(msg transport.Inbound) (string, error) {
 	if !isInputStatusTrigger(msg.Content) {
 		return "", nil
 	}
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	phase := r.InputPhase(msg.ChannelID)
 	return formatInputPhaseStatus(loc, phase, r.meetingIDForPhase(msg.ChannelID, phase)), nil
 }
@@ -225,7 +225,7 @@ func (r *MeetRunner) MisplacedInputHint(msg transport.Inbound) (string, bool) {
 		phase == InputPhaseMeetingConfirmation {
 		return "", false
 	}
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	return formatMisplacedInputHint(loc, phase), true
 }
 

@@ -24,6 +24,7 @@ type ChannelSender interface {
 // MeetRunner starts Engine meetings from Discord commands.
 type MeetRunner struct {
 	Cfg       config.Config
+	ConfigSvc *config.Service
 	Discord   config.DiscordTransport
 	Registry  *principalbind.Registry
 	Bots      *BotPool
@@ -100,7 +101,7 @@ func (r *MeetRunner) ActiveMeetingChannelIDs() []string {
 
 // BeginSetupFromTrigger starts setup when Principal sends a natural-language trigger (no prefix).
 func (r *MeetRunner) BeginSetupFromTrigger(msg transport.Inbound) (string, error) {
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	if reply, ok := r.checkBeginSetup(msg, loc); ok {
 		return reply, nil
 	}
@@ -117,7 +118,7 @@ func (r *MeetRunner) BeginSetupFromTrigger(msg transport.Inbound) (string, error
 
 // BeginSetup asks the Principal to confirm or adjust meeting configuration.
 func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (string, error) {
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	if reply, ok := r.checkBeginSetup(msg, loc); ok {
 		return reply, nil
 	}
@@ -129,11 +130,11 @@ func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (
 		config:    cfg,
 		step:      setupStepPresetMenu,
 	})
-	prefix := strings.TrimSpace(r.Discord.CommandPrefix)
+	prefix := strings.TrimSpace(r.dc().CommandPrefix)
 	if prefix == "" {
 		prefix = "!rt"
 	}
-	return formatModeratorSetupPrompt(loc, prefix+" ", cfg), nil
+	return formatModeratorSetupPrompt(loc, prefix+" ", r.meetPresets(loc)), nil
 }
 
 func (r *MeetRunner) checkBeginSetup(msg transport.Inbound, loc Locale) (string, bool) {
@@ -161,16 +162,16 @@ func (r *MeetRunner) CancelSetup(channelID, authorID string) (string, bool) {
 		return "", false
 	}
 	if sess.authorID != authorID {
-		loc := ParseLocale(r.Discord.Locale)
+		loc := r.locale()
 		return meetSetupNotOwnerText(loc), true
 	}
 	r.setups.clear(channelID)
-	return meetSetupCancelledText(ParseLocale(r.Discord.Locale)), true
+	return meetSetupCancelledText(r.locale()), true
 }
 
 // HandleSetupReply processes a Principal reply while setup is pending.
 func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	sess, ok := r.setups.get(msg.ChannelID)
 	if !ok {
 		return "", nil
@@ -188,21 +189,21 @@ func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
 		sess.config = defaultCfg
 		sess.step = setupStepPresetMenu
 		r.setups.put(msg.ChannelID, sess)
-		prefix := strings.TrimSpace(r.Discord.CommandPrefix)
+		prefix := strings.TrimSpace(r.dc().CommandPrefix)
 		if prefix == "" {
 			prefix = "!rt"
 		}
-		return formatModeratorSetupPrompt(loc, prefix+" ", defaultCfg), nil
+		return formatModeratorSetupPrompt(loc, prefix+" ", r.meetPresets(loc)), nil
 	}
 
-	prefix := strings.TrimSpace(r.Discord.CommandPrefix)
+	prefix := strings.TrimSpace(r.dc().CommandPrefix)
 	if prefix == "" {
 		prefix = "!rt"
 	}
 	prefix = prefix + " "
-	defaultCfg := r.defaultLaunchConfig(sess.config.Topic, "")
+	presets := r.meetPresets(loc)
 
-	result, err := handleSetupStep(sess, msg.Content, loc, prefix, defaultCfg)
+	result, err := handleSetupStep(sess, msg.Content, loc, prefix, presets)
 	if err != nil {
 		return meetSetupParseErrorText(loc, err), nil
 	}
@@ -219,7 +220,7 @@ func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
 
 // launch starts the meeting asynchronously after configuration is confirmed.
 func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string, error) {
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
 	binding, ok := r.Registry.Get(scope)
 	if !ok {
@@ -235,7 +236,7 @@ func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string
 	}
 
 	go r.runMeeting(msg.ChannelID, meetingID, binding, cfg)
-	maxConfirm := r.Cfg.Meeting.MaxConfirmationCycles
+	maxConfirm := r.activeCfg().Meeting.MaxConfirmationCycles
 	if maxConfirm <= 0 {
 		maxConfirm = 3
 	}
@@ -248,7 +249,7 @@ func (r *MeetRunner) HandleArtifactFetch(msg transport.Inbound) (string, error) 
 	if !ok {
 		return "", nil
 	}
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	meetingID, ok := r.sessions.last(msg.ChannelID)
 	if !ok {
 		return artifactFetchNoMeetingText(loc), nil
@@ -261,7 +262,7 @@ func (r *MeetRunner) HandleFreeDialogueQuestion(msg transport.Inbound) (string, 
 	if r.Principal == nil || !isFreeDialogueQuestionTrigger(msg.Content) {
 		return "", nil
 	}
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	if _, active := r.sessions.active(msg.ChannelID); !active {
 		return freeDialogueQuestionWrongPhaseText(loc), nil
 	}
@@ -273,7 +274,7 @@ func (r *MeetRunner) HandleRunningIntervention(msg transport.Inbound) (string, e
 	if r.Principal == nil || !isInterventionTrigger(msg.Content) {
 		return "", nil
 	}
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	_, active := r.sessions.active(msg.ChannelID)
 	paused := r.Principal.PendingPaused(msg.ChannelID)
 	if !active && !paused {
@@ -294,7 +295,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 	defer r.sessions.clear(channelID)
 	ctx := context.Background()
 
-	loc := ParseLocale(r.Discord.Locale)
+	loc := r.locale()
 	if r.Principal != nil {
 		r.Principal.BindMeeting(meetingID, channelID, binding.ExternalID)
 		defer r.Principal.UnbindMeeting(meetingID)
@@ -306,9 +307,9 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 	var eng *engine.Engine
 	var err error
 	if r.Principal != nil {
-		eng, err = bootstrap.NewEngineWithPrincipal(r.Cfg, r.Principal)
+		eng, err = bootstrap.NewEngineWithPrincipal(r.activeCfg(), r.Principal)
 	} else {
-		eng, err = bootstrap.NewEngine(r.Cfg)
+		eng, err = bootstrap.NewEngine(r.activeCfg())
 	}
 	if err != nil {
 		_ = r.Bots.Default.Send(ctx, channelID, meetEngineFailedText(loc, err))
@@ -321,7 +322,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		Loggers: []engine.StreamLogger{engine.StdStreamLogger{}, chStream},
 	}
 
-	parts, err := parseParticipants(r.Discord.MeetParticipants)
+	parts, err := parseParticipants(r.dc().MeetParticipants)
 	if err != nil {
 		_ = r.Bots.Default.Send(ctx, channelID, meetConfigErrorText(loc, err))
 		return
@@ -329,7 +330,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 
 	minPtr := cfg.MinRoundsBeforeSynthesis
 	freePtr := cfg.FreeDialogueQuestions
-	maxConfirm := r.Cfg.Meeting.MaxConfirmationCycles
+	maxConfirm := r.activeCfg().Meeting.MaxConfirmationCycles
 	createIn := engine.CreateMeetingInput{
 		MeetingID:                meetingID,
 		Topic:                    cfg.Topic,
@@ -357,7 +358,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		return
 	}
 
-	summary := formatMeetDone(final, r.Cfg.Workspace.Root, meetingID, loc)
+	summary := formatMeetDone(final, r.activeCfg().Workspace.Root, meetingID, loc)
 	SendLong(r.Bots.Default, ctx, channelID, summary)
 	r.postMeetArtifacts(ctx, channelID, final, meetingID, loc)
 	r.sessions.setLast(channelID, meetingID)
