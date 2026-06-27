@@ -20,8 +20,8 @@ cd round_table
 ## 2. 配置密钥与数据目录
 
 ```bash
-cp deploy/.env.example .env
-nano .env   # 填入 DEEPSEEK_API_KEY、DISCORD_BOT_TOKEN 等
+cp deploy/.env.example deploy/.env
+nano deploy/.env   # 填入 DEEPSEEK_API_KEY、DISCORD_BOT_TOKEN 等
 
 sh deploy/init-data-dirs.sh   # 创建 ./data/workspaces 等目录
 ```
@@ -34,17 +34,28 @@ volumes:
   - ./apps/server/configs/server.yaml:/app/apps/server/configs/server.yaml:ro
 ```
 
-## 3. 构建并启动 Discord Bot
+## 3. 构建并启动（Web + API + Discord）
 
 ```bash
-# 若 ShellCrash mixed-port=4567，拉 golang 基础镜像可能也需要代理：
+# 若 ShellCrash mixed-port=4567，拉基础镜像可能也需要代理：
 export HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567
 
-docker compose up -d --build discord
-docker compose logs -f discord
+docker compose up -d --build
+# 或：make docker-up
+docker compose logs -f
 ```
 
-> **go mod download 慢/失败**：Dockerfile 使用 `GOPROXY=https://goproxy.cn,direct`；Alpine apk 仍走官方源（构建时经 `HTTP_PROXY`）。
+- **Web UI + REST API**：`http://127.0.0.1:${ROUND_TABLE_HTTP_PORT:-7777}`（同一端口，静态页 + `/api`）
+- **Discord Bot**：`discord` 容器，`network_mode: host`（Linux 代理用 `127.0.0.1`）
+
+`deploy/.env` 端口：
+
+```bash
+ROUND_TABLE_HTTP_PORT=7777   # 宿主机访问 Web/API
+ROUND_TABLE_WEB_PORT=5173    # 仅本地 make web-dev（Vite），Docker 不用
+```
+
+> **go mod / npm 慢**：Dockerfile 使用 `GOPROXY=https://goproxy.cn,direct`；构建时经 `HTTP_PROXY` 拉基础镜像。
 
 成功日志示例：
 
@@ -80,23 +91,23 @@ discord participant bots: 4/4 connected
 tar czf workspaces-$(date +%F).tar.gz -C data workspaces
 ```
 
-## 可选：HTTP 健康检查服务
+## 可选：仅 Discord（不启 HTTP/Web）
 
 ```bash
-docker compose --profile http up -d
-curl http://127.0.0.1:7777/health
+docker compose up -d --build discord
 ```
 
 ## 常用命令
 
 ```bash
-# 重建镜像并滚动重启
-docker compose up -d --build discord
+# 重建镜像并滚动重启（Web + API + Discord）
+docker compose up -d --build
 
 # 停止（不删 data/ 下文件）
 docker compose down
 
 # 进入容器排查
+docker compose exec server sh
 docker compose exec discord sh
 ```
 

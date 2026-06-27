@@ -28,6 +28,7 @@
 | 项 | 目标 | 依赖 |
 |----|------|------|
 | SQLite Event Store | Meeting Event 落库，重启可回放 | ADR-0003 |
+| app_settings / ConfigService | 非密钥运行时配置 Web 可改、热生效 | SQLite |
 | 会议列表 API | `GET /meetings`、按 channel/principal 查询 | Event Store |
 | Discord 历史 | 频道 `获取*` 不依赖内存 `lastByChannel` | API + workspace 索引 |
 

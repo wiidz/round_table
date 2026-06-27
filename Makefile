@@ -11,7 +11,9 @@ export GOPROXY := https://goproxy.cn,direct
 SCENARIO_GAME_CLASS := data/_templates/scenarios/game-class-design
 TOPIC_GAME_CLASS    := 设计新职业「影舞者」的核心技能与定位
 
-.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord docker-build docker-up docker-down docker-logs
+WEB     := ./apps/web
+
+.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-dev web-preview web-build
 
 SCENARIO_3ROUND := data/_templates/scenarios/3-round-debate
 TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 撤销）并批准进入开发？
@@ -20,12 +22,12 @@ TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 
 run:
 	go run $(CMD)/main.go
 
-## run-discord: start Discord transport bot (requires DISCORD_BOT_TOKEN in apps/server/.env)
+## run-discord: start Discord transport bot (requires DISCORD_BOT_TOKEN in deploy/.env)
 run-discord:
 	https_proxy=http://127.0.0.1:7897 http_proxy=http://127.0.0.1:7897 all_proxy=socks5://127.0.0.1:7897 \
 	go run $(DISCORD_CMD)/main.go
 
-## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in apps/server/.env)
+## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in deploy/.env)
 meet:
 	@test -n "$(TOPIC)" || (echo 'usage: make meet TOPIC="your topic"'; exit 1)
 	go run $(MEET_CMD)/main.go -topic "$(TOPIC)" $(MEET_FLAGS)
@@ -58,7 +60,15 @@ meet-game-class: seed-scenario-game-class
 		-participants "designer:游戏策划:gameplay,ops:运营:monetization,player:玩家代表:experience,tech_lead:主程:engineering"
 
 ## build: compile for the current OS
-build:
+build: server-build
+
+## server-dev: start HTTP server with hot reload (installs air if missing)
+server-dev:
+	@command -v air >/dev/null 2>&1 || (echo 'installing air...' && go install github.com/air-verse/air@latest)
+	cd $(SERVER) && PATH="$$(go env GOPATH)/bin:$$PATH" air
+
+## server-build: compile HTTP server binary
+server-build:
 	@mkdir -p $(BIN_DIR)
 	go build -o $(BIN_DIR)/$(APP) $(CMD)/main.go
 
@@ -78,18 +88,38 @@ tidy:
 clean:
 	rm -rf $(BIN_DIR)
 
-## docker-build: build server image (Discord + HTTP binaries)
+## docker-build: build image (Web UI + API + Discord binaries)
 docker-build:
-	docker compose build discord
+	docker compose build server
 
-## docker-up: start Discord bot in background
+## docker-up: start Web UI + API + Discord bot
 docker-up:
-	docker compose up -d discord
+	docker compose up -d --build
 
 ## docker-down: stop compose services
 docker-down:
 	docker compose down
 
-## docker-logs: follow Discord bot logs
+## docker-logs: follow all service logs
 docker-logs:
+	docker compose logs -f
+
+## docker-logs-discord: follow Discord bot logs only
+docker-logs-discord:
 	docker compose logs -f discord
+
+## web-install: install web dependencies
+web-install:
+	cd $(WEB) && npm install
+
+## web-dev: start Vite dev server (ROUND_TABLE_WEB_PORT / ROUND_TABLE_HTTP_PORT in deploy/.env)
+web-dev:
+	cd $(WEB) && npm run dev
+
+## web-preview: serve production build (same ports as web-dev)
+web-preview: web-build
+	cd $(WEB) && npm run preview
+
+## web-build: production build for web
+web-build:
+	cd $(WEB) && npm run build

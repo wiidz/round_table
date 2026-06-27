@@ -17,7 +17,7 @@ coverage.out
 
 # Local config / secrets
 apps/server/configs/local.yaml
-apps/server/.env
+deploy/.env
 .env
 *.db
 
@@ -32,3 +32,7 @@ data/knowledge/participants/
 data/knowledge/principals/
 data/knowledge/shared/
 data/transport/
+
+# Web (apps/web)
+apps/web/node_modules/
+apps/web/dist/

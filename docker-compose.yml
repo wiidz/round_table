@@ -1,16 +1,18 @@
 # RoundTable — Docker Compose (Ubuntu / Linux server)
 #
-# Data is bind-mounted to ./data/ on the host (not Docker named volumes).
+# One stack: HTTP (Web UI + API) + Discord bot.
 #
 # Quick start:
-#   cp deploy/.env.example .env
+#   cp deploy/.env.example deploy/.env
 #   sh deploy/init-data-dirs.sh
-#   docker compose up -d --build discord
+#   docker compose up -d --build
+#
+# Web UI + API: http://127.0.0.1:${ROUND_TABLE_HTTP_PORT:-7777}
 
 name: roundtable
 
 services:
-  discord:
+  server:
     build:
       context: .
       dockerfile: Dockerfile
@@ -19,15 +21,58 @@ services:
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
     image: roundtable/server:latest
+    container_name: roundtable-server
+    restart: unless-stopped
+    command: ["roundtable-server"]
+    env_file:
+      - path: deploy/.env
+        required: true
+    environment:
+      ROUND_TABLE_REPO_ROOT: /app
+      ROUND_TABLE_ROOT: /app/apps/server
+      ROUND_TABLE_ADDR: ":7777"
+      ROUND_TABLE_WEB_ROOT: /app/web/dist
+      ROUND_TABLE_STORAGE_DRIVER: sqlite
+      ROUND_TABLE_STORAGE_SQLITE_PATH: /app/data/roundtable.db
+      ROUND_TABLE_WORKSPACE_ROOT: /app/data/workspaces
+      ROUND_TABLE_PROFILE_ROOT: /app/data/profiles
+      ROUND_TABLE_PROFILE_TEMPLATES: /app/data/_templates/profiles
+      ROUND_TABLE_KNOWLEDGE_ROOT: /app/data/knowledge
+      ROUND_TABLE_KNOWLEDGE_TEMPLATES: /app/data/_templates/knowledge
+      ROUND_TABLE_DISCORD_BINDINGS_FILE: /app/data/transport/discord-principal.json
+    ports:
+      - "${ROUND_TABLE_HTTP_PORT:-7777}:7777"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7777/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  discord:
+    image: roundtable/server:latest
     container_name: roundtable-discord
     restart: unless-stopped
     network_mode: host
     command: ["roundtable-discord"]
+    depends_on:
+      server:
+        condition: service_healthy
     env_file:
-      - path: .env
+      - path: deploy/.env
         required: true
     environment:
+      ROUND_TABLE_REPO_ROOT: /app
       ROUND_TABLE_ROOT: /app/apps/server
+      ROUND_TABLE_STORAGE_DRIVER: sqlite
+      ROUND_TABLE_STORAGE_SQLITE_PATH: /app/data/roundtable.db
       ROUND_TABLE_WORKSPACE_ROOT: /app/data/workspaces
       ROUND_TABLE_PROFILE_ROOT: /app/data/profiles
       ROUND_TABLE_PROFILE_TEMPLATES: /app/data/_templates/profiles
@@ -41,40 +86,9 @@ services:
       no_proxy: ${no_proxy:-localhost,127.0.0.1}
       NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
     volumes:
-      - ./data/workspaces:/app/data/workspaces
-      - ./data/profiles:/app/data/profiles
-      - ./data/knowledge:/app/data/knowledge
-      - ./data/transport:/app/data/transport
+      - ./data:/app/data
     logging:
       driver: json-file
       options:
         max-size: "20m"
         max-file: "5"
-
-  server:
-    profiles: ["http"]
-    image: roundtable/server:latest
-    container_name: roundtable-server
-    restart: unless-stopped
-    command: ["roundtable-server"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    env_file:
-      - path: .env
-        required: true
-    environment:
-      ROUND_TABLE_ROOT: /app/apps/server
-      ROUND_TABLE_ADDR: ":7777"
-    ports:
-      - "${ROUND_TABLE_HTTP_PORT:-7777}:7777"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7777/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"

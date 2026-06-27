@@ -85,11 +85,12 @@ make meet-3round   # 三轮辩论场景（DeepSeek）
 make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y"'
 ```
 
-**Ubuntu 服务器 Docker 部署**（Discord Bot + 持久化卷）见 [deploy/README.md](./deploy/README.md)。
+**Ubuntu 服务器 Docker 部署**（Web UI + HTTP API + Discord Bot）见 [deploy/README.md](./deploy/README.md)。
 
 ```bash
-cp deploy/.env.example .env   # 填入 DEEPSEEK_API_KEY、DISCORD_BOT_TOKEN
-make docker-build && make docker-up
+cp deploy/.env.example deploy/.env   # 填入 DEEPSEEK_API_KEY 等
+sh deploy/init-data-dirs.sh
+make docker-up                       # http://127.0.0.1:7777
 make docker-logs
 ```
 
@@ -181,3 +182,11 @@ Meeting Engine 核心领域**不依赖**：
 ## License
 
 待定。
+
+docker-compose down
+
+docker-compose build --no-cache discord
+
+docker-compose up -d --build --force-recreate discord
+
+docker-compose logs -f discord

@@ -14,7 +14,7 @@ tmp/
 
 # Local secrets (mount via env_file at runtime)
 .env
-apps/server/.env
+deploy/.env
 apps/server/configs/local.yaml
 
 # Runtime data (use Docker volumes)
@@ -24,8 +24,9 @@ data/knowledge/
 data/transport/
 *.db
 
-# Frontend (not in server image yet)
-apps/web/
+# Frontend build context (exclude heavy dirs; dist rebuilt in image)
+apps/web/node_modules
+apps/web/dist
 node_modules/
 
 # Docs & misc (keep image lean)

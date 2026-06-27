@@ -1,7 +1,25 @@
-# RoundTable server — multi-stage build (Discord bot + HTTP health server)
+# RoundTable — Web UI + Discord bot + HTTP API (single image)
+#
+# Build:
+#   docker compose build server
 #
 # Build via host proxy (ShellCrash mixed-port 4567):
-#   HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567 docker compose build discord
+#   HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567 docker compose build server
+
+FROM node:22-alpine AS webbuild
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+
+WORKDIR /src/apps/web
+
+COPY apps/web/package.json apps/web/package-lock.json ./
+RUN npm ci
+
+COPY apps/web/ ./
+RUN npm run build
+
+# --- Go binaries ---
 
 FROM golang:1.25-alpine AS gobuild
 
@@ -40,6 +58,7 @@ RUN apk add --no-cache ca-certificates tzdata wget su-exec && \
 WORKDIR /app
 
 COPY --from=gobuild /out/roundtable-discord /out/roundtable-server /usr/local/bin/
+COPY --from=webbuild /src/apps/web/dist ./web/dist
 COPY apps/server/configs ./apps/server/configs
 COPY data/_templates ./data/_templates
 COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
@@ -59,6 +78,7 @@ RUN chmod +x /app/docker-entrypoint.sh && \
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 ENV ROUND_TABLE_ROOT=/app/apps/server \
+    ROUND_TABLE_WEB_ROOT=/app/web/dist \
     ROUND_TABLE_WORKSPACE_ROOT=/app/data/workspaces \
     ROUND_TABLE_PROFILE_ROOT=/app/data/profiles \
     ROUND_TABLE_PROFILE_TEMPLATES=/app/data/_templates/profiles \
@@ -69,4 +89,4 @@ ENV ROUND_TABLE_ROOT=/app/apps/server \
 
 EXPOSE 7777
 
-CMD ["roundtable-discord"]
+CMD ["roundtable-server"]
