@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 
+	"round_table/apps/server/internal/adapter/workspace"
 	"round_table/apps/server/internal/domain/event"
 )
 
@@ -10,4 +11,9 @@ import (
 type Store interface {
 	Append(ctx context.Context, env event.Envelope) error
 	List(ctx context.Context, meetingID string) ([]event.Envelope, error)
+}
+
+// MeetingCatalog lists meetings for the web UI (SQLite-backed).
+type MeetingCatalog interface {
+	ListMeetingsPage(ctx context.Context, page, pageSize int) (workspace.PaginatedMeetings, error)
 }
