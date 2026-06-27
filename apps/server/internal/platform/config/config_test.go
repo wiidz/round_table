@@ -25,9 +25,7 @@ storage:
 	if err := os.WriteFile(filepath.Join(configsDir, "server.yaml"), []byte(yaml), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("ROUND_TABLE_ADDR=:7777\nOPENAI_API_KEY=sk-test\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	setupDeployEnv(t, dir, "ROUND_TABLE_ADDR=:7777\nOPENAI_API_KEY=sk-test\n")
 
 	t.Setenv("ROUND_TABLE_ROOT", dir)
 	t.Setenv("ROUND_TABLE_ADDR", ":8888")
@@ -82,9 +80,7 @@ func TestLoadModelNameFromEnv(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(configsDir, "server.yaml"), []byte("model:\n  default_model: deepseek-chat\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("DEEPSEEK_MODEL_NAME=deepseek-v4-flash\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	setupDeployEnv(t, dir, "DEEPSEEK_MODEL_NAME=deepseek-v4-flash\n")
 
 	t.Setenv("ROUND_TABLE_ROOT", dir)
 	t.Setenv("DEEPSEEK_API_KEY", "")

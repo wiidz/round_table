@@ -4,8 +4,10 @@ server:
   addr: ":7777"
   read_timeout_sec: 30
   write_timeout_sec: 30
+  locale: zh   # en | zh — user-facing copy (Discord, …)
 
 meeting:
+  default_mode: deliberation
   max_rounds_per_segment: 5
   min_rounds_before_synthesis: 2
   max_confirmation_cycles: 3
@@ -19,7 +21,7 @@ model:
   timeout_sec: 120
 
 storage:
-  driver: memory  # memory | sqlite
+  driver: sqlite  # memory | sqlite
   sqlite_path: ./data/roundtable.db
 
 workspace:
@@ -37,6 +39,7 @@ knowledge:
 # Transport adapters (secrets in .env — see DISCORD_BOT_TOKEN)
 transport:
   discord:
+    auto_start: false
     enabled: false
     allow_dm: true
     allow_guild: true
@@ -44,10 +47,8 @@ transport:
     command_prefix: "!rt"
     bindings_file: ./data/transport/discord-principal.json
     meet_participants: "designer:游戏策划:gameplay,player:玩家代表:experience,dev:开发:backend,ops:运维:infra"
-    meet_mode: deliberation
+    # meet_mode / meet_max_rounds — use meeting.* in server.yaml or Web 设置 → 会议
     meet_confirmation: skip
-    meet_max_rounds: 2
     meet_free_dialogue_questions: 0
     # Participant bots speak as themselves; tokens in .env as DISCORD_BOT_TOKEN_<ID>
     participant_bots: "designer,player,dev,ops"
-    locale: zh   # en | zh — Discord 进度与摘要文案

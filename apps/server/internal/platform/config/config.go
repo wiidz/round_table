@@ -9,7 +9,7 @@ import (
 )
 
 // Config holds runtime settings.
-// Load order (later wins): defaults → server.yaml → .env → process environment.
+// Load order (later wins): defaults → server.yaml → deploy/.env → process environment.
 type Config struct {
 	Server    Server    `yaml:"server"`
 	Meeting   Meeting   `yaml:"meeting"`
@@ -26,14 +26,17 @@ type Server struct {
 	Addr            string `yaml:"addr"`
 	ReadTimeoutSec  int    `yaml:"read_timeout_sec"`
 	WriteTimeoutSec int    `yaml:"write_timeout_sec"`
+	Locale          string `yaml:"locale"` // en | zh — user-facing copy (Transport, Web, …)
 }
 
 type Meeting struct {
+	DefaultMode              string `yaml:"default_mode"`
 	MaxRoundsPerSegment        int    `yaml:"max_rounds_per_segment"`
 	MinRoundsBeforeSynthesis   int    `yaml:"min_rounds_before_synthesis"`
 	MaxConfirmationCycles      int    `yaml:"max_confirmation_cycles"`
 	ConfirmationMode         string `yaml:"confirmation_mode"`
 	FreeDialogueMaxQuestions int    `yaml:"free_dialogue_max_questions"`
+	MeetPresets              []MeetPresetConfig `yaml:"-"`
 }
 
 type Model struct {
@@ -70,7 +73,8 @@ type Transport struct {
 
 // DiscordTransport configures the Discord bot adapter.
 type DiscordTransport struct {
-	Enabled                 bool   `yaml:"enabled"`
+	AutoStart                 bool   `yaml:"auto_start"`
+	Enabled                   bool   `yaml:"enabled"`
 	AllowDM                 bool   `yaml:"allow_dm"`
 	AllowGuild              bool   `yaml:"allow_guild"`
 	GuildID                 string `yaml:"guild_id"`
@@ -83,15 +87,17 @@ type DiscordTransport struct {
 	MeetFreeDialogueQuestions int  `yaml:"meet_free_dialogue_questions"`
 	ParticipantBots         string `yaml:"participant_bots"`
 	Locale                  string `yaml:"locale"`
+	ParticipantIMBindings   ParticipantIMBindings `yaml:"-"`
 }
 
-// Secrets are loaded only from .env / environment — never from YAML.
+// Secrets are loaded from .env / environment and SQLite app_settings (Discord bot tokens).
 type Secrets struct {
-	DatabaseDSN     string
-	OpenAIAPIKey    string
-	AnthropicAPIKey string
-	DeepSeekAPIKey  string
-	DiscordBotToken string
+	DatabaseDSN              string
+	OpenAIAPIKey             string
+	AnthropicAPIKey          string
+	DeepSeekAPIKey           string
+	DiscordBotToken          string
+	DiscordParticipantTokens map[string]string // participant id -> token
 }
 
 // Addr returns the HTTP listen address.
@@ -99,8 +105,21 @@ func (c Config) Addr() string {
 	return c.Server.Addr
 }
 
-// Load reads configuration from yaml, .env, and environment variables.
+// Locale returns user-facing locale (en | zh).
+func (c Config) Locale() string {
+	if loc := strings.TrimSpace(c.Server.Locale); loc != "" {
+		return loc
+	}
+	return c.Transport.Discord.Locale
+}
+
+// Load reads configuration from yaml, deploy/.env, and environment variables.
+// For runtime overrides from SQLite app_settings, use NewService.
 func Load() Config {
+	return loadBase()
+}
+
+func loadBase() Config {
 	cfg := defaults()
 	root := configRoot()
 
@@ -108,16 +127,17 @@ func Load() Config {
 		_ = yaml.Unmarshal(data, &cfg)
 	}
 
-	_ = loadEnvFile(root + "/.env")
+	_ = loadEnvFile(deployEnvPath())
 
 	applyEnv(&cfg)
 	cfg.Secrets = loadSecrets()
+	normalizeLoadedConfig(&cfg)
 	return cfg
 }
 
-// SaveEnv writes non-secret overrides and secret keys to .env for local development.
+// SaveEnv writes non-secret overrides and secret keys to deploy/.env for local development.
 func SaveEnv(cfg Config) error {
-	return saveEnvFile(configRoot()+"/.env", cfg)
+	return saveEnvFile(deployEnvPath(), cfg)
 }
 
 func defaults() Config {
@@ -126,8 +146,10 @@ func defaults() Config {
 			Addr:            ":7777",
 			ReadTimeoutSec:  30,
 			WriteTimeoutSec: 30,
+			Locale:          "en",
 		},
 		Meeting: Meeting{
+			DefaultMode:              "deliberation",
 			MaxRoundsPerSegment:      5,
 			MinRoundsBeforeSynthesis: 2,
 			MaxConfirmationCycles:    3,
@@ -141,7 +163,7 @@ func defaults() Config {
 			TimeoutSec:   120,
 		},
 		Storage: Storage{
-			Driver:     "memory",
+			Driver:     "sqlite",
 			SQLitePath: "./data/roundtable.db",
 		},
 		Workspace: Workspace{
@@ -158,6 +180,7 @@ func defaults() Config {
 		},
 		Transport: Transport{
 			Discord: DiscordTransport{
+				AutoStart:                 false,
 				Enabled:                   false,
 				AllowDM:                   true,
 				AllowGuild:                true,
@@ -179,7 +202,15 @@ func applyEnv(cfg *Config) {
 	overrideString(&cfg.Server.Addr, "ROUND_TABLE_ADDR")
 	overrideInt(&cfg.Server.ReadTimeoutSec, "ROUND_TABLE_READ_TIMEOUT_SEC")
 	overrideInt(&cfg.Server.WriteTimeoutSec, "ROUND_TABLE_WRITE_TIMEOUT_SEC")
+	overrideString(&cfg.Server.Locale, "ROUND_TABLE_LOCALE")
+	if cfg.Server.Locale == "" {
+		overrideString(&cfg.Server.Locale, "ROUND_TABLE_DISCORD_LOCALE")
+	}
 
+	overrideString(&cfg.Meeting.DefaultMode, "ROUND_TABLE_DEFAULT_MEET_MODE")
+	if cfg.Meeting.DefaultMode == "" {
+		overrideString(&cfg.Meeting.DefaultMode, "ROUND_TABLE_DISCORD_MEET_MODE")
+	}
 	overrideInt(&cfg.Meeting.MaxRoundsPerSegment, "ROUND_TABLE_MAX_ROUNDS_PER_SEGMENT")
 	overrideInt(&cfg.Meeting.MinRoundsBeforeSynthesis, "ROUND_TABLE_MIN_ROUNDS_BEFORE_SYNTHESIS")
 	overrideInt(&cfg.Meeting.MaxConfirmationCycles, "ROUND_TABLE_MAX_CONFIRMATION_CYCLES")
@@ -203,12 +234,17 @@ func applyEnv(cfg *Config) {
 	overrideString(&cfg.Knowledge.Root, "ROUND_TABLE_KNOWLEDGE_ROOT")
 	overrideString(&cfg.Knowledge.Templates, "ROUND_TABLE_KNOWLEDGE_TEMPLATES")
 
+	overrideBool(&cfg.Transport.Discord.AutoStart, "ROUND_TABLE_DISCORD_AUTO_START")
 	overrideBool(&cfg.Transport.Discord.Enabled, "ROUND_TABLE_DISCORD_ENABLED")
 	overrideBool(&cfg.Transport.Discord.AllowDM, "ROUND_TABLE_DISCORD_ALLOW_DM")
 	overrideBool(&cfg.Transport.Discord.AllowGuild, "ROUND_TABLE_DISCORD_ALLOW_GUILD")
 	overrideString(&cfg.Transport.Discord.GuildID, "ROUND_TABLE_DISCORD_GUILD_ID")
 	overrideString(&cfg.Transport.Discord.CommandPrefix, "ROUND_TABLE_DISCORD_COMMAND_PREFIX")
 	overrideString(&cfg.Transport.Discord.BindingsFile, "ROUND_TABLE_DISCORD_BINDINGS_FILE")
+	// Legacy discord-only keys — prefer ROUND_TABLE_LOCALE / meeting settings.
+	overrideString(&cfg.Transport.Discord.Locale, "ROUND_TABLE_DISCORD_LOCALE")
+	overrideString(&cfg.Transport.Discord.MeetMode, "ROUND_TABLE_DISCORD_MEET_MODE")
+	overrideInt(&cfg.Transport.Discord.MeetMaxRounds, "ROUND_TABLE_DISCORD_MEET_MAX_ROUNDS")
 }
 
 func loadSecrets() Secrets {
