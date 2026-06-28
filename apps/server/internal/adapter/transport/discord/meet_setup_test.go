@@ -179,3 +179,23 @@ func TestMeetSetupSessions(t *testing.T) {
 		t.Fatal("expected cleared")
 	}
 }
+
+func TestBeginIfAbsentConcurrent(t *testing.T) {
+	var s meetSetupSessions
+	sess := meetSetupSession{channelID: "ch1", authorID: "u1", step: setupStepAskTopic}
+	started := make(chan bool, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			started <- s.beginIfAbsent("ch1", sess)
+		}()
+	}
+	var wins int
+	for i := 0; i < 2; i++ {
+		if <-started {
+			wins++
+		}
+	}
+	if wins != 1 {
+		t.Fatalf("beginIfAbsent wins = %d, want 1", wins)
+	}
+}

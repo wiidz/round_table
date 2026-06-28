@@ -107,12 +107,15 @@ func (r *MeetRunner) BeginSetupFromTrigger(msg transport.Inbound) (string, error
 	}
 
 	cfg := r.defaultLaunchConfig("", "")
-	r.setups.put(msg.ChannelID, meetSetupSession{
+	sess := meetSetupSession{
 		channelID: msg.ChannelID,
 		authorID:  msg.AuthorID,
 		config:    cfg,
 		step:      setupStepAskTopic,
-	})
+	}
+	if !r.setups.beginIfAbsent(msg.ChannelID, sess) {
+		return meetSetupPendingText(loc), nil
+	}
 	return formatAskTopicPrompt(loc), nil
 }
 
@@ -124,12 +127,15 @@ func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (
 	}
 
 	cfg := r.defaultLaunchConfig(parsed.Topic, parsed.Mode)
-	r.setups.put(msg.ChannelID, meetSetupSession{
+	sess := meetSetupSession{
 		channelID: msg.ChannelID,
 		authorID:  msg.AuthorID,
 		config:    cfg,
 		step:      setupStepBriefGoal,
-	})
+	}
+	if !r.setups.beginIfAbsent(msg.ChannelID, sess) {
+		return meetSetupPendingText(loc), nil
+	}
 	return formatAskBriefGoalPrompt(loc, cfg.Topic), nil
 }
 

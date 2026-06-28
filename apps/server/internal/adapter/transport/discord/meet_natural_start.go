@@ -159,12 +159,15 @@ func (r *MeetRunner) TryBeginNaturalMeet(msg transport.Inbound) (string, error) 
 		reply = formatAskTopicPrompt(loc)
 	}
 
-	r.setups.put(msg.ChannelID, meetSetupSession{
+	sess := meetSetupSession{
 		channelID: msg.ChannelID,
 		authorID:  msg.AuthorID,
 		config:    cfg,
 		step:      step,
-	})
+	}
+	if !r.setups.beginIfAbsent(msg.ChannelID, sess) {
+		return meetSetupPendingText(loc), nil
+	}
 	return reply, nil
 }
 
