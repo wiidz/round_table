@@ -42,6 +42,15 @@ func terminateDiscordTransportProcesses(cfg config.Config) {
 	terminateDiscordTransportLock(cfg)
 }
 
+// CountDiscordTransportProcesses reports running roundtable-discord PIDs on the host.
+func CountDiscordTransportProcesses() int {
+	out, err := exec.Command("pgrep", "-f", "roundtable-discord").Output()
+	if err != nil {
+		return 0
+	}
+	return len(strings.Fields(string(out)))
+}
+
 func terminateProcessesUsingFiles(paths ...string) {
 	seen := make(map[int]struct{})
 	var pids []int

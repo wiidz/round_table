@@ -42,6 +42,9 @@ volumes:
 # 若 ShellCrash mixed-port=4567，拉基础镜像可能也需要代理：
 export HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567
 
+# 从双容器升级到单容器时务必清理旧 discord 容器（否则会重复回复）
+sh deploy/ensure-clean-discord.sh
+
 docker compose up -d --build
 # 或：make docker-up
 docker compose logs -f server
@@ -163,7 +166,8 @@ volumes:
 | 重启后 Principal 要重新 bind | `transport` 卷是否挂载；是否用了 `docker compose down -v` |
 | 会议跑完但 `data/workspaces` 空 | bind mount 是否指向 `./data`；`sh deploy/init-data-dirs.sh` |
 | entrypoint `cannot write to /app/data/workspaces` | 宿主机 `data/workspaces` 权限；`sudo chown -R 1000:1000 data/` |
-| Web 显示 Discord 已停但 Bot 在线 | 旧版双容器残留；`docker compose down` 后删掉 `roundtable-discord` 容器再启 |
+| Web 显示 Discord 已停但 Bot 在线 | 旧版双容器残留；`sh deploy/ensure-clean-discord.sh` |
+| **主持人消息成对重复**（如两次「请输入会议主题」） | **两个 Discord Transport 同时在线**（旧 `roundtable-discord` 容器 + Supervisor 子进程）；见下方 |
 
 ## 数据卷权限（entrypoint）
 
@@ -177,6 +181,20 @@ ls -la data/workspaces
 ```
 
 无需 `chmod 777`。
+
+## 主持人消息重复（双 Transport）
+
+升级单容器后，若 **未删除** 旧 `roundtable-discord` 容器，会出现两个进程用同一 Bot Token 连 Discord，同一条「新会议」会触发 **两次**「请输入会议主题」。
+
+```bash
+docker ps -a | grep roundtable
+pgrep -af roundtable-discord   # 正常应只有 1 条（Supervisor 子进程）
+
+sh deploy/ensure-clean-discord.sh
+docker compose up -d --build --force-recreate server
+```
+
+确认日志只有一条 `discord transport auto-started`，且 `data/logs/discord-transport.log` 里只有一次 `discord bot connected`。
 
 ## 文件说明
 

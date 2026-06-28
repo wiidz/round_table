@@ -16,7 +16,7 @@ func ClaimInboundMessage(dir, messageID string) bool {
 		return true
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return true
+		return false
 	}
 	path := filepath.Join(dir, messageID)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)

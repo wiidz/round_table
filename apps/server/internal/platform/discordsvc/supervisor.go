@@ -3,6 +3,7 @@ package discordsvc
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -76,6 +77,10 @@ func (s *Supervisor) Start(_ context.Context, cfg config.Config) error {
 	}
 
 	terminateDiscordTransportProcesses(cfg)
+
+	if n := CountDiscordTransportProcesses(); n > 0 {
+		log.Printf("[supervisor] warning: %d roundtable-discord process(es) still running after cleanup — remove orphan containers (docker rm -f roundtable-discord) to avoid duplicate Discord replies", n)
+	}
 
 	serverRoot, err := filepath.Abs(config.ServerRoot())
 	if err != nil {
