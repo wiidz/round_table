@@ -94,7 +94,27 @@ func TestCommandHandler_naturalMeetTrigger(t *testing.T) {
 		Platform: "discord", GuildID: "g1", AuthorID: "u1",
 		ChannelID: "ch1", Content: "影舞者设计",
 	})
-	if err != nil || !strings.Contains(reply, "请选择会议方案") || !strings.Contains(reply, "直接开始（默认）") {
+	if err != nil || !strings.Contains(reply, "请选择参会专家") {
+		t.Fatalf("reply=%q err=%v", reply, err)
+	}
+
+	reply, err = h.Handle(context.Background(), transport.Inbound{
+		Platform: "discord", GuildID: "g1", AuthorID: "u1",
+		ChannelID: "ch1", Content: "0",
+	})
+	if err != nil || !strings.Contains(reply, "会议简报") {
+		t.Fatalf("reply=%q err=%v", reply, err)
+	}
+	for _, skip := range []string{"-", "-", "-"} {
+		reply, err = h.Handle(context.Background(), transport.Inbound{
+			Platform: "discord", GuildID: "g1", AuthorID: "u1",
+			ChannelID: "ch1", Content: skip,
+		})
+		if err != nil {
+			t.Fatalf("brief skip reply=%q err=%v", reply, err)
+		}
+	}
+	if !strings.Contains(reply, "请选择会议方案") || !strings.Contains(reply, "直接开始（默认）") {
 		t.Fatalf("reply=%q err=%v", reply, err)
 	}
 }

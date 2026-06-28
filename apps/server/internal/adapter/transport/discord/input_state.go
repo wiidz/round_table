@@ -14,6 +14,8 @@ type ChannelInputPhase string
 const (
 	InputPhaseIdle              ChannelInputPhase = "idle"
 	InputPhaseSetupTopic        ChannelInputPhase = "setup_topic"
+	InputPhaseSetupParticipants ChannelInputPhase = "setup_participants"
+	InputPhaseSetupBrief        ChannelInputPhase = "setup_brief"
 	InputPhaseSetupMenu         ChannelInputPhase = "setup_menu"
 	InputPhaseSetupCustom       ChannelInputPhase = "setup_custom"
 	InputPhaseMeetingRunning    ChannelInputPhase = "meeting_running"
@@ -21,6 +23,9 @@ const (
 	InputPhaseMeetingFreeDialogue ChannelInputPhase = "meeting_free_dialogue"
 	InputPhaseMeetingConfirmation ChannelInputPhase = "meeting_confirmation"
 	InputPhasePostMeeting       ChannelInputPhase = "post_meeting"
+	InputPhaseExpertSetup       ChannelInputPhase = "expert_setup"
+	InputPhaseReceptionConfirm  ChannelInputPhase = "reception_confirm"
+	InputPhaseReceptionClarify  ChannelInputPhase = "reception_clarify"
 )
 
 func isInputStatusTrigger(content string) bool {
@@ -40,6 +45,10 @@ func (r *MeetRunner) InputPhase(channelID string) ChannelInputPhase {
 		switch sess.step {
 		case setupStepAskTopic:
 			return InputPhaseSetupTopic
+		case setupStepPickParticipants:
+			return InputPhaseSetupParticipants
+		case setupStepBriefGoal, setupStepBriefAgenda, setupStepBriefScope:
+			return InputPhaseSetupBrief
 		case setupStepPresetMenu:
 			return InputPhaseSetupMenu
 		default:
@@ -111,6 +120,10 @@ func inputPhaseTitleZH(phase ChannelInputPhase) string {
 	switch phase {
 	case InputPhaseSetupTopic:
 		return "配置 · 等待主题"
+	case InputPhaseSetupParticipants:
+		return "配置 · 选择专家"
+	case InputPhaseSetupBrief:
+		return "配置 · 会议简报"
 	case InputPhaseSetupMenu:
 		return "配置 · 选择预设"
 	case InputPhaseSetupCustom:
@@ -125,6 +138,12 @@ func inputPhaseTitleZH(phase ChannelInputPhase) string {
 		return "确认关"
 	case InputPhasePostMeeting:
 		return "会议已结束"
+	case InputPhaseExpertSetup:
+		return "专家 · 向导中"
+	case InputPhaseReceptionConfirm:
+		return "接待 · 等待确认"
+	case InputPhaseReceptionClarify:
+		return "接待 · 补充信息"
 	default:
 		return "空闲"
 	}
@@ -134,6 +153,10 @@ func inputPhaseTitleEN(phase ChannelInputPhase) string {
 	switch phase {
 	case InputPhaseSetupTopic:
 		return "Setup · awaiting topic"
+	case InputPhaseSetupParticipants:
+		return "Setup · choose participants"
+	case InputPhaseSetupBrief:
+		return "Setup · meeting brief"
 	case InputPhaseSetupMenu:
 		return "Setup · preset menu"
 	case InputPhaseSetupCustom:
@@ -148,6 +171,12 @@ func inputPhaseTitleEN(phase ChannelInputPhase) string {
 		return "Confirmation"
 	case InputPhasePostMeeting:
 		return "Meeting finished"
+	case InputPhaseExpertSetup:
+		return "Expert · wizard"
+	case InputPhaseReceptionConfirm:
+		return "Reception · confirm"
+	case InputPhaseReceptionClarify:
+		return "Reception · follow-up"
 	default:
 		return "Idle"
 	}
@@ -158,6 +187,10 @@ func inputPhaseHint(loc Locale, phase ChannelInputPhase) string {
 		switch phase {
 		case InputPhaseSetupTopic:
 			return "请直接发送**会议主题**文字，或 **取消会议**。"
+		case InputPhaseSetupParticipants:
+			return "发送 **阵容编号**（如 C1）、**专家编号/名字**（如 1,2 或 designer,player），**0** 全员，或 **取消会议**。"
+		case InputPhaseSetupBrief:
+			return "按主持人上一条提示填写 **目标 / 议程 / 范围**；发送 **-** 跳过当前步，**取消会议** 放弃。"
 		case InputPhaseSetupMenu:
 			return "发送预设编号 **1–6** / **J1–J5**，**0** 自定义，**取消会议** 放弃。"
 		case InputPhaseSetupCustom:
@@ -172,13 +205,23 @@ func inputPhaseHint(loc Locale, phase ChannelInputPhase) string {
 			return "请发送：**批准** / **驳回 …** / 逐项 **1: …  2: …**\n触顶时 **1/2/3** 三选一。"
 		case InputPhasePostMeeting:
 			return "可发送：**获取纪要** · **获取草案** · **获取待决** · **获取结论**\n或 **新会议** 开始下一场。"
+		case InputPhaseExpertSetup:
+			return "按主持人上一条提示回复；**取消专家** 放弃向导。"
+		case InputPhaseReceptionConfirm:
+			return "请发送 **1** 确认或 **0** 取消上一条操作。"
+		case InputPhaseReceptionClarify:
+			return "请按上一条提示补充信息；**取消专家** 或 **0** 放弃。"
 		default:
-			return "可发送：**新会议** / **!rt principal bind** / **!rt help**"
+			return "可发送：**新会议** / **!rt 专家 列表** / **!rt principal bind** / **!rt help**"
 		}
 	}
 	switch phase {
 	case InputPhaseSetupTopic:
 		return "Send the **meeting topic**, or **取消会议** to cancel."
+	case InputPhaseSetupParticipants:
+		return "Send **cast id** (e.g. C1), **participant index/name** (e.g. 1,2), **0** for all, or **取消会议**."
+	case InputPhaseSetupBrief:
+		return "Follow the Moderator brief prompt; **-** to skip step, **取消会议** to cancel."
 	case InputPhaseSetupMenu:
 		return "Reply **1–6** / **J1–J5**, **0** for custom, **取消会议** to cancel."
 	case InputPhaseSetupCustom:
@@ -193,15 +236,22 @@ func inputPhaseHint(loc Locale, phase ChannelInputPhase) string {
 		return "**approve** / **reject …** / item notes **1: …**; limit fallback **1/2/3**."
 	case InputPhasePostMeeting:
 		return "**get minutes/draft/open/conclusion** · **新会议** for next meeting."
+	case InputPhaseExpertSetup:
+		return "Follow the Moderator prompt; **cancel expert** to abort."
+	case InputPhaseReceptionConfirm:
+		return "Reply **1** to confirm or **0** to cancel."
+	case InputPhaseReceptionClarify:
+		return "Reply with the requested detail; **0** or **cancel expert** to abort."
 	default:
-		return "**新会议** · **!rt principal bind** · **!rt help**"
+		return "**新会议** · **!rt expert list** · **!rt principal bind** · **!rt help**"
 	}
 }
 
 func phaseExpectsPrincipalInput(phase ChannelInputPhase) bool {
 	switch phase {
-	case InputPhaseSetupTopic, InputPhaseSetupMenu, InputPhaseSetupCustom,
-		InputPhaseMeetingConfirmation, InputPhaseMeetingPaused, InputPhasePostMeeting:
+	case InputPhaseSetupTopic, InputPhaseSetupParticipants, InputPhaseSetupBrief, InputPhaseSetupMenu, InputPhaseSetupCustom,
+		InputPhaseMeetingConfirmation, InputPhaseMeetingPaused, InputPhasePostMeeting, InputPhaseExpertSetup,
+		InputPhaseReceptionConfirm, InputPhaseReceptionClarify:
 		return true
 	default:
 		return false
@@ -221,7 +271,7 @@ func (r *MeetRunner) MisplacedInputHint(msg transport.Inbound) (string, bool) {
 		return "", false
 	}
 	// Setup and confirmation already return parse/validation errors from their handlers.
-	if phase == InputPhaseSetupTopic || phase == InputPhaseSetupMenu || phase == InputPhaseSetupCustom ||
+	if phase == InputPhaseSetupTopic || phase == InputPhaseSetupParticipants || phase == InputPhaseSetupBrief || phase == InputPhaseSetupMenu || phase == InputPhaseSetupCustom ||
 		phase == InputPhaseMeetingConfirmation {
 		return "", false
 	}

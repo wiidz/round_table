@@ -12,18 +12,24 @@ import (
 // meetLaunchConfig is the resolved configuration for starting a meeting.
 type meetLaunchConfig struct {
 	Topic                    string
+	Brief                    meetBrief
 	Mode                     string
 	MaxRounds                int
 	MinRoundsBeforeSynthesis int
 	Confirmation             string
 	FreeDialogueQuestions    int
 	ParticipantsSummary      string
+	ParticipantIDs           []string // empty = full roster
 }
 
 type setupStep int
 
 const (
 	setupStepAskTopic setupStep = iota
+	setupStepPickParticipants
+	setupStepBriefGoal
+	setupStepBriefAgenda
+	setupStepBriefScope
 	setupStepPresetMenu
 	setupStepCustomMode
 	setupStepCustomRounds
@@ -98,6 +104,13 @@ func (r *MeetRunner) defaultLaunchConfig(topic, modeOverride string) meetLaunchC
 	}
 	cfg.ParticipantsSummary = summarizeParticipants(r.dc().MeetParticipants)
 	return cfg
+}
+
+func (r *MeetRunner) meetCasts() []config.MeetCastConfig {
+	if casts := r.activeCfg().Meeting.MeetCasts; len(casts) > 0 {
+		return casts
+	}
+	return nil
 }
 
 func summarizeParticipants(raw string) string {
@@ -329,7 +342,7 @@ func handlePresetMenu(sess meetSetupSession, choice string, loc Locale, prefix s
 		return setupHandleResult{}, errSetupInvalidChoice
 	}
 
-	cfg := preset.Make(topic)
+	cfg := mergePresetLaunchConfig(sess.config, preset.Make(topic))
 	cfg.ParticipantsSummary = participants
 	if err := validateLaunchConfig(cfg); err != nil {
 		return setupHandleResult{}, err
@@ -342,7 +355,7 @@ func handleCustomMode(sess meetSetupSession, choice string, loc Locale, prefix s
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, all),
+			reply:  formatModeratorSetupWithBrief(loc, prefix, all, sess.config),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -367,7 +380,7 @@ func handleCustomRounds(sess meetSetupSession, choice string, loc Locale, prefix
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, all),
+			reply:  formatModeratorSetupWithBrief(loc, prefix, all, sess.config),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -400,7 +413,7 @@ func handleCustomConfirmation(sess meetSetupSession, choice string, loc Locale, 
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, all),
+			reply:  formatModeratorSetupWithBrief(loc, prefix, all, sess.config),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -424,7 +437,7 @@ func handleCustomFree(sess meetSetupSession, choice string, loc Locale, prefix s
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, all),
+			reply:  formatModeratorSetupWithBrief(loc, prefix, all, sess.config),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -451,7 +464,7 @@ func handleCustomConfirm(sess meetSetupSession, choice string, loc Locale, prefi
 	case "0":
 		sess.step = setupStepPresetMenu
 		return setupHandleResult{
-			reply:  formatModeratorSetupPrompt(loc, prefix, all),
+			reply:  formatModeratorSetupWithBrief(loc, prefix, all, sess.config),
 			step:   setupStepPresetMenu,
 			config: sess.config,
 		}, nil
@@ -499,7 +512,37 @@ func validateLaunchConfig(cfg meetLaunchConfig) error {
 	return nil
 }
 
+const participantSummarySep = "\u00b7" // id·display in ParticipantsSummary
+
+func formatLaunchParticipantsSummary(summary string, loc Locale) string {
+	summary = strings.TrimSpace(summary)
+	if summary == "" {
+		if loc == LocaleZH {
+			return "全员"
+		}
+		return "full roster"
+	}
+	var names []string
+	for _, part := range strings.Split(summary, ",") {
+		part = strings.TrimSpace(part)
+		if _, display, ok := strings.Cut(part, participantSummarySep); ok && strings.TrimSpace(display) != "" {
+			names = append(names, strings.TrimSpace(display))
+			continue
+		}
+		names = append(names, part)
+	}
+	if loc == LocaleZH {
+		return strings.Join(names, "、")
+	}
+	return strings.Join(names, ", ")
+}
+
 func formatMeetLaunchAck(loc Locale, meetingID string, cfg meetLaunchConfig, principalName string, maxConfirmationCycles int) string {
+	participants := formatLaunchParticipantsSummary(cfg.ParticipantsSummary, loc)
+	briefBlock := formatBriefLaunchBlock(loc, cfg)
+	if briefBlock != "" {
+		briefBlock = "\n\n" + briefBlock
+	}
 	if loc == LocaleZH {
 		confirmLine := confirmationModeLabel(cfg.Confirmation, loc)
 		if cfg.Confirmation == meeting.ConfirmationModeRequired && maxConfirmationCycles > 0 {
@@ -508,15 +551,16 @@ func formatMeetLaunchAck(loc Locale, meetingID string, cfg meetLaunchConfig, pri
 		return fmt.Sprintf(`🚀 **会议已启动**
 - 🆔 `+"`%s`"+`
 - 📌 主题：%s
+- 👥 参会：%s
 - 🎯 模式：%s
 - 🔄 轮次上限：%d · 最少 %d 轮再合成
 - ✅ 确认：%s · 💬 自由对话：%s
-- 👤 Principal：%s
+- 👤 Principal：%s%s
 
-进度将推送到本频道。`, meetingID, cfg.Topic, meetingModeLabel(cfg.Mode, loc),
+进度将推送到本频道。`, meetingID, cfg.Topic, participants, meetingModeLabel(cfg.Mode, loc),
 			cfg.MaxRounds, cfg.MinRoundsBeforeSynthesis,
 			confirmLine,
-			freeDialogueLabel(cfg.FreeDialogueQuestions, loc), principalName)
+			freeDialogueLabel(cfg.FreeDialogueQuestions, loc), principalName, briefBlock)
 	}
 	confirmLine := cfg.Confirmation
 	if cfg.Confirmation == meeting.ConfirmationModeRequired && maxConfirmationCycles > 0 {
@@ -525,13 +569,14 @@ func formatMeetLaunchAck(loc Locale, meetingID string, cfg meetLaunchConfig, pri
 	return fmt.Sprintf(`🚀 **Meeting started**
 - 🆔 `+"`%s`"+`
 - 📌 Topic: %s
+- 👥 Participants: %s
 - 🎯 Mode: %s
 - 🔄 Max rounds: %d · min before synthesis: %d
 - ✅ Confirmation: %s · 💬 Free dialogue: %s
-- 👤 Principal: %s
+- 👤 Principal: %s%s
 
-Progress will post here.`, meetingID, cfg.Topic, cfg.Mode,
+Progress will post here.`, meetingID, cfg.Topic, participants, cfg.Mode,
 		cfg.MaxRounds, cfg.MinRoundsBeforeSynthesis,
 		confirmLine,
-		freeDialogueLabel(cfg.FreeDialogueQuestions, LocaleEN), principalName)
+		freeDialogueLabel(cfg.FreeDialogueQuestions, LocaleEN), principalName, briefBlock)
 }

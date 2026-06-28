@@ -51,6 +51,25 @@ func TestFormatStreamForDiscord_participant(t *testing.T) {
 	}
 }
 
+func TestFormatStreamForDiscord_malformedParticipantJSON(t *testing.T) {
+	raw := `{"content":"玩家代表提到「流派多样性」，我想追问：你会不会觉得不便？」`
+	got := formatStreamForDiscord(raw, LocaleZH)
+	if strings.HasPrefix(got, "{") || got == "" {
+		t.Fatalf("expected parsed content, got=%q", got)
+	}
+	if !strings.Contains(got, "流派多样性") {
+		t.Fatalf("got=%q", got)
+	}
+}
+
+func TestFallbackStreamBody_neverLeaksRawJSON(t *testing.T) {
+	raw := `{"content":"broken`
+	got := fallbackStreamBody(raw, LocaleZH)
+	if strings.HasPrefix(got, "{") {
+		t.Fatalf("should not leak raw JSON: %q", got)
+	}
+}
+
 func TestFormatStreamForDiscord_synthesis(t *testing.T) {
 	raw := `{"core_scheme":["A"],"decisions":["B"],"open_questions":["C?"]}`
 	got := formatStreamForDiscord(raw, LocaleZH)
@@ -116,6 +135,34 @@ type captureSender struct {
 func (c *captureSender) Send(_ context.Context, _, content string) error {
 	c.messages = append(c.messages, content)
 	return nil
+}
+
+func TestParseExecutiveRecapLine(t *testing.T) {
+	line := "◆ executive recap\n## 会议回顾\n\n内容"
+	body, ok := parseExecutiveRecapLine(line)
+	if !ok || !strings.Contains(body, "会议回顾") {
+		t.Fatalf("body=%q ok=%v", body, ok)
+	}
+}
+
+func TestChannelProgress_postsModeratorSummary(t *testing.T) {
+	capture := &captureSender{}
+	pool := &BotPool{Default: capture}
+	cp := &channelProgress{pool: pool, channelID: "ch1", loc: LocaleZH}
+	cp.Logf("◆ moderator summary round=%d\n%s", 2, "## Round 2 研讨摘要\n\n### 本轮进展\n共识增加")
+	if len(capture.messages) == 0 || !strings.Contains(capture.messages[0], "第 2 轮摘要") {
+		t.Fatalf("messages=%v", capture.messages)
+	}
+}
+
+func TestChannelProgress_postsExecutiveRecap(t *testing.T) {
+	capture := &captureSender{}
+	pool := &BotPool{Default: capture}
+	cp := &channelProgress{pool: pool, channelID: "ch1", loc: LocaleZH}
+	cp.Logf("◆ executive recap\n## 会议回顾\n\n过程脉络")
+	if len(capture.messages) == 0 || !strings.Contains(capture.messages[0], "会议回顾") {
+		t.Fatalf("messages=%v", capture.messages)
+	}
 }
 
 func TestParseModeratorSummaryLine(t *testing.T) {

@@ -100,6 +100,27 @@ func TestParseOutput_trailingJSONCommaLeak(t *testing.T) {
 	}
 }
 
+func TestParseOutput_freeDialogueAskTrailingCornerQuote(t *testing.T) {
+	raw := `{"content":"玩家代表提到「流派多样性」和「装备卡片适配」，我想追问：你期望的流派之间是「克制关系」还是「场景分工」？另外，如果流派只能通过装备切换而非技能点重置来转换，你会不会觉得不便？」`
+	out, err := parseOutput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsSubstring(out.Content, "流派多样性") {
+		t.Fatalf("content = %q", out.Content)
+	}
+	if strings.HasPrefix(out.Content, "{") {
+		t.Fatalf("content should not be raw JSON: %q", out.Content)
+	}
+}
+
+func TestParseOutput_exportedParseOutput(t *testing.T) {
+	got, err := ParseOutput(`{"content":"同意","stance":"agree","object_reason":""}`)
+	if err != nil || got.Content != "同意" || got.Stance != "agree" {
+		t.Fatalf("got=%+v err=%v", got, err)
+	}
+}
+
 func containsSubstring(s, sub string) bool {
 	return len(sub) == 0 || (len(s) >= len(sub) && stringIndex(s, sub) >= 0)
 }

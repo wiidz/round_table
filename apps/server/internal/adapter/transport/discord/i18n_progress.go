@@ -109,6 +109,12 @@ func localizeProgressEN(line string) string {
 	}
 }
 
+func mergeMeetingStartProgress(engineLine, preMeetingLine string, loc Locale) string {
+	run := localizeProgressLine(engineLine, loc)
+	prep := localizeProgressLine(preMeetingLine, loc)
+	return run + "\n" + prep
+}
+
 func localizeProgressZH(line string) string {
 	switch {
 	case strings.HasPrefix(line, "▶ engine run started"):

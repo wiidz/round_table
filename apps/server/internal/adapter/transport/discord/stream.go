@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	participantllm "round_table/apps/server/internal/adapter/participant/llm"
 	"round_table/apps/server/internal/stream"
 )
 
@@ -106,7 +107,7 @@ func (s *channelStream) CompleteTurn(participantID string, tokens int, elapsed t
 func (s *channelStream) postTurn(speaker, raw string, tokens int, elapsed time.Duration) {
 	body := formatStreamForDiscord(raw, s.loc)
 	if body == "" {
-		body = raw
+		body = fallbackStreamBody(raw, s.loc)
 	}
 	if footer := formatTurnFooter(tokens, elapsed, s.loc); footer != "" {
 		body += footer
@@ -154,12 +155,8 @@ func formatStreamForDiscord(raw string, loc Locale) string {
 }
 
 func formatParticipantStream(raw string, loc Locale) string {
-	var part struct {
-		Content      string `json:"content"`
-		Stance       string `json:"stance"`
-		ObjectReason string `json:"object_reason"`
-	}
-	if err := json.Unmarshal([]byte(raw), &part); err != nil || part.Content == "" {
+	part, err := participantllm.ParseOutput(raw)
+	if err != nil || strings.TrimSpace(part.Content) == "" {
 		return ""
 	}
 	var b strings.Builder
@@ -179,6 +176,19 @@ func formatParticipantStream(raw string, loc Locale) string {
 		}
 	}
 	return b.String()
+}
+
+func fallbackStreamBody(raw string, loc Locale) string {
+	if text := formatParticipantStream(raw, loc); text != "" {
+		return text
+	}
+	if strings.Contains(raw, `"content"`) {
+		if loc == LocaleZH {
+			return "（发言解析失败，完整内容已写入会议记录）"
+		}
+		return "(Could not parse speech; full text is in the meeting record.)"
+	}
+	return raw
 }
 
 func formatReadinessStream(raw string, loc Locale) string {

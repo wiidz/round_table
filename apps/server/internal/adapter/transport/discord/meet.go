@@ -128,13 +128,9 @@ func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (
 		channelID: msg.ChannelID,
 		authorID:  msg.AuthorID,
 		config:    cfg,
-		step:      setupStepPresetMenu,
+		step:      setupStepBriefGoal,
 	})
-	prefix := strings.TrimSpace(r.dc().CommandPrefix)
-	if prefix == "" {
-		prefix = "!rt"
-	}
-	return formatModeratorSetupPrompt(loc, prefix+" ", r.meetPresets(loc)), nil
+	return formatAskBriefGoalPrompt(loc, cfg.Topic), nil
 }
 
 func (r *MeetRunner) checkBeginSetup(msg transport.Inbound, loc Locale) (string, bool) {
@@ -187,13 +183,37 @@ func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
 		}
 		defaultCfg := r.defaultLaunchConfig(topic, "")
 		sess.config = defaultCfg
-		sess.step = setupStepPresetMenu
+		sess.step = setupStepPickParticipants
 		r.setups.put(msg.ChannelID, sess)
-		prefix := strings.TrimSpace(r.dc().CommandPrefix)
-		if prefix == "" {
-			prefix = "!rt"
+		return formatPickParticipantsPrompt(loc, r.dc().MeetParticipants, r.meetCasts()), nil
+	}
+
+	if sess.step == setupStepPickParticipants {
+		ids, err := resolveParticipantPick(msg.Content, r.dc().MeetParticipants, r.meetCasts())
+		if err != nil {
+			return meetParticipantsPickErrorText(loc, err), nil
 		}
-		return formatModeratorSetupPrompt(loc, prefix+" ", r.meetPresets(loc)), nil
+		sess.config.ParticipantIDs = ids
+		sess.config.ParticipantsSummary = summarizeParticipantIDs(r.dc().MeetParticipants, ids)
+		sess.step = setupStepBriefGoal
+		r.setups.put(msg.ChannelID, sess)
+		return formatAskBriefGoalPrompt(loc, sess.config.Topic), nil
+	}
+
+	if sess.step == setupStepBriefGoal {
+		sess, reply := r.advanceBriefGoal(sess, msg.Content, loc)
+		r.setups.put(msg.ChannelID, sess)
+		return reply, nil
+	}
+	if sess.step == setupStepBriefAgenda {
+		sess, reply := r.advanceBriefAgenda(sess, msg.Content, loc)
+		r.setups.put(msg.ChannelID, sess)
+		return reply, nil
+	}
+	if sess.step == setupStepBriefScope {
+		sess, reply := r.advanceBriefScope(sess, msg.Content, loc)
+		r.setups.put(msg.ChannelID, sess)
+		return reply, nil
 	}
 
 	prefix := strings.TrimSpace(r.dc().CommandPrefix)
@@ -322,7 +342,7 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		Loggers: []engine.StreamLogger{engine.StdStreamLogger{}, chStream},
 	}
 
-	parts, err := parseParticipants(r.dc().MeetParticipants)
+	parts, err := parseParticipantsFiltered(r.dc().MeetParticipants, cfg.ParticipantIDs)
 	if err != nil {
 		_ = r.Bots.Default.Send(ctx, channelID, meetConfigErrorText(loc, err))
 		return
@@ -334,6 +354,8 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 	createIn := engine.CreateMeetingInput{
 		MeetingID:                meetingID,
 		Topic:                    cfg.Topic,
+		Goal:                     cfg.engineGoal(),
+		Agenda:                   cfg.engineAgenda(),
 		MeetingMode:              cfg.Mode,
 		ConfirmationMode:         cfg.Confirmation,
 		MaxRoundsPerSegment:      cfg.MaxRounds,

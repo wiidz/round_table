@@ -6,6 +6,9 @@ func (h *CommandHandler) locale() Locale {
 	if h.Meet != nil {
 		return h.Meet.locale()
 	}
+	if h.Participants != nil && h.Participants.Locale != nil {
+		return h.Participants.Locale()
+	}
 	return LocaleEN
 }
 
@@ -28,7 +31,10 @@ func (h *CommandHandler) helpText() string {
 - **自由问答阶段**：`+"`提问 …`"+` / `+"`提问 designer …`"+` — 指定参与者提问
 - **会议结束后**：`+"`获取纪要`"+` · `+"`获取草案`"+` · `+"`获取待决`"+` · `+"`获取结论`"+`
 - `+"`%smeet [-mode decision|deliberation] 主题`"+` — 同上（带主题时可跳过主题输入）
-- `+"`%smeet cancel`"+` — 取消待确认的会议配置`, p, p, p, p, p, p, p, p)
+- `+"`%smeet cancel`"+` — 取消待确认的会议配置
+- `+"`%sexpert list`"+` / `+"`%s专家 列表`"+` — 查看专家名录
+- `+"`%sexpert new`"+` / `+"`%s专家 新建`"+` — 新建专家（逐步引导）
+- `+"`%sexpert edit <代号>`"+` / `+"`%sexpert delete <代号>`"+` — 编辑或删除专家`, p, p, p, p, p, p, p, p, p, p, p, p, p, p)
 	}
 	return fmt.Sprintf(`📖 **RoundTable Discord commands**
 
@@ -46,7 +52,10 @@ Prefix: `+"`%s`"+`
 - **During free dialogue:** `+"`ask …`"+` / `+"`提问 designer …`"+` — ask a participant
 - **After meeting:** `+"`get minutes`"+` · `+"`get draft`"+` · `+"`get open`"+` · `+"`get conclusion`"+`
 - `+"`%smeet [-mode decision|deliberation] topic`"+` — Same (topic inline skips topic prompt)
-- `+"`%smeet cancel`"+` — Cancel pending meet setup`, p, p, p, p, p, p, p, p)
+- `+"`%smeet cancel`"+` — Cancel pending meet setup
+- `+"`%sexpert list`"+` — List expert roster
+- `+"`%sexpert new`"+` — Create expert (guided wizard)
+- `+"`%sexpert edit <id>`"+` / `+"`%sexpert delete <id>`"+` — Update or remove expert`, p, p, p, p, p, p, p, p, p, p, p, p)
 }
 
 func unknownCommandText(loc Locale, prefix, cmd string) string {
@@ -228,4 +237,11 @@ func meetSetupParseErrorText(loc Locale, err error) string {
 		return "❌ " + err.Error() + "\n研讨 **1–6** · 裁决 **J1–J5** · **0** 自定义 · 自定义步骤中 **0** 返回"
 	}
 	return "❌ " + err.Error() + "\nDeliberation **1–6** · decision **J1–J5** · **0** custom · **0** back in wizard"
+}
+
+func meetParticipantsPickErrorText(loc Locale, err error) string {
+	if loc == LocaleZH {
+		return "❌ " + err.Error() + "\n请发 **阵容编号**、**专家编号/名字**（逗号分隔），或 **0** 全员。"
+	}
+	return "❌ " + err.Error() + "\nSend **cast id**, **participant index/name** (comma-separated), or **0** for all."
 }

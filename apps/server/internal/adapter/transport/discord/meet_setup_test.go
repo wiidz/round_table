@@ -136,6 +136,28 @@ func TestHandlePresetMenu_customWizard(t *testing.T) {
 	}
 }
 
+func TestHandlePresetMenuPreservesParticipantIDs(t *testing.T) {
+	all := testMeetPresets(config.Config{})
+	sess := meetSetupSession{
+		step: setupStepPresetMenu,
+		config: meetLaunchConfig{
+			Topic:               "骑士职业怎么设计",
+			ParticipantsSummary: "策划、玩家",
+			ParticipantIDs:      []string{"design", "player"},
+		},
+	}
+	got, err := handlePresetMenu(sess, "1", LocaleZH, "!rt ", all)
+	if err != nil || !got.launch {
+		t.Fatalf("launch: got=%+v err=%v", got, err)
+	}
+	if len(got.config.ParticipantIDs) != 2 || got.config.ParticipantIDs[0] != "design" || got.config.ParticipantIDs[1] != "player" {
+		t.Fatalf("ParticipantIDs not preserved: %+v", got.config.ParticipantIDs)
+	}
+	if got.config.ParticipantsSummary != "策划、玩家" {
+		t.Fatalf("ParticipantsSummary: %q", got.config.ParticipantsSummary)
+	}
+}
+
 func TestFormatModeratorSetupPrompt(t *testing.T) {
 	all := testMeetPresets(config.Config{})
 	got := formatModeratorSetupPrompt(LocaleZH, "!rt ", all)

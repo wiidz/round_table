@@ -11,9 +11,11 @@ import (
 
 // CommandHandler routes RoundTable Discord text commands (Principal binding, help).
 type CommandHandler struct {
-	Prefix   string
-	Registry *principalbind.Registry
-	Meet     *MeetRunner
+	Prefix       string
+	Registry     *principalbind.Registry
+	Meet         *MeetRunner
+	Participants *ParticipantAdmin
+	Reception    *Reception
 }
 
 // NewCommandHandler returns a handler with normalized prefix (trailing space).
@@ -26,13 +28,45 @@ func NewCommandHandler(prefix string, reg *principalbind.Registry, meet *MeetRun
 }
 
 // Handle implements transport.MessageHandler.
-func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (string, error) {
+func (h *CommandHandler) Handle(ctx context.Context, msg transport.Inbound) (string, error) {
 	body := strings.TrimSpace(msg.Content)
 
-	if h.Meet != nil {
-		if reply, err := h.Meet.HandleInputStatus(msg); err != nil {
+	if isInputStatusTrigger(body) {
+		loc := h.locale()
+		phase := h.inputPhase(msg.ChannelID)
+		meetingID := ""
+		if h.Meet != nil {
+			meetingID = h.Meet.meetingIDForPhase(msg.ChannelID, phase)
+		}
+		return formatInputPhaseStatus(loc, phase, meetingID), nil
+	}
+
+	if h.Reception != nil {
+		if reply, err := h.Reception.HandleConfirmReply(ctx, msg); err != nil {
 			return "", err
 		} else if reply != "" {
+			return reply, nil
+		}
+	}
+
+	if h.Reception != nil {
+		if reply, err := h.Reception.HandleClarifyFollowUp(ctx, msg); err != nil {
+			return "", err
+		} else if reply != "" {
+			return reply, nil
+		}
+	}
+
+	if h.Participants != nil {
+		if reply, err := h.Participants.HandleSetupReply(msg); err != nil {
+			return "", err
+		} else if reply != "" {
+			return reply, nil
+		}
+	}
+
+	if isExpertCancelTrigger(body) && h.Participants != nil {
+		if reply, ok := h.Participants.CancelSetup(msg.ChannelID, msg.AuthorID); ok {
 			return reply, nil
 		}
 	}
@@ -86,15 +120,24 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 		case "help", "h", "?":
 			return h.helpText(), nil
 		case "status", "st":
-			if h.Meet != nil {
-				phase := h.Meet.InputPhase(msg.ChannelID)
-				return formatInputPhaseStatus(loc, phase, h.Meet.meetingIDForPhase(msg.ChannelID, phase)), nil
+			if h.Meet != nil || h.Participants != nil {
+				phase := h.inputPhase(msg.ChannelID)
+				meetingID := ""
+				if h.Meet != nil {
+					meetingID = h.Meet.meetingIDForPhase(msg.ChannelID, phase)
+				}
+				return formatInputPhaseStatus(loc, phase, meetingID), nil
 			}
 			return h.helpText(), nil
 		case "principal", "p":
 			return h.handlePrincipal(msg, args[1:])
 		case "meet", "m":
 			return h.handleMeet(msg, args[1:])
+		case "expert", "experts", "专家", "e":
+			if h.Participants == nil {
+				return expertStorageRequiredText(loc), nil
+			}
+			return h.Participants.HandleCommand(msg, args[1:])
 		default:
 			return unknownCommandText(loc, h.Prefix, args[0]), nil
 		}
@@ -108,8 +151,24 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 		}
 	}
 
+	if h.Meet != nil {
+		if reply, err := h.Meet.TryBeginNaturalMeet(msg); err != nil {
+			return "", err
+		} else if reply != "" {
+			return reply, nil
+		}
+	}
+
 	if h.Meet != nil && isMeetStartTrigger(body) {
 		return h.Meet.BeginSetupFromTrigger(msg)
+	}
+
+	if h.Reception != nil {
+		if reply, err := h.Reception.TryHandle(ctx, msg); err != nil {
+			return "", err
+		} else if reply != "" {
+			return reply, nil
+		}
 	}
 
 	if h.Meet != nil {
@@ -118,6 +177,23 @@ func (h *CommandHandler) Handle(_ context.Context, msg transport.Inbound) (strin
 		}
 	}
 	return "", nil
+}
+
+func (h *CommandHandler) inputPhase(channelID string) ChannelInputPhase {
+	if h.Reception != nil {
+		if phase := h.Reception.InputPhase(channelID); phase != InputPhaseIdle {
+			return phase
+		}
+	}
+	if h.Participants != nil {
+		if phase := h.Participants.InputPhase(channelID); phase != InputPhaseIdle {
+			return phase
+		}
+	}
+	if h.Meet != nil {
+		return h.Meet.InputPhase(channelID)
+	}
+	return InputPhaseIdle
 }
 
 func (h *CommandHandler) handlePrincipal(msg transport.Inbound, args []string) (string, error) {

@@ -7,7 +7,19 @@ import (
 )
 
 func parseParticipants(raw string) ([]engine.ParticipantInput, error) {
+	return parseParticipantsFiltered(raw, nil)
+}
+
+func parseParticipantsFiltered(raw string, onlyIDs []string) ([]engine.ParticipantInput, error) {
 	var out []engine.ParticipantInput
+	allowed := make(map[string]struct{})
+	for _, id := range onlyIDs {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			allowed[id] = struct{}{}
+		}
+	}
+	filter := len(allowed) > 0
 	for _, item := range strings.Split(raw, ",") {
 		item = strings.TrimSpace(item)
 		if item == "" {
@@ -16,6 +28,11 @@ func parseParticipants(raw string) ([]engine.ParticipantInput, error) {
 		p, err := parseParticipantItem(item)
 		if err != nil {
 			return nil, err
+		}
+		if filter {
+			if _, ok := allowed[p.ID]; !ok {
+				continue
+			}
 		}
 		out = append(out, p)
 	}

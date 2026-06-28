@@ -13,6 +13,26 @@ var (
 	reContentEnd   = regexp.MustCompile(`"\s*,\s*"(?:stance|object_reason)"`)
 )
 
+// Output is a parsed participant LLM JSON response.
+type Output struct {
+	Content      string
+	Stance       string
+	ObjectReason string
+}
+
+// ParseOutput parses participant LLM JSON with tolerant repair (Chinese quotes, missing braces).
+func ParseOutput(raw string) (Output, error) {
+	out, err := parseOutput(raw)
+	if err != nil {
+		return Output{}, err
+	}
+	return Output{
+		Content:      out.Content,
+		Stance:       out.Stance,
+		ObjectReason: out.ObjectReason,
+	}, nil
+}
+
 func parseOutput(raw string) (llmOutput, error) {
 	raw = cleanRaw(raw)
 	raw = repairMalformedJSON(raw)

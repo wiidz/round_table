@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	profFS "round_table/apps/server/internal/adapter/profile/fs"
 	discordtransport "round_table/apps/server/internal/adapter/transport/discord"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	"round_table/apps/server/internal/platform/bootstrap"
@@ -140,6 +141,19 @@ func main() {
 		Principal: discordtransport.NewChannelPrincipal(pool, loc),
 	}
 
+	var participantAdmin *discordtransport.ParticipantAdmin
+	if configSvc != nil {
+		participantAdmin = &discordtransport.ParticipantAdmin{
+			ConfigSvc: configSvc,
+			Profile:   profFS.NewStore(base.Profile.Root, base.Profile.Templates),
+			Locale:    func() discordtransport.Locale { return discordtransport.ParseLocale(loc) },
+			Prefix:    strings.TrimSpace(dc.CommandPrefix),
+		}
+		if participantAdmin.Prefix == "" {
+			participantAdmin.Prefix = "!rt"
+		}
+	}
+
 	locale := discordtransport.ParseLocale(loc)
 	bot.SetOnGatewayResumed(func() {
 		for _, chID := range meet.ActiveMeetingChannelIDs() {
@@ -148,6 +162,31 @@ func main() {
 	})
 
 	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg, meet)
+	cmd.Participants = participantAdmin
+
+	modelPort, modelName := bootstrap.NewModelPortOptional(base)
+	if modelPort != nil && dc.ReceptionAgentEnabled {
+		cmd.Reception = &discordtransport.Reception{
+			Model:        modelPort,
+			ModelName:    modelName,
+			Enabled:      true,
+			Registry:     reg,
+			Meet:         meet,
+			Participants: participantAdmin,
+			Phase: func(channelID string) discordtransport.ChannelInputPhase {
+				if participantAdmin != nil {
+					if phase := participantAdmin.InputPhase(channelID); phase != discordtransport.InputPhaseIdle {
+						return phase
+					}
+				}
+				return meet.InputPhase(channelID)
+			},
+			Locale: func() discordtransport.Locale { return discordtransport.ParseLocale(loc) },
+		}
+		log.Printf("[discord] Reception Agent 已启用 · model=%s", modelName)
+	} else if dc.ReceptionAgentEnabled && modelPort == nil {
+		log.Printf("[discord] Reception Agent 已配置但未挂载（缺少 model API key）")
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

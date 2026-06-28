@@ -7,18 +7,25 @@ import (
 )
 
 const moderatorSummaryPrefix = "◆ moderator summary round="
+const executiveRecapPrefix = "◆ executive recap"
 
 // channelProgress forwards selected Engine progress lines to a Discord channel.
 type channelProgress struct {
-	pool      *BotPool
-	channelID string
-	loc       Locale
-	principal *ChannelPrincipal
+	pool               *BotPool
+	channelID          string
+	loc                Locale
+	principal          *ChannelPrincipal
+	pendingEngineStart string
 }
 
 func (p *channelProgress) Logf(format string, args ...any) {
 	line := fmt.Sprintf(format, args...)
-	if strings.HasPrefix(line, moderatorSummaryPrefix) {
+	if round, body, ok := parseModeratorSummaryLine(line); ok {
+		p.postModeratorContent(formatModeratorRoundSummaryDiscord(round, body, p.loc))
+		return
+	}
+	if body, ok := parseExecutiveRecapLine(line); ok {
+		p.postModeratorContent(formatExecutiveRecapDiscord(body, p.loc))
 		return
 	}
 	if p.principal != nil {
@@ -28,14 +35,69 @@ func (p *channelProgress) Logf(format string, args ...any) {
 			p.principal.MarkFreeDialogue(p.channelID, false)
 		}
 	}
+	if strings.HasPrefix(line, "▶ engine run started") {
+		p.pendingEngineStart = line
+		return
+	}
+	if p.pendingEngineStart != "" && strings.HasPrefix(line, "▶ pre-meeting started") {
+		p.postProgress(mergeMeetingStartProgress(p.pendingEngineStart, line, p.loc))
+		p.pendingEngineStart = ""
+		return
+	}
+	if p.pendingEngineStart != "" {
+		p.postProgress(localizeProgressLine(p.pendingEngineStart, p.loc))
+		p.pendingEngineStart = ""
+	}
 	if !shouldPostProgress(line) {
+		return
+	}
+	p.postProgress(localizeProgressLine(line, p.loc))
+}
+
+func (p *channelProgress) postProgress(content string) {
+	content = strings.TrimSpace(content)
+	if content == "" {
 		return
 	}
 	sender := p.pool.Default
 	if sender == nil {
 		return
 	}
-	_ = sender.Send(context.Background(), p.channelID, localizeProgressLine(line, p.loc))
+	_ = sender.Send(context.Background(), p.channelID, content)
+}
+
+func (p *channelProgress) postModeratorContent(content string) {
+	content = strings.TrimSpace(content)
+	if content == "" || p.pool.Default == nil {
+		return
+	}
+	SendLong(p.pool.Default, context.Background(), p.channelID, content)
+}
+
+func formatModeratorRoundSummaryDiscord(round int, body string, loc Locale) string {
+	body = strings.TrimSpace(body)
+	if loc == LocaleZH {
+		return fmt.Sprintf("📝 **主持人 · 第 %d 轮摘要**\n\n%s", round, body)
+	}
+	return fmt.Sprintf("📝 **Moderator · Round %d summary**\n\n%s", round, body)
+}
+
+func formatExecutiveRecapDiscord(body string, loc Locale) string {
+	body = strings.TrimSpace(body)
+	if loc == LocaleZH {
+		return "📖 **会议回顾 · Executive Recap**\n\n" + body
+	}
+	return "📖 **Executive Recap**\n\n" + body
+}
+
+func parseExecutiveRecapLine(line string) (body string, ok bool) {
+	if !strings.HasPrefix(line, executiveRecapPrefix) {
+		return "", false
+	}
+	rest := strings.TrimPrefix(line, executiveRecapPrefix)
+	rest = strings.TrimLeft(rest, "\n")
+	body = strings.TrimSpace(rest)
+	return body, body != ""
 }
 
 func parseModeratorSummaryLine(line string) (round int, body string, ok bool) {
@@ -84,6 +146,7 @@ func shouldPostProgress(line string) bool {
 	// Internal LLM status — stream output covers readiness/synthesis body.
 	if strings.HasPrefix(line, "◆ LLM") ||
 		strings.HasPrefix(line, "◆ readiness") ||
+		strings.HasPrefix(line, "◆ executive recap failed") ||
 		strings.HasPrefix(line, "◆ synthesis readiness round=") ||
 		strings.HasPrefix(line, "◆ synthesis completed (") {
 		return false
