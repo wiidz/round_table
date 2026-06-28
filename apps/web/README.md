@@ -43,7 +43,33 @@ make web-preview   # build + vite preview，端口同 ROUND_TABLE_WEB_PORT
 
 ```bash
 npm run build
-# 或 make web-build
+# 或仓库根目录
+make web-build
+```
+
+产物目录：`apps/web/dist/`（静态文件，供 `ROUND_TABLE_WEB_ROOT` 或 Docker 镜像使用）。
+
+### 生产部署（推荐）
+
+**不要在服务器上 `make web-build`**，用 Docker 在干净 Node 镜像里构建：
+
+```bash
+docker compose up -d --build   # Dockerfile 内 npm ci && npm run build
+```
+
+### Linux 上 `make web-build` 报 rolldown native binding
+
+Vite 8 依赖 `@rolldown/binding-*` 平台包，npm 偶发漏装 optional 依赖。处理：
+
+```bash
+make web-reinstall   # rm -rf node_modules && npm ci
+make web-build
+```
+
+仍失败时手动安装当前平台 binding（x64 GNU 示例）：
+
+```bash
+cd apps/web && npm install @rolldown/binding-linux-x64-gnu@1.1.3
 ```
 
 ## 目录

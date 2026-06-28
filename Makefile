@@ -13,7 +13,7 @@ TOPIC_GAME_CLASS    := 设计新职业「影舞者」的核心技能与定位
 
 WEB     := ./apps/web
 
-.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-dev web-preview web-build
+.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-reinstall web-dev web-preview web-build
 
 SCENARIO_3ROUND := data/_templates/scenarios/3-round-debate
 TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 撤销）并批准进入开发？
@@ -108,18 +108,22 @@ docker-logs:
 docker-logs-discord:
 	tail -f data/logs/discord-transport.log
 
-## web-install: install web dependencies
+## web-install: install web dependencies (npm ci — lockfile exact)
 web-install:
-	cd $(WEB) && npm install
+	cd $(WEB) && npm ci
+
+## web-reinstall: clean reinstall (fixes Vite 8 rolldown native binding on Linux)
+web-reinstall:
+	cd $(WEB) && rm -rf node_modules && npm ci
 
 ## web-dev: start Vite dev server (ROUND_TABLE_WEB_PORT / ROUND_TABLE_HTTP_PORT in deploy/.env)
-web-dev:
+web-dev: web-install
 	cd $(WEB) && npm run dev
 
 ## web-preview: serve production build (same ports as web-dev)
 web-preview: web-build
 	cd $(WEB) && npm run preview
 
-## web-build: production build for web
-web-build:
+## web-build: production build for web (Vite → apps/web/dist)
+web-build: web-install
 	cd $(WEB) && npm run build
