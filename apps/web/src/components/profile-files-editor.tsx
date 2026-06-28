@@ -9,6 +9,11 @@ import {
   type ProfileRole,
 } from '@/components/profile/profile-page-header'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
+import { MarkdownDocument } from '@/components/markdown/markdown-document'
+import {
+  MarkdownViewToggle,
+  type MarkdownViewMode,
+} from '@/components/markdown/markdown-view-toggle'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -89,6 +94,7 @@ export function ProfileFilesEditor({
   const [files, setFiles] = useState<Record<string, string>>({})
   const [activeFile, setActiveFile] = useState('')
   const [draft, setDraft] = useState('')
+  const [viewMode, setViewMode] = useState<MarkdownViewMode>('source')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -282,30 +288,49 @@ export function ProfileFilesEditor({
                 </p>
               </div>
 
-              <div className={heFieldSurface}>
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  spellCheck={false}
-                  className={heTextarea}
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle/80 pt-4">
-                <Button
-                  onClick={handleSave}
-                  disabled={!dirty || saving}
-                  className={cn(hePressable, 'gap-2 rounded-full px-5')}
-                >
-                  <Save className="size-4" />
-                  {saving ? '保存中…' : '保存档案'}
-                </Button>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <MarkdownViewToggle mode={viewMode} onChange={setViewMode} />
                 {dirty && (
                   <span className="text-xs font-medium text-warning">
-                    有未保存的修改
+                    {viewMode === 'preview'
+                      ? '预览含未保存修改 · 切回源码可保存'
+                      : '有未保存的修改'}
                   </span>
                 )}
               </div>
+
+              <div className={heFieldSurface}>
+                {viewMode === 'preview' ? (
+                  <div className="p-5 sm:p-6">
+                    <MarkdownDocument content={draft} constrained={false} />
+                  </div>
+                ) : (
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    spellCheck={false}
+                    className={heTextarea}
+                  />
+                )}
+              </div>
+
+              {viewMode === 'source' && (
+                <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle/80 pt-4">
+                  <Button
+                    onClick={handleSave}
+                    disabled={!dirty || saving}
+                    className={cn(hePressable, 'gap-2 rounded-full px-5')}
+                  >
+                    <Save className="size-4" />
+                    {saving ? '保存中…' : '保存档案'}
+                  </Button>
+                  {dirty && (
+                    <span className="text-xs font-medium text-warning">
+                      有未保存的修改
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
