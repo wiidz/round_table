@@ -60,7 +60,7 @@ func TestSynthesizeDeliberationFinal_noModelUsesRules(t *testing.T) {
 			Rounds: []meeting.RoundSummary{{RoundNumber: 1, Summary: "round 1"}},
 		},
 	}
-	summary, open, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s)
+	summary, open, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestSynthesizeDeliberationFinal_llmPath(t *testing.T) {
 			Rounds: []meeting.RoundSummary{{RoundNumber: 2, Summary: "Round 2 summary"}},
 		},
 	}
-	summary, open, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s)
+	summary, open, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestSynthesizeDeliberationFinal_llmErrorFallsBack(t *testing.T) {
 			Rounds: []meeting.RoundSummary{{RoundNumber: 1, Summary: "r1"}},
 		},
 	}
-	summary, _, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s)
+	summary, _, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s, "")
 	if err != nil {
 		t.Fatal(err)
 	}

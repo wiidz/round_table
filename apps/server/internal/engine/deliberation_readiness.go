@@ -142,7 +142,9 @@ func (e *Engine) buildModeratorReadinessSystem(s meeting.State) (string, error) 
 	if len(s.Agenda) > 0 {
 		b.WriteString("- A whole agenda item is still unaddressed with no tentative direction\n")
 	}
-	b.WriteString("- This round added no substantive new information and gaps remain\n\n")
+	b.WriteString("- This round added no substantive new information and gaps remain\n")
+	b.WriteString("- A participant's latest turn is primarily a direct question to another participant that still expects an in-meeting answer (not merely an open_question for the draft)\n")
+	b.WriteString("- Recent free dialogue raised a new substantive disagreement or design fork not yet debated in a full round\n\n")
 	b.WriteString("open_questions may remain in the final draft — do NOT require all issues to be closed.\n")
 	b.WriteString(agendaReadinessSchemaHint(s))
 	if e.Profile != nil {
@@ -158,7 +160,7 @@ func (e *Engine) buildModeratorReadinessSystem(s meeting.State) (string, error) 
 func buildDeliberationReadinessPrompt(s meeting.State) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n", PhaseDeliberationReadiness)
-	b.WriteString(strings.TrimPrefix(buildDeliberationSynthesisPrompt(s), PhaseDeliberationSynthesis+"\n"))
+	b.WriteString(strings.TrimPrefix(buildDeliberationSynthesisPrompt(s, ""), PhaseDeliberationSynthesis+"\n"))
 	b.WriteString("\nJudge whether synthesis should start now or another debate round is needed.\n")
 	return b.String()
 }

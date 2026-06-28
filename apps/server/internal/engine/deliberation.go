@@ -34,7 +34,7 @@ func (e *Engine) continueAfterDecisionRound(ctx context.Context, s meeting.State
 	}
 
 	e.logf("◆ generating moderator summary for round %d", s.CurrentRound)
-	modSummary := moderatorSummarizeRound(s)
+	modSummary := e.moderatorRoundSummary(ctx, s)
 	s, err = e.append(ctx, s, eventModeratorSummarized(s.CurrentRound, modSummary))
 	if err != nil {
 		return s, err
@@ -44,7 +44,7 @@ func (e *Engine) continueAfterDecisionRound(ctx context.Context, s meeting.State
 
 func (e *Engine) continueAfterDeliberationRound(ctx context.Context, s meeting.State) (meeting.State, error) {
 	e.logf("◆ generating deliberation summary for round %d", s.CurrentRound)
-	modSummary := moderatorSummarizeDeliberationRound(s)
+	modSummary := e.moderatorRoundSummary(ctx, s)
 	s, err := e.append(ctx, s, eventModeratorSummarized(s.CurrentRound, modSummary))
 	if err != nil {
 		return s, err
@@ -87,7 +87,15 @@ func (e *Engine) continueAfterDeliberationRound(ctx context.Context, s meeting.S
 }
 
 func (e *Engine) completeDeliberation(ctx context.Context, s meeting.State, resolvedBy string) (meeting.State, error) {
-	summary, openQuestions, usage, agenda, err := e.synthesizeDeliberationFinal(ctx, s)
+	recap := e.moderatorExecutiveRecap(ctx, s)
+	if recap != "" {
+		e.logf("◆ executive recap\n%s", recap)
+		if err := writeExecutiveRecapFile(e.Workspace, s.ID, recap); err != nil {
+			return s, err
+		}
+	}
+
+	summary, openQuestions, usage, agenda, err := e.synthesizeDeliberationFinal(ctx, s, recap)
 	if err != nil {
 		return s, err
 	}
@@ -97,7 +105,16 @@ func (e *Engine) completeDeliberation(ctx context.Context, s meeting.State, reso
 	if agenda != nil {
 		sections, cross = synthesisAgendaOutputToEvent(*agenda)
 	}
-	return e.append(ctx, s, eventSynthesisCompleted(summary, openQuestions, resolvedBy, usage, sections, cross))
+	s, err = e.append(ctx, s, eventSynthesisCompleted(summary, openQuestions, resolvedBy, usage, sections, cross))
+	if err != nil {
+		return s, err
+	}
+	if recap != "" && e.Workspace != nil {
+		if err := e.Workspace.Write(s.ID, workspace.FileMinutes, []byte(renderMinutesWithRecap(s, recap))); err != nil {
+			return s, err
+		}
+	}
+	return s, nil
 }
 
 func (e *Engine) buildDeliberationPrompt(s meeting.State, participantID string) string {

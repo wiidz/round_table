@@ -702,6 +702,8 @@ func newTestEngine(t *testing.T, dataRoot string, parts *stub.Participant, prin 
 		eng.Model = llm
 		eng.ModelName = "test-model"
 	}
+	eng.LLMModeratorRoundSummary = false
+	eng.LLMModeratorExecutiveRecap = false
 	return eng
 }
 

@@ -85,6 +85,8 @@ func newEngine(cfg config.Config, prin principal.Port, stubOpts PrincipalOptions
 	)
 	eng.Model = modelClient
 	eng.ModelName = cfg.Model.DefaultModel
+	eng.LLMModeratorRoundSummary = cfg.Meeting.LLMModeratorRoundSummary
+	eng.LLMModeratorExecutiveRecap = cfg.Meeting.LLMModeratorExecutiveRecap
 	eng.Progress = engine.StdProgressLogger{}
 	eng.Stream = engine.StdStreamLogger{}
 	return eng, nil

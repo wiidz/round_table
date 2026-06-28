@@ -22,6 +22,10 @@ type Engine struct {
 	Knowledge   knowledge.Port
 	Model       model.Port // optional; enables LLM deliberation synthesis
 	ModelName   string
+	// LLMModeratorRoundSummary enables LLM round summaries (ModeratorSummarized); falls back to rules when false or Model unavailable.
+	LLMModeratorRoundSummary bool
+	// LLMModeratorExecutiveRecap enables pre-synthesis executive recap (moderator/executive-recap.md).
+	LLMModeratorExecutiveRecap bool
 	Progress    ProgressLogger
 	Stream      StreamLogger
 }

@@ -28,7 +28,7 @@ type synthesisLLMOutput struct {
 	OpenQuestions []string `json:"open_questions"`
 }
 
-func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.State) (summary string, openQuestions []string, usage *event.TokenUsage, agenda *synthesisAgendaOutput, err error) {
+func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.State, executiveRecap string) (summary string, openQuestions []string, usage *event.TokenUsage, agenda *synthesisAgendaOutput, err error) {
 	if e.Model == nil {
 		summary, openQuestions, agenda = moderatorSynthesizeFinal(s)
 		return summary, openQuestions, nil, agenda, nil
@@ -40,7 +40,7 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 		modelName = "deepseek-chat"
 	}
 
-	prompt := buildDeliberationSynthesisPrompt(s)
+	prompt := buildDeliberationSynthesisPrompt(s, executiveRecap)
 	system, err := e.buildModeratorSynthesisSystem(s)
 	if err != nil {
 		return "", nil, nil, nil, err
@@ -140,7 +140,7 @@ func (e *Engine) buildModeratorSynthesisSystem(s meeting.State) (string, error) 
 	return b.String(), nil
 }
 
-func buildDeliberationSynthesisPrompt(s meeting.State) string {
+func buildDeliberationSynthesisPrompt(s meeting.State, executiveRecap string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n", PhaseDeliberationSynthesis)
 	fmt.Fprintf(&b, "Topic: %s\n", s.Topic)
@@ -148,6 +148,11 @@ func buildDeliberationSynthesisPrompt(s meeting.State) string {
 		fmt.Fprintf(&b, "Goal: %s\n", s.Goal)
 	}
 	fmt.Fprintf(&b, "Rounds completed: %d\n\n", s.CurrentRound)
+	if strings.TrimSpace(executiveRecap) != "" {
+		b.WriteString("## Executive recap (Moderator — before synthesis)\n\n")
+		b.WriteString(strings.TrimSpace(executiveRecap))
+		b.WriteString("\n\n")
+	}
 	writeDeliberationAgendaBlock(&b, s)
 
 	if s.PreMeetingSummary != "" {

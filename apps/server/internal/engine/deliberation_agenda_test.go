@@ -91,7 +91,7 @@ func TestSynthesizeDeliberationFinal_agendaLLMPath(t *testing.T) {
 			Rounds: []meeting.RoundSummary{{RoundNumber: 2, Summary: "Round 2"}},
 		},
 	}
-	summary, open, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s)
+	summary, open, usage, _, err := e.synthesizeDeliberationFinal(context.Background(), s, "")
 	if err != nil {
 		t.Fatal(err)
 	}
