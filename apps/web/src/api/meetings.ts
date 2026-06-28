@@ -1,7 +1,8 @@
 import { apiFetch } from '@/api/client'
-import type { MeetingsResponse } from '@/types/meeting'
+import type { MeetingDetail, MeetingsResponse } from '@/types/meeting'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 12
+const PAGE_SIZE_DESKTOP = 24
 
 export function fetchMeetings(page = 1, pageSize = PAGE_SIZE) {
   const params = new URLSearchParams({
@@ -11,4 +12,8 @@ export function fetchMeetings(page = 1, pageSize = PAGE_SIZE) {
   return apiFetch<MeetingsResponse>(`/meetings?${params}`)
 }
 
-export { PAGE_SIZE as MEETINGS_PAGE_SIZE }
+export function fetchMeeting(id: string) {
+  return apiFetch<MeetingDetail>(`/meetings/${encodeURIComponent(id)}`)
+}
+
+export { PAGE_SIZE as MEETINGS_PAGE_SIZE, PAGE_SIZE_DESKTOP as MEETINGS_PAGE_SIZE_DESKTOP }

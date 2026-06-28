@@ -1,25 +1,46 @@
 import { useEffect, useState } from 'react'
 
-import { fetchMeetings, MEETINGS_PAGE_SIZE } from '@/api/meetings'
-import { ApiError } from '@/api/client'
-import { Pagination } from '@/components/ui/pagination'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+  fetchMeetings,
+  MEETINGS_PAGE_SIZE,
+  MEETINGS_PAGE_SIZE_DESKTOP,
+} from '@/api/meetings'
+import { ApiError } from '@/api/client'
+import {
+  MeetingGridCard,
+  MeetingGridSkeleton,
+} from '@/components/meeting/meeting-list-card'
+import {
+  ProfilePageHeader,
+  ProfileStatePanel,
+} from '@/components/profile/profile-page-header'
+import { Pagination } from '@/components/ui/pagination'
 import type { MeetingIndex } from '@/types/meeting'
-import { formatDateYMD } from '@/lib/format-date'
 
-function formatUpdatedAt(value: string) {
-  if (!value) return '—'
-  const formatted = formatDateYMD(value)
-  return formatted || '—'
+const DESKTOP_MEDIA = '(min-width: 1280px)'
+
+function useMeetingsPageSize() {
+  const [pageSize, setPageSize] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(DESKTOP_MEDIA).matches
+      ? MEETINGS_PAGE_SIZE_DESKTOP
+      : MEETINGS_PAGE_SIZE,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_MEDIA)
+    const sync = () => {
+      setPageSize(mq.matches ? MEETINGS_PAGE_SIZE_DESKTOP : MEETINGS_PAGE_SIZE)
+    }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  return pageSize
 }
 
 export function MeetingsPage() {
+  const pageSize = useMeetingsPageSize()
   const [meetings, setMeetings] = useState<MeetingIndex[]>([])
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -27,10 +48,14 @@ export function MeetingsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    setPage(1)
+  }, [pageSize])
+
+  useEffect(() => {
     let cancelled = false
     setLoading(true)
 
-    fetchMeetings(page, MEETINGS_PAGE_SIZE)
+    fetchMeetings(page, pageSize)
       .then((data) => {
         if (!cancelled) {
           setMeetings(data.meetings ?? [])
@@ -55,83 +80,56 @@ export function MeetingsPage() {
     return () => {
       cancelled = true
     }
-  }, [page])
+  }, [page, pageSize])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-[22px] font-semibold tracking-tight">会议</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          来自 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">data/workspaces/</code>{' '}
-          的 workspace 索引，每页 {MEETINGS_PAGE_SIZE} 条。
-        </p>
-      </div>
+    <div className="space-y-8">
+      <ProfilePageHeader
+        role="principal"
+        eyebrow="Meeting Browse"
+        title="会议"
+        description={
+          <>
+            浏览{' '}
+            <code className="rounded-md bg-black/[0.04] px-1.5 py-0.5 font-mono text-[12px] ring-1 ring-inset ring-black/[0.05]">
+              data/workspaces/
+            </code>{' '}
+            下的历史 Meeting。**天平**（明亮橙底）为裁决型、**云朵**为研讨型；卡片含人数、轮次与自由对话配置。
+          </>
+        }
+      />
 
-      {loading && (
-        <Card>
-          <CardContent className="py-8 text-sm text-text-secondary">加载中…</CardContent>
-        </Card>
-      )}
+      {loading && <MeetingGridSkeleton count={pageSize} />}
 
       {!loading && error && (
-        <Card className="border-danger/30">
-          <CardHeader>
-            <CardTitle>加载失败</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-text-tertiary">
-            请确认已运行 <code className="font-mono text-xs">make run</code>（:7777），且 Vite 代理{' '}
-            <code className="font-mono text-xs">/api → :7777</code> 生效。
-          </CardContent>
-        </Card>
+        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
       )}
 
       {!loading && !error && total === 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>暂无会议</CardTitle>
-            <CardDescription>
+        <ProfileStatePanel
+          title="暂无会议"
+          description={
+            <>
               还没有 workspace 目录。可通过 Discord{' '}
               <code className="font-mono text-xs">!rt meet</code> 或{' '}
               <code className="font-mono text-xs">make meet</code> 创建一场会议。
-            </CardDescription>
-          </CardHeader>
-        </Card>
+            </>
+          }
+        />
       )}
 
       {!loading && !error && total > 0 && (
         <>
-          <ul className="space-y-3">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {meetings.map((m) => (
-              <li key={m.id}>
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <CardTitle className="truncate text-base">
-                          {m.topic || '（无主题）'}
-                        </CardTitle>
-                        <CardDescription className="font-mono text-xs">
-                          {m.id}
-                        </CardDescription>
-                      </div>
-                      {m.status && (
-                        <span className="rounded-md bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">
-                          {m.status}
-                        </span>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="text-xs text-text-tertiary">
-                    更新于 {formatUpdatedAt(m.updated_at)}
-                  </CardContent>
-                </Card>
+              <li key={m.id} className="min-w-0">
+                <MeetingGridCard meeting={m} />
               </li>
             ))}
           </ul>
           <Pagination
             page={page}
-            pageSize={MEETINGS_PAGE_SIZE}
+            pageSize={pageSize}
             total={total}
             onPageChange={setPage}
           />
