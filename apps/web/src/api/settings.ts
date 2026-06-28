@@ -3,6 +3,7 @@ import type {
   DiscordBotsUpdate,
   DiscordTransportLogs,
   DiscordTransportStatus,
+  MeetCastConfig,
   MeetPresetConfig,
   SettingsResponse,
   SettingsValues,
@@ -38,6 +39,20 @@ export function saveMeetPresets(presets: MeetPresetConfig[]) {
 
 export function resetMeetPresets() {
   return apiFetch<SettingsResponse>('/settings/meet-presets/reset', {
+    method: 'POST',
+  })
+}
+
+export function saveMeetCasts(casts: MeetCastConfig[]) {
+  return apiFetch<SettingsResponse>('/settings/meet-casts', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ casts }),
+  })
+}
+
+export function resetMeetCasts() {
+  return apiFetch<SettingsResponse>('/settings/meet-casts/reset', {
     method: 'POST',
   })
 }

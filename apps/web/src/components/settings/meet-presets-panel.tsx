@@ -441,7 +441,7 @@ export function MeetPresetsPanel({
               <SettingsFieldRow
                 label="辩论轮次"
                 htmlFor={`preset-${active.id}-rounds`}
-                hint={`本场最多 ${cap} 轮（受「设定的上限 → 辩论轮次上限」约束）。`}
+                hint={`本场最多 ${cap} 轮（受「设定上限 → 辩论轮次上限」约束）。`}
               >
                 <Input
                   id={`preset-${active.id}-rounds`}

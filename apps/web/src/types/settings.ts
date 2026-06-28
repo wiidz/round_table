@@ -86,6 +86,13 @@ export interface MeetPresetConfig {
   command?: string
 }
 
+export interface MeetCastConfig {
+  id: string
+  name_zh: string
+  name_en: string
+  participant_ids: string[]
+}
+
 export interface SettingsResponse {
   source: string
   secrets_path: string
@@ -95,6 +102,7 @@ export interface SettingsResponse {
   discord_bots?: DiscordBotState[]
   meet_presets?: MeetPresetConfig[]
   meet_presets_defaults?: MeetPresetConfig[]
+  meet_casts?: MeetCastConfig[]
 }
 
 export type SettingsValues = Record<string, string>

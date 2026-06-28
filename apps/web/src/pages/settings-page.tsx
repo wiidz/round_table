@@ -17,6 +17,7 @@ import { ApiError } from '@/api/client'
 import { BrandIcon, hasBrandIcon } from '@/components/brand-icon'
 import { ProfilePageHeader, ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { DiscordBotsPanel } from '@/components/settings/discord-bots-panel'
+import { MeetCastsPanel } from '@/components/settings/meet-casts-panel'
 import { MeetPresetsPanel } from '@/components/settings/meet-presets-panel'
 import { DiscordRunningRing } from '@/components/settings/discord-running-ring'
 import { DiscordTransportControl } from '@/components/settings/discord-transport-control'
@@ -43,7 +44,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useDiscordTransportStatus } from '@/hooks/use-discord-transport-status'
 import { readSettingsNav, writeSettingsNav } from '@/lib/settings-nav'
-import type { DiscordBotState, MeetPresetConfig, SettingsFieldState, SettingsResponse, SettingsSubsectionMeta } from '@/types/settings'
+import type { DiscordBotState, MeetCastConfig, MeetPresetConfig, SettingsFieldState, SettingsResponse, SettingsSubsectionMeta } from '@/types/settings'
 
 const storedNav = readSettingsNav()
 
@@ -201,10 +202,10 @@ function SubsectionIconRail({
   )
 }
 
-const MEETING_SECTION_ORDER = ['设定的上限'] as const
+const MEETING_SECTION_ORDER = ['设定上限'] as const
 
 const MEETING_SECTION_DESC: Record<(typeof MEETING_SECTION_ORDER)[number], string> = {
-  设定的上限:
+  设定上限:
     '单场会议的 Engine 硬约束（写入 MeetingCreated）。预设里的辩论轮次、确认关开关不得突破此处上限；「确认关轮次上限」指 Principal 最多审阅几次方案（含首次）。',
 }
 
@@ -479,6 +480,7 @@ export function SettingsPage() {
   const [discordBots, setDiscordBots] = useState<DiscordBotState[]>([])
   const [meetPresets, setMeetPresets] = useState<MeetPresetConfig[]>([])
   const [meetPresetsDefaults, setMeetPresetsDefaults] = useState<MeetPresetConfig[]>([])
+  const [meetCasts, setMeetCasts] = useState<MeetCastConfig[]>([])
   const [subsections, setSubsections] = useState<Record<string, SettingsSubsectionMeta[]>>({})
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<string>(storedNav?.tab ?? TAB_ORDER[0])
@@ -529,6 +531,7 @@ export function SettingsPage() {
     setDiscordBots(data.discord_bots ?? [])
     setMeetPresets(data.meet_presets ?? [])
     setMeetPresetsDefaults(data.meet_presets_defaults ?? [])
+    setMeetCasts(data.meet_casts ?? [])
     setSubsections(data.subsections ?? {})
     const initial: Record<string, string> = {}
     for (const f of data.fields ?? []) {
@@ -883,6 +886,17 @@ export function SettingsPage() {
                         draft['ROUND_TABLE_MAX_ROUNDS_PER_SEGMENT'] ?? '20',
                         10,
                       )}
+                      onSaved={(resp) => {
+                        applySettingsResponse(resp)
+                      }}
+                    />
+                  </div>
+                )}
+
+                {subsectionAvailable && activeTab === '会议' && (
+                  <div className="mt-10 border-t border-black/[0.05] pt-10">
+                    <MeetCastsPanel
+                      casts={meetCasts}
                       onSaved={(resp) => {
                         applySettingsResponse(resp)
                       }}
