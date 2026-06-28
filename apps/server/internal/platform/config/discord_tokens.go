@@ -119,6 +119,25 @@ func effectiveDiscordBotTokens(cfg Config, overrides map[string]string) DiscordB
 	return tokens
 }
 
+// HostBotToken returns the token of the configured host bot from SQLite overrides.
+func HostBotToken(cfg Config, overrides map[string]string) string {
+	tokens := effectiveDiscordBotTokens(cfg, overrides)
+	primary := effectivePrimaryBotID(overrides)
+	return strings.TrimSpace(tokens.TokenForBot(primary, primary))
+}
+
+// BotShouldHandleCommandsForToken reports whether the connected bot token is the current host.
+func BotShouldHandleCommandsForToken(botToken string, cfg Config, overrides map[string]string) bool {
+	botToken = strings.TrimSpace(botToken)
+	hostToken := HostBotToken(cfg, overrides)
+	return botToken != "" && hostToken != "" && botToken == hostToken
+}
+
+// EffectiveDiscordBotTokens merges SQLite token overrides with loaded config secrets.
+func EffectiveDiscordBotTokens(cfg Config, overrides map[string]string) DiscordBotTokens {
+	return effectiveDiscordBotTokens(cfg, overrides)
+}
+
 func mergeDiscordBotTokenUpdates(
 	current DiscordBotTokens,
 	primaryBotID string,

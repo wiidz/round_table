@@ -268,9 +268,6 @@ func validateParticipantIMBindings(bindings ParticipantIMBindings, rosterIDs, ap
 			if appID == "" {
 				return fmt.Errorf("专家 %s: %q 绑定缺少 Bot", pid, platform)
 			}
-			if appID == ModeratorBotID {
-				return fmt.Errorf("专家 %s: 不可绑定主持人 Bot", pid)
-			}
 			if _, ok := applicationIDs[appID]; !ok {
 				return fmt.Errorf("专家 %s: Bot %q 不存在", pid, appID)
 			}

@@ -58,3 +58,33 @@ func TestPruneDiscordBotProfilesCache(t *testing.T) {
 		t.Fatal("moderator should remain")
 	}
 }
+
+func TestBotShouldHandleCommandsForToken(t *testing.T) {
+	cfg := loadBase()
+	overrides := map[string]string{
+		DiscordBotTokensSetting:     `{"moderator":"host-token","participants":{"111111111111111111":"other-token"}}`,
+		DiscordModeratorRoleSetting: "111111111111111111",
+	}
+	if !BotShouldHandleCommandsForToken("host-token", cfg, overrides) {
+		t.Fatal("host token should handle commands")
+	}
+	if BotShouldHandleCommandsForToken("other-token", cfg, overrides) {
+		t.Fatal("non-host token should ignore commands")
+	}
+}
+
+func TestBotShouldHandleCommands(t *testing.T) {
+	overrides := map[string]string{
+		DiscordModeratorRoleSetting: "222222222222222222",
+		DiscordBotProfilesSetting:   `{"moderator":{"discord_application_id":"222222222222222222"}}`,
+	}
+	if !BotShouldHandleCommands("222222222222222222", overrides) {
+		t.Fatal("host bot should handle commands")
+	}
+	if BotShouldHandleCommands("111111111111111111", overrides) {
+		t.Fatal("non-host bot should ignore commands")
+	}
+	if BotShouldHandleCommands("", overrides) {
+		t.Fatal("empty app id should not handle commands")
+	}
+}

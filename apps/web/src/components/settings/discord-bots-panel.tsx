@@ -42,7 +42,6 @@ type ExpertOption = {
   id: string
   display_name?: string
   expertise?: string
-  in_roster?: boolean
 }
 
 type ExpertSelectOption = ExpertOption & {
@@ -225,10 +224,6 @@ function newParticipant(): ParticipantDraft {
   }
 }
 
-function isRosterExpert(p: ExpertOption & { in_roster?: boolean }): boolean {
-  return p.in_roster === true
-}
-
 function StatusPill({
   children,
   tone = 'neutral',
@@ -393,76 +388,60 @@ function BotSettingsForm({
         </SettingsFieldRow>
       </SettingsBlock>
 
-      {kind === 'moderator' && onIsModeratorChange && (
+      {onIsModeratorChange && (
         <SettingsBlock title="角色" accent="neutral">
           <SettingsSwitch
             id={`bot-moderator-${formKey}`}
             label="是否设为主持人"
             checked={isModerator}
+            disabled={kind === 'participant' && !configured && !id.trim()}
             onCheckedChange={onIsModeratorChange}
-            hint="主 Bot 负责指令、进度与无独立 Bot 时的发言"
+            hint={
+              kind === 'participant' && !configured && !id.trim()
+                ? '请先保存 Token，系统将根据 Discord 资料自动注册 Bot'
+                : '主持 Bot 负责指令、进度与会议流程；每位 Bot 均可绑定专家档案'
+            }
           />
         </SettingsBlock>
       )}
 
-      {kind === 'participant' && (
-        <>
-          {onIsModeratorChange && (
-            <SettingsBlock title="角色" accent="neutral">
-              <SettingsSwitch
-                id={`bot-moderator-${formKey}`}
-                label="是否设为主持人"
-                checked={isModerator}
-                disabled={!configured && !id.trim()}
-                onCheckedChange={onIsModeratorChange}
-                hint={
-                  !configured && !id.trim()
-                    ? '请先保存 Token，系统将根据 Discord 资料自动注册 Bot'
-                    : '开启后将切换为主持 Bot'
-                }
-              />
-            </SettingsBlock>
-          )}
-
-          {expertOptions && onBoundParticipantIdChange && (
-            <SettingsBlock
-              title="绑定专家"
-              description="每个 Discord Bot 仅绑定一位专家；专家可在 IM 绑定中分别配置 Discord、Telegram 等。"
-              accent="brand"
+      {expertOptions && onBoundParticipantIdChange && (
+        <SettingsBlock
+          title="绑定专家"
+          description="每个 Discord Bot 仅绑定一位专家；绑定后 Bot 展示名称与头像跟随专家，并使用其 SOUL / AGENTS / TOOLS 档案。"
+          accent="brand"
+        >
+          {expertOptions.length === 0 ? (
+            <p className="text-[13px] text-text-tertiary">请先在「专家」页添加专家。</p>
+          ) : (
+            <SettingsFieldRow
+              label="选择专家"
+              htmlFor={`bot-expert-${formKey}`}
+              hint="每位专家在同一平台只能绑定一个 Bot；已被其他 Bot 绑定的专家不可选"
             >
-              {expertOptions.length === 0 ? (
-                <p className="text-[13px] text-text-tertiary">请先在「专家」页添加专家。</p>
-              ) : (
-                <SettingsFieldRow
-                  label="选择专家"
-                  htmlFor={`bot-expert-${formKey}`}
-                  hint="每位专家在同一平台只能绑定一个 Bot；已被其他 Bot 绑定的专家不可选"
-                >
-                  <SearchableSelect
-                    id={`bot-expert-${formKey}`}
-                    value={boundParticipantId ?? ''}
-                    placeholder="不绑定专家"
-                    searchPlaceholder="输入名称或代号…"
-                    emptyOption={{
-                      value: '',
-                      label: '不绑定专家',
-                    }}
-                    options={expertOptions.map((expert) => {
-                      const name = expert.display_name?.trim() || expert.id
-                      return {
-                        value: expert.id,
-                        label: name,
-                        hint: expert.disabled ? '已绑定其他 Bot' : expert.id,
-                        disabled: expert.disabled,
-                      }
-                    })}
-                    onChange={onBoundParticipantIdChange}
-                  />
-                </SettingsFieldRow>
-              )}
-            </SettingsBlock>
+              <SearchableSelect
+                id={`bot-expert-${formKey}`}
+                value={boundParticipantId ?? ''}
+                placeholder="不绑定专家"
+                searchPlaceholder="输入名称或代号…"
+                emptyOption={{
+                  value: '',
+                  label: '不绑定专家',
+                }}
+                options={expertOptions.map((expert) => {
+                  const name = expert.display_name?.trim() || expert.id
+                  return {
+                    value: expert.id,
+                    label: name,
+                    hint: expert.disabled ? '已绑定其他 Bot' : expert.id,
+                    disabled: expert.disabled,
+                  }
+                })}
+                onChange={onBoundParticipantIdChange}
+              />
+            </SettingsFieldRow>
           )}
-        </>
+        </SettingsBlock>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.05] pt-6">
@@ -506,6 +485,7 @@ function assembleDiscordBotsUpdate({
   primaryRoleId,
   moderatorToken,
   moderatorConfigured,
+  moderatorBoundParticipantId,
   participants,
   requireTokenForId,
   requireTokenForIndex,
@@ -513,11 +493,12 @@ function assembleDiscordBotsUpdate({
   primaryRoleId: string
   moderatorToken: string
   moderatorConfigured: boolean
+  moderatorBoundParticipantId: string
   participants: ParticipantDraft[]
   requireTokenForId?: string
   requireTokenForIndex?: number
 }): DiscordBotsUpdate {
-  validateDiscordBotExpertDrafts(participants)
+  validateDiscordBotExpertDrafts(participants, moderatorBoundParticipantId)
 
   const payload: DiscordBotInput[] = []
 
@@ -553,6 +534,7 @@ function assembleDiscordBotsUpdate({
   const update: DiscordBotsUpdate = {
     participants: payload,
     moderator_role_id: primaryRoleId,
+    moderator_bound_participant_id: moderatorBoundParticipantId.trim(),
   }
 
   if (primaryRoleId === 'moderator') {
@@ -588,13 +570,14 @@ function assembleDiscordBotsUpdate({
   return update
 }
 
-function validateDiscordBotExpertDrafts(participants: ParticipantDraft[]) {
+function validateDiscordBotExpertDrafts(
+  participants: ParticipantDraft[],
+  moderatorBoundParticipantId: string,
+) {
   const expertBot = new Map<string, string>()
   const botExpert = new Map<string, string>()
-  for (const [index, p] of participants.entries()) {
-    const botKey = p.application_id.trim() || `(新 Bot ${index + 1})`
-    const expertId = (p.bound_participant_id ?? '').trim()
-    if (!expertId) continue
+
+  function track(botKey: string, expertId: string) {
     const prevBot = expertBot.get(expertId)
     if (prevBot && prevBot !== botKey) {
       throw new Error(`专家 ${expertId} 不能绑定多个 Discord Bot`)
@@ -606,26 +589,59 @@ function validateDiscordBotExpertDrafts(participants: ParticipantDraft[]) {
     }
     botExpert.set(botKey, expertId)
   }
+
+  const moderatorExpert = moderatorBoundParticipantId.trim()
+  if (moderatorExpert) {
+    track('主持人', moderatorExpert)
+  }
+
+  for (const [index, p] of participants.entries()) {
+    const botKey = p.application_id.trim() || `(新 Bot ${index + 1})`
+    const expertId = (p.bound_participant_id ?? '').trim()
+    if (!expertId) continue
+    track(botKey, expertId)
+  }
+}
+
+type BotBindingSlot = {
+  key: string
+  bound_participant_id: string
+}
+
+function botBindingSlots(
+  moderatorBound: string,
+  participants: ParticipantDraft[],
+): BotBindingSlot[] {
+  return [
+    { key: 'moderator', bound_participant_id: moderatorBound },
+    ...participants.map((p, index) => ({
+      key: p.application_id.trim() || `draft-${index}`,
+      bound_participant_id: p.bound_participant_id ?? '',
+    })),
+  ]
 }
 
 function expertSelectOptions(
   roster: ExpertOption[],
-  participants: ParticipantDraft[],
-  activeIndex: number,
+  slots: BotBindingSlot[],
+  activeKey: string,
 ): ExpertSelectOption[] {
   const taken = new Map<string, string>()
-  participants.forEach((p, index) => {
-    if (index === activeIndex) return
-    const expertId = (p.bound_participant_id ?? '').trim()
+  slots.forEach((slot) => {
+    if (slot.key === activeKey) return
+    const expertId = slot.bound_participant_id.trim()
     if (expertId) {
-      taken.set(expertId, p.application_id.trim() || `(Bot ${index + 1})`)
+      taken.set(expertId, slot.key === 'moderator' ? '主持人' : slot.key)
     }
   })
-  const current = (participants[activeIndex]?.bound_participant_id ?? '').trim()
-  return roster.map((expert) => ({
-    ...expert,
-    disabled: taken.has(expert.id) && expert.id !== current,
-  }))
+  const current =
+    slots.find((slot) => slot.key === activeKey)?.bound_participant_id.trim() ?? ''
+  return roster
+    .map((expert) => ({
+      ...expert,
+      disabled: taken.has(expert.id) && expert.id !== current,
+    }))
+    .sort((a, b) => Number(a.disabled) - Number(b.disabled))
 }
 
 function participantTabLabel(
@@ -656,15 +672,32 @@ function handlePrimaryChange(
   applicationId: string,
   checked: boolean,
   setPrimaryRoleId: (id: string) => void,
+  participants: ParticipantDraft[],
 ) {
   if (checked) {
-    if (!applicationId.trim()) {
+    const appId = applicationId.trim()
+    if (appId === 'moderator') {
+      setPrimaryRoleId('moderator')
+      return
+    }
+    if (!appId) {
       toast.error('请先保存 Bot Token 以获取 Application ID')
       return
     }
-    setPrimaryRoleId(applicationId.trim())
+    setPrimaryRoleId(appId)
     return
   }
+
+  if (applicationId.trim() === 'moderator' || applicationId.trim() === '') {
+    const fallback = participants.find((p) => p.application_id.trim())?.application_id.trim()
+    if (fallback) {
+      setPrimaryRoleId(fallback)
+      return
+    }
+    toast.error('至少需要一位主持 Bot')
+    return
+  }
+
   setPrimaryRoleId('moderator')
 }
 
@@ -737,6 +770,7 @@ export function DiscordBotsPanel({
     () => bots.find((b) => b.primary)?.id ?? 'moderator',
   )
   const [moderatorToken, setModeratorToken] = useState('')
+  const [moderatorBoundParticipantId, setModeratorBoundParticipantId] = useState('')
   const [participants, setParticipants] = useState<ParticipantDraft[]>(() => toParticipantDrafts(bots))
   const [expertRoster, setExpertRoster] = useState<ExpertOption[]>([])
   const [activeTab, setActiveTab] = useState<BotTabKey>('moderator')
@@ -756,6 +790,7 @@ export function DiscordBotsPanel({
     setPrimaryRoleId(bots.find((b) => b.primary)?.id ?? 'moderator')
     const mod = bots.find((b) => b.id === 'moderator')
     setModeratorToken(mod?.token ?? '')
+    setModeratorBoundParticipantId(mod?.bound_participant_id ?? '')
   }, [bots])
 
   useEffect(() => {
@@ -764,14 +799,11 @@ export function DiscordBotsPanel({
       .then((data) => {
         if (cancelled) return
         setExpertRoster(
-          (data.participants ?? [])
-            .filter(isRosterExpert)
-            .map((p) => ({
-              id: p.id,
-              display_name: p.display_name,
-              expertise: p.expertise,
-              in_roster: p.in_roster,
-            })),
+          (data.participants ?? []).map((p) => ({
+            id: p.id,
+            display_name: p.display_name,
+            expertise: p.expertise,
+          })),
         )
       })
       .catch(() => {
@@ -808,6 +840,7 @@ export function DiscordBotsPanel({
         primaryRoleId,
         moderatorToken,
         moderatorConfigured: moderator.configured,
+        moderatorBoundParticipantId,
         participants,
         requireTokenForId: 'moderator',
       })
@@ -834,6 +867,7 @@ export function DiscordBotsPanel({
         primaryRoleId,
         moderatorToken,
         moderatorConfigured: moderator?.configured ?? false,
+        moderatorBoundParticipantId,
         participants,
         requireTokenForId: p.application_id.trim() || undefined,
         requireTokenForIndex: index,
@@ -865,6 +899,7 @@ export function DiscordBotsPanel({
         primaryRoleId: nextPrimary,
         moderatorToken,
         moderatorConfigured: moderator?.configured ?? false,
+        moderatorBoundParticipantId,
         participants: next,
       })
     } catch (err) {
@@ -922,6 +957,7 @@ export function DiscordBotsPanel({
     activeTab.startsWith('participant-') ? Number(activeTab.slice('participant-'.length)) : -1
   const activeParticipant =
     activeParticipantIndex >= 0 ? participants[activeParticipantIndex] : undefined
+  const bindingSlots = botBindingSlots(moderatorBoundParticipantId, participants)
 
   return (
     <div className="space-y-10">
@@ -1026,7 +1062,7 @@ export function DiscordBotsPanel({
           kind="moderator"
           title="主持人"
           tags={[{ label: 'Moderator', tone: 'accent' }]}
-          subtitle="主 Bot，负责指令、进度与无独立 Bot 时的发言"
+          subtitle="填写 Token、绑定专家并指定是否为主持 Bot；主持 Bot 负责指令、进度与会议流程"
           id={moderator.id}
           configured={moderator.configured}
           discordApplicationId={moderator.discord_application_id}
@@ -1034,10 +1070,13 @@ export function DiscordBotsPanel({
           token={moderatorToken}
           isModerator={primaryRoleId === 'moderator'}
           onIsModeratorChange={(checked) =>
-            handlePrimaryChange('moderator', checked, setPrimaryRoleId)
+            handlePrimaryChange('moderator', checked, setPrimaryRoleId, participants)
           }
           saving={saving}
           onTokenChange={setModeratorToken}
+          onBoundParticipantIdChange={setModeratorBoundParticipantId}
+          expertOptions={expertSelectOptions(expertRoster, bindingSlots, 'moderator')}
+          boundParticipantId={moderatorBoundParticipantId}
           onSubmit={handleSaveModerator}
         />
       )}
@@ -1055,14 +1094,23 @@ export function DiscordBotsPanel({
           token={activeParticipant.token ?? ''}
           isModerator={primaryRoleId === activeParticipant.application_id.trim()}
           onIsModeratorChange={(checked) =>
-            handlePrimaryChange(activeParticipant.application_id, checked, setPrimaryRoleId)
+            handlePrimaryChange(
+              activeParticipant.application_id,
+              checked,
+              setPrimaryRoleId,
+              participants,
+            )
           }
           saving={saving}
           onTokenChange={(value) => updateParticipant(activeParticipantIndex, { token: value })}
           onBoundParticipantIdChange={(id) =>
             updateParticipant(activeParticipantIndex, { bound_participant_id: id })
           }
-          expertOptions={expertSelectOptions(expertRoster, participants, activeParticipantIndex)}
+          expertOptions={expertSelectOptions(
+            expertRoster,
+            bindingSlots,
+            activeParticipant.application_id.trim() || `draft-${activeParticipantIndex}`,
+          )}
           boundParticipantId={activeParticipant.bound_participant_id}
           onSubmit={() => handleSaveParticipant(activeParticipantIndex)}
           onDelete={() => void removeParticipant(activeParticipantIndex)}

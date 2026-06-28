@@ -6,6 +6,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	"round_table/apps/server/internal/platform/bootstrap"
 	"round_table/apps/server/internal/platform/config"
+	"round_table/apps/server/internal/platform/discordsvc"
 )
 
 func main() {
@@ -21,12 +25,6 @@ func main() {
 	dc := base.Transport.Discord
 
 	log.Printf("[discord] 正在启动 RoundTable Discord Transport…")
-
-	if base.Secrets.DiscordBotToken == "" {
-		fmt.Fprintln(os.Stderr, "discord: configure Moderator bot token in Web 设置 → IM → Discord")
-		fmt.Fprintln(os.Stderr, "       optional: transport.discord.* in apps/server/configs/server.yaml")
-		os.Exit(2)
-	}
 
 	store, err := bootstrap.OpenStorage(base.Storage)
 	if err != nil {
@@ -48,7 +46,36 @@ func main() {
 	}
 
 	loc := base.Locale()
-	log.Printf("[discord] 配置已加载 · locale=%s · prefix=%q", loc, dc.CommandPrefix)
+	var overrides map[string]string
+	if configSvc != nil {
+		overrides = configSvc.SettingsOverrides()
+	}
+	primaryID := config.EffectivePrimaryBotID(overrides)
+	tokens := config.EffectiveDiscordBotTokens(base, overrides)
+	poolBotIDs := config.FilterDiscordParticipantBotIDs(base, overrides)
+	hostToken := config.HostBotToken(base, overrides)
+	gatewayToken := strings.TrimSpace(hostToken)
+	if gatewayToken == "" {
+		gatewayToken = strings.TrimSpace(base.Secrets.DiscordBotToken)
+	}
+	if gatewayToken == "" {
+		fmt.Fprintln(os.Stderr, "discord: configure host bot token in Web 设置 → IM → Discord")
+		os.Exit(2)
+	}
+
+	log.Printf("[discord] 配置已加载 · locale=%s · prefix=%q · host_bot=%q", loc, dc.CommandPrefix, primaryID)
+
+	pidPath := config.DiscordTransportPIDPath(base)
+	lockFile, err := discordsvc.AcquireTransportLock(discordsvc.TransportLockPath(base))
+	if err != nil {
+		log.Fatalf("discord: %v", err)
+	}
+	defer discordsvc.ReleaseTransportLock(lockFile)
+
+	if err := writeTransportPID(pidPath, os.Getpid()); err != nil {
+		log.Printf("[discord] warning: write pid file: %v", err)
+	}
+	defer os.Remove(pidPath)
 
 	botOpts := discordtransport.Options{
 		AllowDM:    dc.AllowDM,
@@ -61,7 +88,7 @@ func main() {
 	log.Printf("[discord] 正在连接 Discord Gateway…")
 
 	bot, err := discordtransport.New(discordtransport.Options{
-		Token:      base.Secrets.DiscordBotToken,
+		Token:      gatewayToken,
 		AllowDM:    dc.AllowDM,
 		AllowGuild: dc.AllowGuild,
 		GuildID:    dc.GuildID,
@@ -70,17 +97,30 @@ func main() {
 	if err != nil {
 		log.Fatalf("discord: %v", err)
 	}
+	bot.SetHostGuard(func() bool {
+		if configSvc == nil {
+			return strings.TrimSpace(hostToken) != "" && strings.TrimSpace(hostToken) == bot.Token()
+		}
+		overrides := configSvc.SettingsOverrides()
+		return config.BotShouldHandleCommandsForToken(bot.Token(), configSvc.Current(), overrides)
+	})
+	dedupDir := config.DiscordInboundDedupDir(base)
+	pruneInboundDedup := func() {
+		discordtransport.PruneInboundMessageClaims(dedupDir)
+	}
+	pruneInboundDedup()
+	bot.SetMessageClaim(func(messageID string) bool {
+		return discordtransport.ClaimInboundMessage(dedupDir, messageID)
+	})
 
 	pool, err := discordtransport.OpenBotPool(discordtransport.PoolOptions{
-		Default: bot,
-		BotOpts: botOpts,
-		BotIDs:  config.DiscordBotApplicationIDs(base),
-		Mapping: nil,
+		Default:   bot,
+		BotOpts:   botOpts,
+		BotIDs:    poolBotIDs,
+		HostToken: hostToken,
+		Mapping:   nil,
 		ResolveToken: func(botID string) string {
-			if base.Secrets.DiscordParticipantTokens == nil {
-				return ""
-			}
-			return base.Secrets.DiscordParticipantTokens[botID]
+			return tokens.TokenForBot(botID, primaryID)
 		},
 		ParticipantBotID: func(participantID string) string {
 			return config.DiscordBotForParticipant(base.Transport.Discord.ParticipantIMBindings, participantID)
@@ -127,4 +167,11 @@ func main() {
 	if err := bot.Run(ctx, cmd.Handle); err != nil {
 		log.Fatalf("discord: %v", err)
 	}
+}
+
+func writeTransportPID(path string, pid int) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(strconv.Itoa(pid)+"\n"), 0o644)
 }

@@ -6,12 +6,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"round_table/apps/server/internal/platform/config"
 )
+
+const stopWaitTimeout = 15 * time.Second
 
 // Status is the Discord transport child process state (managed by this HTTP server).
 type Status struct {
@@ -31,6 +34,7 @@ type Supervisor struct {
 	startedAt time.Time
 	logPath   string
 	lastExit  string
+	lastCfg   config.Config
 }
 
 func (s *Supervisor) Status() Status {
@@ -71,24 +75,21 @@ func (s *Supervisor) Start(_ context.Context, cfg config.Config) error {
 		return fmt.Errorf("discord transport already running")
 	}
 
+	terminateDiscordTransportProcesses(cfg)
+
 	serverRoot, err := filepath.Abs(config.ServerRoot())
 	if err != nil {
 		return fmt.Errorf("resolve server root: %w", err)
 	}
 
-	var cmd *exec.Cmd
-	if bin, lookErr := exec.LookPath("roundtable-discord"); lookErr == nil {
-		cmd = exec.Command(bin)
-		cmd.Dir = serverRoot
-	} else {
-		mainGo := filepath.Join(serverRoot, "cmd", "discord", "main.go")
-		if _, err := os.Stat(mainGo); err != nil {
-			return fmt.Errorf("discord entrypoint not found (no roundtable-discord binary and %s missing)", mainGo)
-		}
-		cmd = exec.Command("go", "run", mainGo)
-		cmd.Dir = serverRoot
+	bin, err := ResolveDiscordBinary(serverRoot)
+	if err != nil {
+		return err
 	}
+	cmd := exec.Command(bin)
+	cmd.Dir = serverRoot
 	cmd.Env = withDiscordRunEnv(config.DiscordChildEnv(cfg))
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	logFilePath := logPath(cfg)
 	logFile, err := openLogFile(logFilePath)
@@ -108,6 +109,7 @@ func (s *Supervisor) Start(_ context.Context, cfg config.Config) error {
 
 	s.cmd = cmd
 	s.logPath = logFilePath
+	s.lastCfg = cfg
 	s.lastExit = ""
 	s.startedAt = time.Now().UTC()
 	go s.wait(cmd, logFile)
@@ -117,7 +119,9 @@ func (s *Supervisor) Start(_ context.Context, cfg config.Config) error {
 func (s *Supervisor) wait(cmd *exec.Cmd, logFile *os.File) {
 	err := cmd.Wait()
 	if logFile != nil {
-		if err != nil {
+		if isNormalProcessExit(err) {
+			_, _ = fmt.Fprintln(logFile, "\n[supervisor] process exited normally")
+		} else if err != nil {
 			_, _ = fmt.Fprintf(logFile, "\n[supervisor] process exited with error: %v\n", err)
 		} else {
 			_, _ = fmt.Fprintln(logFile, "\n[supervisor] process exited normally")
@@ -125,28 +129,88 @@ func (s *Supervisor) wait(cmd *exec.Cmd, logFile *os.File) {
 		_ = logFile.Close()
 	}
 	s.mu.Lock()
+	cfg := s.lastCfg
 	if s.cmd == cmd {
 		s.cmd = nil
-		if err != nil {
+		if err != nil && !isNormalProcessExit(err) {
 			s.lastExit = err.Error()
 		} else {
 			s.lastExit = ""
 		}
 	}
 	s.mu.Unlock()
+	_ = os.Remove(config.DiscordTransportPIDPath(cfg))
+}
+
+func isNormalProcessExit(err error) bool {
+	if err == nil {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "signal: terminated") || strings.Contains(msg, "signal: killed")
 }
 
 func (s *Supervisor) Stop() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	cmd := s.cmd
+	cfg := s.lastCfg
+	s.mu.Unlock()
 
-	if s.cmd == nil || s.cmd.Process == nil {
+	if cmd == nil || cmd.Process == nil {
 		return fmt.Errorf("discord transport is not running")
 	}
-	if err := s.cmd.Process.Signal(syscall.SIGTERM); err != nil {
-		return fmt.Errorf("stop discord transport: %w", err)
+
+	signalProcessGroup(cmd.Process.Pid, syscall.SIGTERM)
+
+	deadline := time.Now().Add(stopWaitTimeout)
+	for {
+		s.mu.Lock()
+		running := s.cmd != nil
+		s.mu.Unlock()
+		if !running {
+			terminateDiscordTransportProcesses(cfg)
+			return nil
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	return nil
+
+	s.mu.Lock()
+	cmd = s.cmd
+	s.mu.Unlock()
+	if cmd != nil && cmd.Process != nil {
+		signalProcessGroup(cmd.Process.Pid, syscall.SIGKILL)
+	}
+
+	deadline = time.Now().Add(2 * time.Second)
+	for {
+		s.mu.Lock()
+		running := s.cmd != nil
+		s.mu.Unlock()
+		if !running {
+			terminateDiscordTransportProcesses(cfg)
+			return nil
+		}
+		if time.Now().After(deadline) {
+			terminateDiscordTransportProcesses(cfg)
+			return fmt.Errorf("discord transport did not stop in time")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func signalProcessGroup(pid int, sig syscall.Signal) {
+	if pgid, err := syscall.Getpgid(pid); err == nil {
+		_ = syscall.Kill(-pgid, sig)
+		return
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return
+	}
+	_ = proc.Signal(sig)
 }
 
 func (s *Supervisor) Logs(cfg config.Config, maxLines int) (Logs, error) {

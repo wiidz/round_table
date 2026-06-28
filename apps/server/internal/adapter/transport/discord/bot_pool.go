@@ -17,12 +17,13 @@ type BotPool struct {
 
 // PoolOptions configures participant bot connections.
 type PoolOptions struct {
-	Default              ChannelSender
-	BotOpts              Options
-	BotIDs               []string
-	Mapping              map[string]string // legacy: bot_id -> env key name
-	ResolveToken         func(botID string) string
-	ParticipantBotID     func(participantID string) string // participant -> bound bot id
+	Default          ChannelSender
+	BotOpts          Options
+	BotIDs           []string
+	Mapping          map[string]string // legacy: bot_id -> env key name
+	ResolveToken     func(botID string) string
+	ParticipantBotID func(participantID string) string // participant -> bound bot id
+	HostToken        string                            // skip pool entry when token matches host
 }
 
 // ParticipantBotEnvKey returns the default env var for a participant bot token.
@@ -97,19 +98,23 @@ func OpenBotPool(opts PoolOptions) (*BotPool, error) {
 			log.Printf("discord: participant bot %q skipped — no token configured", botID)
 			continue
 		}
+		if host := strings.TrimSpace(opts.HostToken); host != "" && token == host {
+			log.Printf("discord: participant bot %q skipped — same token as host bot", botID)
+			continue
+		}
 		bot, err := New(Options{
 			Token:      token,
 			AllowDM:    opts.BotOpts.AllowDM,
 			AllowGuild: opts.BotOpts.AllowGuild,
 			GuildID:    opts.BotOpts.GuildID,
+			SendOnly:   true,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("discord: participant bot %q: %w", botID, err)
 		}
 		pool.byID[botID] = bot
-		name := bot.DisplayName()
 		pool.closer = append(pool.closer, bot.Close)
-		log.Printf("discord participant bot connected id=%q name=%q", botID, name)
+		log.Printf("discord participant bot ready (send-only) id=%q", botID)
 	}
 	return pool, nil
 }

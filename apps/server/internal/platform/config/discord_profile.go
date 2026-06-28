@@ -119,6 +119,35 @@ func fetchDiscordBotProfile(token string) DiscordBotProfileCache {
 	return DiscordBotProfileCache{}
 }
 
+// ApplicationIDFromToken resolves the Discord Application snowflake for a bot token.
+func ApplicationIDFromToken(token string) string {
+	return applicationIDFromProfile(fetchDiscordBotProfile(token))
+}
+
+// HostApplicationID returns the application id of the configured host bot.
+func HostApplicationID(overrides map[string]string) string {
+	primary := effectivePrimaryBotID(overrides)
+	if primary != ModeratorBotID {
+		return normalizeDiscordApplicationID(primary)
+	}
+	cache := discordBotProfilesFromOverrides(overrides)
+	if cached, ok := cache[ModeratorBotID]; ok {
+		return normalizeDiscordApplicationID(cached.DiscordApplicationID)
+	}
+	return ""
+}
+
+// BotShouldHandleCommands reports whether a connected bot application should handle commands.
+// Deprecated: prefer BotShouldHandleCommandsForToken for host checks.
+func BotShouldHandleCommands(botAppID string, overrides map[string]string) bool {
+	botAppID = normalizeDiscordApplicationID(botAppID)
+	hostAppID := HostApplicationID(overrides)
+	if botAppID == "" || hostAppID == "" {
+		return false
+	}
+	return botAppID == hostAppID
+}
+
 func discordAPIGet(client *http.Client, auth, path string, dest any) bool {
 	req, err := http.NewRequest(http.MethodGet, discordAPIBase+path, nil)
 	if err != nil {

@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Search, X } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
@@ -31,15 +32,53 @@ type SearchableSelectProps = {
     }
 )
 
+const MENU_MAX_HEIGHT = 224 // max-h-56
+const MENU_GAP = 4
+const VIEWPORT_PADDING = 8
+
+type MenuStyle = {
+  left: number
+  width: number
+  top?: number
+  bottom?: number
+  maxHeight: number
+}
+
+function computeMenuStyle(trigger: DOMRect): MenuStyle {
+  const spaceBelow = window.innerHeight - trigger.bottom - MENU_GAP - VIEWPORT_PADDING
+  const spaceAbove = trigger.top - MENU_GAP - VIEWPORT_PADDING
+  const openUp = spaceBelow < MENU_MAX_HEIGHT && spaceAbove > spaceBelow
+  const maxHeight = Math.min(MENU_MAX_HEIGHT, Math.max(0, openUp ? spaceAbove : spaceBelow))
+
+  if (openUp) {
+    return {
+      left: trigger.left,
+      width: trigger.width,
+      bottom: window.innerHeight - trigger.top + MENU_GAP,
+      maxHeight,
+    }
+  }
+
+  return {
+    left: trigger.left,
+    width: trigger.width,
+    top: trigger.bottom + MENU_GAP,
+    maxHeight,
+  }
+}
+
 export function SearchableSelect(props: SearchableSelectProps) {
   const autoId = useId()
   const fieldId = props.id ?? autoId
   const listboxId = `${fieldId}-listbox`
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const listboxRef = useRef<HTMLUListElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [menuStyle, setMenuStyle] = useState<MenuStyle>()
 
   const selectedSet = useMemo(() => {
     if (props.multiple) {
@@ -63,14 +102,48 @@ export function SearchableSelect(props: SearchableSelectProps) {
 
   useEffect(() => {
     if (!open) return
+
+    function updateMenuPosition() {
+      const el = triggerRef.current
+      if (!el) return
+      setMenuStyle(computeMenuStyle(el.getBoundingClientRect()))
+    }
+
+    updateMenuPosition()
+    window.addEventListener('scroll', updateMenuPosition, true)
+    window.addEventListener('resize', updateMenuPosition)
+
     function onPointerDown(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as Node
+      if (rootRef.current?.contains(target)) return
+      if (listboxRef.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', onPointerDown)
-    return () => document.removeEventListener('mousedown', onPointerDown)
-  }, [open])
+
+    return () => {
+      window.removeEventListener('scroll', updateMenuPosition, true)
+      window.removeEventListener('resize', updateMenuPosition)
+      document.removeEventListener('mousedown', onPointerDown)
+    }
+  }, [open, filtered.length])
+
+  useEffect(() => {
+    if (!open) return
+    const listbox = listboxRef.current
+    if (!listbox) return
+
+    const el = listbox
+
+    function onWheel(e: WheelEvent) {
+      e.preventDefault()
+      e.stopPropagation()
+      el.scrollTop += e.deltaY
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [open, menuStyle, filtered.length])
 
   function optionLabel(opt: SearchableSelectOption) {
     if (opt.disabled && opt.hint) return `${opt.label}（${opt.hint}）`
@@ -141,7 +214,7 @@ export function SearchableSelect(props: SearchableSelectProps) {
         </ul>
       )}
 
-      <div className="relative">
+      <div ref={triggerRef} className="relative">
         <Search
           className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-tertiary"
           aria-hidden
@@ -193,43 +266,56 @@ export function SearchableSelect(props: SearchableSelectProps) {
         </button>
       </div>
 
-      {open && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          aria-multiselectable={props.multiple || undefined}
-          className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xs border border-black/[0.08] bg-surface py-1 shadow-lg"
-        >
-          {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-[13px] text-text-tertiary">无匹配项</li>
-          ) : (
-            filtered.map((opt) => {
-              const selected = selectedSet.has(opt.value)
-              return (
-                <li key={opt.value || '__empty'} role="option" aria-selected={selected}>
-                  <button
-                    type="button"
-                    disabled={opt.disabled}
-                    className={cn(
-                      'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm',
-                      opt.disabled
-                        ? 'cursor-not-allowed text-text-tertiary'
-                        : 'text-text-primary hover:bg-black/[0.04]',
-                      selected && !opt.disabled && 'bg-brand/6 font-medium text-brand',
-                    )}
-                    onClick={() => selectOption(opt)}
-                  >
-                    <span>{optionLabel(opt)}</span>
-                    {opt.hint && !opt.disabled && (
-                      <span className="font-mono text-[10px] text-text-tertiary">{opt.hint}</span>
-                    )}
-                  </button>
-                </li>
-              )
-            })
-          )}
-        </ul>
-      )}
+      {open &&
+        menuStyle &&
+        createPortal(
+          <ul
+            ref={listboxRef}
+            id={listboxId}
+            role="listbox"
+            aria-multiselectable={props.multiple || undefined}
+            style={{
+              position: 'fixed',
+              left: menuStyle.left,
+              width: menuStyle.width,
+              maxHeight: menuStyle.maxHeight,
+              ...(menuStyle.top != null
+                ? { top: menuStyle.top }
+                : { bottom: menuStyle.bottom }),
+            }}
+            className="z-[100] overflow-y-auto overscroll-contain rounded-xs border border-black/[0.08] bg-surface py-1 shadow-lg"
+          >
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-[13px] text-text-tertiary">无匹配项</li>
+            ) : (
+              filtered.map((opt) => {
+                const selected = selectedSet.has(opt.value)
+                return (
+                  <li key={opt.value || '__empty'} role="option" aria-selected={selected}>
+                    <button
+                      type="button"
+                      disabled={opt.disabled}
+                      className={cn(
+                        'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm',
+                        opt.disabled
+                          ? 'cursor-not-allowed text-text-tertiary'
+                          : 'text-text-primary hover:bg-black/[0.04]',
+                        selected && !opt.disabled && 'bg-brand/6 font-medium text-brand',
+                      )}
+                      onClick={() => selectOption(opt)}
+                    >
+                      <span>{optionLabel(opt)}</span>
+                      {opt.hint && !opt.disabled && (
+                        <span className="font-mono text-[10px] text-text-tertiary">{opt.hint}</span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })
+            )}
+          </ul>,
+          document.body,
+        )}
     </div>
   )
 }

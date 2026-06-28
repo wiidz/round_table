@@ -93,9 +93,36 @@ func lookupProfileByApplicationID(cache map[string]DiscordBotProfileCache, appID
 	return DiscordBotProfileCache{DiscordApplicationID: appID}
 }
 
-func validateDiscordBotExpertInputs(inputs []DiscordBotInput) error {
+func validateDiscordBotExpertInputs(inputs []DiscordBotInput, moderatorBound, moderatorAppID string) error {
 	expertBot := make(map[string]string)
 	botExpert := make(map[string]string)
+
+	track := func(appID, pid string) error {
+		if pid == "" {
+			return nil
+		}
+		if prev, ok := expertBot[pid]; ok && prev != appID {
+			return fmt.Errorf("专家 %q 不能绑定多个 Discord Bot（%q 与 %q）", pid, prev, appID)
+		}
+		expertBot[pid] = appID
+		if prev, ok := botExpert[appID]; ok && prev != pid {
+			return fmt.Errorf("Discord Bot %q 不能绑定多个专家（%q 与 %q）", appID, prev, pid)
+		}
+		botExpert[appID] = pid
+		return nil
+	}
+
+	modBound := strings.TrimSpace(moderatorBound)
+	if modBound != "" {
+		modAppID := strings.TrimSpace(moderatorAppID)
+		if modAppID == "" {
+			modAppID = ModeratorBotID
+		}
+		if err := track(modAppID, modBound); err != nil {
+			return err
+		}
+	}
+
 	for i, in := range inputs {
 		appID := strings.TrimSpace(in.ApplicationID)
 		if appID == "" {
@@ -108,14 +135,9 @@ func validateDiscordBotExpertInputs(inputs []DiscordBotInput) error {
 		if pid == "" {
 			continue
 		}
-		if prev, ok := expertBot[pid]; ok && prev != appID {
-			return fmt.Errorf("专家 %q 不能绑定多个 Discord Bot（%q 与 %q）", pid, prev, appID)
+		if err := track(appID, pid); err != nil {
+			return err
 		}
-		expertBot[pid] = appID
-		if prev, ok := botExpert[appID]; ok && prev != pid {
-			return fmt.Errorf("Discord Bot %q 不能绑定多个专家（%q 与 %q）", appID, prev, pid)
-		}
-		botExpert[appID] = pid
 	}
 	return nil
 }

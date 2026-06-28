@@ -33,6 +33,7 @@ export interface DiscordBotsUpdate {
   moderator_token?: string
   moderator_role_token?: string
   moderator_role_id?: string
+  moderator_bound_participant_id?: string
   participants: DiscordBotInput[]
 }
 

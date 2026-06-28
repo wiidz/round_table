@@ -41,10 +41,11 @@ type DiscordBotState struct {
 
 // DiscordBotsUpdate is the body for PUT /api/settings/discord-bots.
 type DiscordBotsUpdate struct {
-	ModeratorToken     string            `json:"moderator_token,omitempty"`
-	ModeratorRoleToken string            `json:"moderator_role_token,omitempty"`
-	ModeratorRoleID    string            `json:"moderator_role_id,omitempty"`
-	Participants       []DiscordBotInput `json:"participants"`
+	ModeratorToken              string            `json:"moderator_token,omitempty"`
+	ModeratorRoleToken          string            `json:"moderator_role_token,omitempty"`
+	ModeratorRoleID             string            `json:"moderator_role_id,omitempty"`
+	ModeratorBoundParticipantID string            `json:"moderator_bound_participant_id,omitempty"`
+	Participants                []DiscordBotInput `json:"participants"`
 }
 
 // DiscordBotInput is one participant bot in a save request.
@@ -121,6 +122,27 @@ func effectivePrimaryBotID(overrides map[string]string) string {
 	return ModeratorBotID
 }
 
+// EffectivePrimaryBotID returns the configured host bot id (application id or "moderator").
+func EffectivePrimaryBotID(overrides map[string]string) string {
+	return effectivePrimaryBotID(overrides)
+}
+
+// FilterDiscordParticipantBotIDs returns participant bot application ids excluding the host bot.
+func FilterDiscordParticipantBotIDs(cfg Config, overrides map[string]string) []string {
+	ids := DiscordBotApplicationIDs(cfg)
+	primary := effectivePrimaryBotID(overrides)
+	if primary == "" || primary == ModeratorBotID {
+		return ids
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id != primary {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 func swapPrimaryBotTokens(tokens DiscordBotTokens, oldPrimary, newPrimary string) DiscordBotTokens {
 	oldPrimary = strings.TrimSpace(oldPrimary)
 	newPrimary = strings.TrimSpace(newPrimary)
@@ -185,6 +207,7 @@ func buildDiscordBotStates(cfg Config, overrides map[string]string) []DiscordBot
 	participants := effectiveDiscordBots(cfg, overrides)
 	tokens := effectiveDiscordBotTokens(cfg, overrides)
 	primaryID := effectivePrimaryBotID(overrides)
+	profileCache := discordBotProfilesFromOverrides(overrides)
 	bindings := cfg.Transport.Discord.ParticipantIMBindings
 	if bindings == nil {
 		bindings = participantIMBindingsFromOverrides(overrides)
@@ -199,19 +222,35 @@ func buildDiscordBotStates(cfg Config, overrides map[string]string) []DiscordBot
 		rosterNames[item.ID] = name
 	}
 
+	modAppID := moderatorDiscordApplicationID(profileCache)
+	modBound := ""
+	if modAppID != "" {
+		modBound = participantForDiscordBot(bindings, modAppID)
+	}
+	modProfile := profileCache[ModeratorBotID]
+	modDisplayName := rosterNames[modBound]
+	if modDisplayName == "" {
+		modDisplayName = ModeratorBotLabel
+	}
+
 	states := make([]DiscordBotState, 0, 1+len(participants))
 
 	states = append(states, DiscordBotState{
-		ID:              ModeratorBotID,
-		Label:           ModeratorBotLabel,
-		DisplayName:     ModeratorBotLabel,
-		Primary:         primaryID == ModeratorBotID,
-		Deletable:       false,
-		EnvKey:          DiscordBotTokensSetting,
-		Configured:      tokens.IsConfiguredFor(ModeratorBotID, primaryID),
-		RestartRequired: true,
-		TokenMasked:     MaskSecretToken(tokens.TokenForBot(ModeratorBotID, primaryID)),
-		Token:           tokens.TokenForBot(ModeratorBotID, primaryID),
+		ID:                   ModeratorBotID,
+		Label:                modDisplayName,
+		DisplayName:          modDisplayName,
+		Primary:              primaryID == ModeratorBotID,
+		Deletable:            false,
+		EnvKey:               DiscordBotTokensSetting,
+		Configured:           tokens.IsConfiguredFor(ModeratorBotID, primaryID),
+		RestartRequired:      true,
+		TokenMasked:          MaskSecretToken(tokens.TokenForBot(ModeratorBotID, primaryID)),
+		Token:                tokens.TokenForBot(ModeratorBotID, primaryID),
+		DiscordApplicationID: modAppID,
+		DiscordUsername:      modProfile.DiscordUsername,
+		AvatarURL:            modProfile.AvatarURL,
+		ProfileFetchedAt:     modProfile.FetchedAt,
+		BoundParticipantID:   modBound,
 	})
 
 	for _, p := range participants {
@@ -314,4 +353,11 @@ func discordApplicationIDSet(entries []DiscordBotEntry) map[string]struct{} {
 		out[e.ApplicationID] = struct{}{}
 	}
 	return out
+}
+
+func moderatorDiscordApplicationID(profileCache map[string]DiscordBotProfileCache) string {
+	if cached, ok := profileCache[ModeratorBotID]; ok {
+		return normalizeDiscordApplicationID(cached.DiscordApplicationID)
+	}
+	return ""
 }

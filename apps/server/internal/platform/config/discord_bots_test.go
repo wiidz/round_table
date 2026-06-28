@@ -58,6 +58,18 @@ func TestBuildDiscordBotStates_includesModerator(t *testing.T) {
 	}
 }
 
+func TestFilterDiscordParticipantBotIDs_excludesPrimary(t *testing.T) {
+	cfg := loadBase()
+	cfg.Transport.Discord.ParticipantBots = "111111111111111111,222222222222222222"
+	overrides := map[string]string{
+		DiscordModeratorRoleSetting: "222222222222222222",
+	}
+	got := FilterDiscordParticipantBotIDs(cfg, overrides)
+	if len(got) != 1 || got[0] != "111111111111111111" {
+		t.Fatalf("filtered = %v", got)
+	}
+}
+
 func TestBuildDiscordBotStates_usesTokenStore(t *testing.T) {
 	cfg := loadBase()
 	overrides := map[string]string{

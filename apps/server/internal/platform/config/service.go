@@ -195,6 +195,13 @@ func (s *Service) Current() Config {
 	return s.cfg
 }
 
+// SettingsOverrides returns persisted app_settings values when storage is configured.
+func (s *Service) SettingsOverrides() map[string]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.settingsOverridesLocked()
+}
+
 // Update persists editable settings and applies them in memory.
 func (s *Service) Update(ctx context.Context, updates map[string]string) error {
 	if len(updates) == 0 {
@@ -252,7 +259,7 @@ func (s *Service) UpdateDiscordBots(ctx context.Context, update DiscordBotsUpdat
 		return err
 	}
 
-	if err := validateDiscordBotExpertInputs(update.Participants); err != nil {
+	if err := validateDiscordBotExpertInputs(update.Participants, update.ModeratorBoundParticipantID, moderatorDiscordApplicationID(profileCache)); err != nil {
 		return err
 	}
 
@@ -298,12 +305,25 @@ func (s *Service) UpdateDiscordBots(ctx context.Context, update DiscordBotsUpdat
 		seenBotBinding[appID] = true
 		setDiscordBotBinding(bindings, appID, participantID)
 	}
+	modAppID := moderatorDiscordApplicationID(profileCache)
+	modBound := strings.TrimSpace(update.ModeratorBoundParticipantID)
+	if modAppID != "" {
+		if modBound != "" || participantForDiscordBot(bindings, modAppID) != "" {
+			setDiscordBotBinding(bindings, modAppID, modBound)
+			seenBotBinding[modAppID] = true
+		}
+	} else if modBound != "" {
+		return fmt.Errorf("主持人 Bot 需先保存 Token 并同步 Application ID 后才能绑定专家")
+	}
 	for _, e := range entries {
 		if !seenBotBinding[e.ApplicationID] {
 			setDiscordBotBinding(bindings, e.ApplicationID, "")
 		}
 	}
 	activeBotSet := discordApplicationIDSet(entries)
+	if modAppID != "" {
+		activeBotSet[modAppID] = struct{}{}
+	}
 	for pid, binds := range bindings {
 		next := binds[:0]
 		for _, bind := range binds {

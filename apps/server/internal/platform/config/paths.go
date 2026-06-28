@@ -57,6 +57,18 @@ func AbsPath(base, rel string) string {
 	return filepath.Clean(filepath.Join(baseAbs, rel))
 }
 
+// DiscordTransportPIDPath is the pid file written by the discord transport child process.
+func DiscordTransportPIDPath(cfg Config) string {
+	serverRoot, _ := filepath.Abs(ServerRoot())
+	sqlite := AbsPath(serverRoot, cfg.Storage.SQLitePath)
+	return filepath.Join(filepath.Dir(sqlite), "logs", "discord-transport.pid")
+}
+
+// DiscordInboundDedupDir stores cross-process inbound message claim files.
+func DiscordInboundDedupDir(cfg Config) string {
+	return filepath.Join(filepath.Dir(DiscordTransportPIDPath(cfg)), "discord-inbound-dedup")
+}
+
 // deployEnvPath is the single local secrets file (deploy/.env).
 func deployEnvPath() string {
 	return filepath.Join(repoRoot(), "deploy", ".env")
