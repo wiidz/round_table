@@ -29,10 +29,13 @@ func (f synthesisFakeModel) Complete(_ context.Context, _ model.Request) (model.
 }
 
 func TestParseSynthesisOutput(t *testing.T) {
-	raw := `{"core_scheme":["方案 A"],"decisions":["采用三连击"],"open_questions":["冷却时间？"]}`
+	raw := `{"executive_verdict":"建议采用三连击方案","key_decisions":["统一冷却 8 秒"],"core_scheme":["方案 A"],"decisions":["采用三连击"],"open_questions":["冷却时间？"]}`
 	out, err := parseSynthesisOutput(raw)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if out.ExecutiveVerdict == "" || len(out.KeyDecisions) != 1 {
+		t.Fatalf("unexpected verdict output: %+v", out)
 	}
 	if len(out.CoreScheme) != 1 || len(out.Decisions) != 1 || len(out.OpenQuestions) != 1 {
 		t.Fatalf("unexpected output: %+v", out)
@@ -45,6 +48,55 @@ func TestParseSynthesisOutput(t *testing.T) {
 	}
 	if len(out.Decisions) != 1 {
 		t.Fatalf("wrapped parse failed: %+v", out)
+	}
+}
+
+func TestBuildDeliberationSynthesisPrompt_slimsEarlierRounds(t *testing.T) {
+	s := meeting.State{
+		Topic:        "职业设计",
+		CurrentRound: 2,
+		ParticipantOrder: []string{"a", "b"},
+		RoundOrder:       []string{"a", "b"},
+		Participants: map[string]meeting.ParticipantState{
+			"a": {ID: "a", Role: "策划"},
+			"b": {ID: "b", Role: "程序"},
+		},
+		ModeratorSummaries: map[int]string{
+			1: "第一轮摘要",
+			2: "第二轮摘要",
+		},
+		RoundResponses: map[int]map[string]meeting.RoundResponse{
+			1: {
+				"a": {Content: "第一轮 A 不应出现在 prompt"},
+				"b": {Content: "第一轮 B 不应出现在 prompt"},
+			},
+			2: {
+				"a": {Content: "第二轮 A 应保留"},
+				"b": {Content: "第二轮 B 应保留"},
+			},
+		},
+		Minutes: meeting.MinutesDraft{
+			Rounds: []meeting.RoundSummary{
+				{RoundNumber: 1, Summary: "r1 minutes"},
+				{RoundNumber: 2, Summary: "r2 minutes"},
+			},
+		},
+	}
+	prompt := buildDeliberationSynthesisPrompt(s, "recap body")
+	if strings.Contains(prompt, "第一轮 A 不应出现在 prompt") {
+		t.Fatalf("earlier round transcript leaked: %s", prompt)
+	}
+	if !strings.Contains(prompt, "Round 1 (moderator summary only)") {
+		t.Fatalf("missing slim round 1 header: %s", prompt)
+	}
+	if !strings.Contains(prompt, "Round 2 (final — full transcript)") {
+		t.Fatalf("missing final round header: %s", prompt)
+	}
+	if !strings.Contains(prompt, "第二轮 A 应保留") || !strings.Contains(prompt, "第二轮 B 应保留") {
+		t.Fatalf("final round transcript missing: %s", prompt)
+	}
+	if !strings.Contains(prompt, "recap body") {
+		t.Fatal("executive recap missing")
 	}
 }
 
@@ -76,6 +128,8 @@ func TestSynthesizeDeliberationFinal_noModelUsesRules(t *testing.T) {
 func TestSynthesizeDeliberationFinal_llmPath(t *testing.T) {
 	e := &Engine{
 		Model: synthesisFakeModel{content: `{
+			"executive_verdict": "建议采用三连击 + 位移作为核心机制",
+			"key_decisions": ["统一冷却 8 秒", "PVP 需单独验证"],
 			"core_scheme": ["核心：三连击 + 位移"],
 			"decisions": ["统一冷却 8 秒"],
 			"open_questions": ["PVP 平衡如何验证？"]
@@ -107,6 +161,12 @@ func TestSynthesizeDeliberationFinal_llmPath(t *testing.T) {
 	}
 	if !strings.Contains(summary, "三连击") {
 		t.Fatalf("missing core scheme: %s", summary)
+	}
+	if !strings.Contains(summary, "总括结论") || !strings.Contains(summary, "三连击 + 位移") {
+		t.Fatalf("missing executive verdict: %s", summary)
+	}
+	if !strings.Contains(summary, "Principal 需知") {
+		t.Fatalf("missing key decisions block: %s", summary)
 	}
 	if !strings.Contains(summary, "统一冷却") {
 		t.Fatalf("missing decision: %s", summary)

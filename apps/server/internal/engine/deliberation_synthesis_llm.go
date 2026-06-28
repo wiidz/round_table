@@ -17,15 +17,19 @@ import (
 const synthesisSchema = `Respond ONLY with a JSON object (no markdown fences).
 Do NOT use ASCII double quotes (") inside string values — use 「」 for emphasis if needed.
 {
+  "executive_verdict": "1-3 sentences for Principal: recommended direction and what remains open",
+  "key_decisions": ["up to 3 must-acknowledge items for Principal; may be []"],
   "core_scheme": ["3-6 bullets summarizing the latest substantive proposal, not engineering feasibility alone"],
   "decisions": ["incremental agreements only — items not already covered in core_scheme; use [] if none"],
   "open_questions": ["unresolved or disputed items, including anything still needing confirmation, max 8 items"]
 }`
 
 type synthesisLLMOutput struct {
-	CoreScheme    []string `json:"core_scheme"`
-	Decisions     []string `json:"decisions"`
-	OpenQuestions []string `json:"open_questions"`
+	ExecutiveVerdict string   `json:"executive_verdict"`
+	KeyDecisions     []string `json:"key_decisions"`
+	CoreScheme       []string `json:"core_scheme"`
+	Decisions        []string `json:"decisions"`
+	OpenQuestions    []string `json:"open_questions"`
 }
 
 func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.State, executiveRecap string) (summary string, openQuestions []string, usage *event.TokenUsage, agenda *synthesisAgendaOutput, err error) {
@@ -105,7 +109,8 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 	)
 	decisions = dedupeDecisionsAgainstCoreScheme(coreItems, decisions)
 	coreScheme := formatBulletList(coreItems, 6)
-	summary = assembleDesignDraft(s, coreScheme, decisions, openQuestions)
+	verdict, keyDecisions := normalizeExecutiveVerdict(out.ExecutiveVerdict, out.KeyDecisions, s.Topic, coreScheme, decisions, openQuestions)
+	summary = assembleDesignDraft(s, verdict, keyDecisions, coreScheme, decisions, openQuestions)
 
 	usage = tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage)
 	return summary, openQuestions, usage, nil, nil
@@ -124,8 +129,13 @@ func (e *Engine) buildModeratorSynthesisSystem(s meeting.State) (string, error) 
 		b.WriteString("- cross_cutting: only for agreements/questions spanning multiple agenda items.\n")
 	} else {
 		b.WriteString("Rules:\n")
+		b.WriteString("- executive_verdict: one paragraph for Principal — what to adopt now and what still needs their call.\n")
+		b.WriteString("- key_decisions: up to 3 headline items Principal must acknowledge (may be []).\n")
 		b.WriteString("- core_scheme: design snapshot — what the final scheme looks like (structure, resources, mechanics).\n")
 		b.WriteString("- decisions: incremental agreements from the record that are NOT already in core_scheme. May be empty.\n")
+	}
+	if hasAgendaForSynthesis(s) {
+		b.WriteString("- executive_verdict / key_decisions: meeting-level summary above per-agenda sections.\n")
 	}
 	b.WriteString("- decisions: exclude items with 留待讨论/待确认/未表态 (move those to open_questions).\n")
 	b.WriteString("- open_questions: unresolved, disputed, or needs-confirmation items.\n")
@@ -148,6 +158,8 @@ func buildDeliberationSynthesisPrompt(s meeting.State, executiveRecap string) st
 		fmt.Fprintf(&b, "Goal: %s\n", s.Goal)
 	}
 	fmt.Fprintf(&b, "Rounds completed: %d\n\n", s.CurrentRound)
+	b.WriteString("Meeting record note: rounds before the final round include moderator summaries only; ")
+	b.WriteString("the final round includes full participant transcripts for detail.\n\n")
 	if strings.TrimSpace(executiveRecap) != "" {
 		b.WriteString("## Executive recap (Moderator — before synthesis)\n\n")
 		b.WriteString(strings.TrimSpace(executiveRecap))
@@ -161,27 +173,7 @@ func buildDeliberationSynthesisPrompt(s meeting.State, executiveRecap string) st
 		b.WriteString("\n\n")
 	}
 
-	for _, r := range s.Minutes.Rounds {
-		if r.RoundNumber <= 0 {
-			continue
-		}
-		fmt.Fprintf(&b, "## Round %d transcript\n\n", r.RoundNumber)
-		b.WriteString(strings.TrimSpace(r.Summary))
-		b.WriteByte('\n')
-		if mod, ok := s.ModeratorSummaries[r.RoundNumber]; ok {
-			b.WriteString("\n### Moderator summary\n\n")
-			b.WriteString(strings.TrimSpace(mod))
-		}
-		b.WriteString("\n\n")
-		for _, id := range s.RoundOrder {
-			resp, ok := s.RoundResponses[r.RoundNumber][id]
-			if !ok {
-				continue
-			}
-			role := s.Participants[id].Role
-			fmt.Fprintf(&b, "### %s (%s)\n\n%s\n\n", id, role, strings.TrimSpace(resp.Content))
-		}
-	}
+	writeSynthesisMeetingRecord(&b, s)
 
 	if s.FreeDialogueCompleted && s.FreeDialogueSummary != "" {
 		b.WriteString("## Free dialogue\n\n")
@@ -195,6 +187,42 @@ func buildDeliberationSynthesisPrompt(s meeting.State, executiveRecap string) st
 		b.WriteString("Synthesize the design draft executive summary fields from the record above.\n")
 	}
 	return b.String()
+}
+
+// writeSynthesisMeetingRecord feeds the synthesis LLM a slim record: moderator summaries
+// for earlier rounds, full transcripts only for the final debate round.
+func writeSynthesisMeetingRecord(b *strings.Builder, s meeting.State) {
+	for _, r := range s.Minutes.Rounds {
+		if r.RoundNumber <= 0 {
+			continue
+		}
+		isFinal := r.RoundNumber == s.CurrentRound
+		if isFinal {
+			fmt.Fprintf(b, "## Round %d (final — full transcript)\n\n", r.RoundNumber)
+		} else {
+			fmt.Fprintf(b, "## Round %d (moderator summary only)\n\n", r.RoundNumber)
+		}
+		if summary := strings.TrimSpace(r.Summary); summary != "" {
+			b.WriteString(summary)
+			b.WriteByte('\n')
+		}
+		if mod, ok := s.ModeratorSummaries[r.RoundNumber]; ok {
+			b.WriteString("\n### Moderator summary\n\n")
+			b.WriteString(strings.TrimSpace(mod))
+		}
+		b.WriteString("\n\n")
+		if !isFinal {
+			continue
+		}
+		for _, id := range s.RoundOrder {
+			resp, ok := s.RoundResponses[r.RoundNumber][id]
+			if !ok {
+				continue
+			}
+			role := s.Participants[id].Role
+			fmt.Fprintf(b, "### %s (%s)\n\n%s\n\n", id, role, strings.TrimSpace(resp.Content))
+		}
+	}
 }
 
 func parseSynthesisOutput(raw string) (synthesisLLMOutput, error) {
@@ -219,7 +247,24 @@ func parseSynthesisOutput(raw string) (synthesisLLMOutput, error) {
 }
 
 func synthesisOutputNonEmpty(out synthesisLLMOutput) bool {
-	return len(out.CoreScheme)+len(out.Decisions)+len(out.OpenQuestions) > 0
+	return strings.TrimSpace(out.ExecutiveVerdict) != "" ||
+		len(out.KeyDecisions)+len(out.CoreScheme)+len(out.Decisions)+len(out.OpenQuestions) > 0
+}
+
+func normalizeExecutiveVerdict(rawVerdict string, rawKey []string, topic, coreScheme string, decisions, openQuestions []string) (verdict string, keyDecisions []string) {
+	verdict = strings.TrimSpace(rawVerdict)
+	keyDecisions = normalizeSynthesisStrings(rawKey, 3)
+	if verdict != "" && len(keyDecisions) > 0 {
+		return truncateRunes(verdict, 600), keyDecisions
+	}
+	fallbackVerdict, fallbackKey := deriveExecutiveVerdict(topic, coreScheme, decisions, openQuestions)
+	if verdict == "" {
+		verdict = fallbackVerdict
+	}
+	if len(keyDecisions) == 0 {
+		keyDecisions = fallbackKey
+	}
+	return verdict, keyDecisions
 }
 
 var tentativeDecisionMarkers = []string{

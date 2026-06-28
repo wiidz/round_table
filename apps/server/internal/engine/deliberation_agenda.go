@@ -30,8 +30,10 @@ type synthesisAgendaCrossCutting struct {
 }
 
 type synthesisAgendaOutput struct {
-	Sections     []synthesisAgendaSection    `json:"sections"`
-	CrossCutting synthesisAgendaCrossCutting `json:"cross_cutting"`
+	ExecutiveVerdict string                      `json:"executive_verdict"`
+	KeyDecisions     []string                    `json:"key_decisions"`
+	Sections         []synthesisAgendaSection    `json:"sections"`
+	CrossCutting     synthesisAgendaCrossCutting `json:"cross_cutting"`
 }
 
 func hasAgendaForSynthesis(s meeting.State) bool {
@@ -71,6 +73,8 @@ func buildAgendaSynthesisSchema(items []event.AgendaItem) string {
 	b.WriteString(`Respond ONLY with a JSON object (no markdown fences).
 Do NOT use ASCII double quotes (") inside string values — use 「」 for emphasis if needed.
 {
+  "executive_verdict": "1-3 sentences for Principal: recommended direction and what remains open",
+  "key_decisions": ["up to 3 must-acknowledge items for Principal; may be []"],
   "sections": [
 `)
 	for i, item := range items {
@@ -126,6 +130,9 @@ func parseAgendaSynthesisOutput(raw string, items []event.AgendaItem) (synthesis
 }
 
 func agendaSynthesisOutputNonEmpty(out synthesisAgendaOutput) bool {
+	if strings.TrimSpace(out.ExecutiveVerdict) != "" || len(out.KeyDecisions) > 0 {
+		return true
+	}
 	for _, sec := range out.Sections {
 		if len(sec.Summary)+len(sec.Decisions)+len(sec.OpenQuestions) > 0 {
 			return true
@@ -165,6 +172,8 @@ func normalizeAgendaSynthesisOutput(out synthesisAgendaOutput, items []event.Age
 	firm, open := splitTentativeDecisions(out.CrossCutting.Decisions, out.CrossCutting.OpenQuestions)
 	out.CrossCutting.Decisions = firm
 	out.CrossCutting.OpenQuestions = open
+	out.ExecutiveVerdict = strings.TrimSpace(out.ExecutiveVerdict)
+	out.KeyDecisions = normalizeSynthesisStrings(out.KeyDecisions, 3)
 	return out
 }
 
@@ -287,6 +296,14 @@ func writeAgendaExecutiveSummary(b *strings.Builder, s meeting.State, out synthe
 		fmt.Fprintf(b, "**目标**：%s\n\n", s.Goal)
 	}
 
+	verdict, keyDecisions := out.ExecutiveVerdict, out.KeyDecisions
+	if strings.TrimSpace(verdict) == "" && len(keyDecisions) == 0 {
+		allDecisions, allOpen := collectAgendaDecisionsForVerdict(out)
+		coreScheme := formatBulletList(collectAgendaSummaryBullets(out), 6)
+		verdict, keyDecisions = deriveExecutiveVerdict(s.Topic, coreScheme, allDecisions, allOpen)
+	}
+	writeExecutiveVerdictBlock(b, verdict, keyDecisions)
+
 	for _, sec := range out.Sections {
 		title := agendaTitleByID(s, sec.AgendaID)
 		fmt.Fprintf(b, "### %s\n\n", title)
@@ -301,6 +318,24 @@ func writeAgendaExecutiveSummary(b *strings.Builder, s meeting.State, out synthe
 	}
 
 	b.WriteString("> 完整发言与 Q&A 见下方「详细记录」。\n")
+}
+
+func collectAgendaSummaryBullets(out synthesisAgendaOutput) []string {
+	var bullets []string
+	for _, sec := range out.Sections {
+		bullets = append(bullets, sec.Summary...)
+	}
+	return bullets
+}
+
+func collectAgendaDecisionsForVerdict(out synthesisAgendaOutput) (decisions, openQuestions []string) {
+	for _, sec := range out.Sections {
+		decisions = append(decisions, sec.Decisions...)
+		openQuestions = append(openQuestions, sec.OpenQuestions...)
+	}
+	decisions = append(decisions, out.CrossCutting.Decisions...)
+	openQuestions = append(openQuestions, out.CrossCutting.OpenQuestions...)
+	return decisions, openQuestions
 }
 
 func collectAgendaOpenQuestions(out synthesisAgendaOutput) []string {

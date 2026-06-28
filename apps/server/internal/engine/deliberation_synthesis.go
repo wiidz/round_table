@@ -56,16 +56,20 @@ func moderatorSynthesizeFinal(s meeting.State) (summary string, openQuestions []
 	decisions = dedupeDecisionsAgainstCoreScheme(coreBullets, decisions)
 	if hasAgendaForSynthesis(s) {
 		out := ruleBasedAgendaSynthesis(s, coreBullets, decisions, openQuestions)
+		verdict, keyDecisions := deriveExecutiveVerdict(s.Topic, coreScheme, decisions, openQuestions)
+		out.ExecutiveVerdict = verdict
+		out.KeyDecisions = keyDecisions
 		summary, openQuestions = assembleDesignDraftFromAgenda(s, out)
 		return summary, openQuestions, &out
 	}
-	return assembleDesignDraft(s, coreScheme, decisions, openQuestions), openQuestions, nil
+	verdict, keyDecisions := deriveExecutiveVerdict(s.Topic, coreScheme, decisions, openQuestions)
+	return assembleDesignDraft(s, verdict, keyDecisions, coreScheme, decisions, openQuestions), openQuestions, nil
 }
 
-func assembleDesignDraft(s meeting.State, coreScheme string, decisions, openQuestions []string) string {
+func assembleDesignDraft(s meeting.State, executiveVerdict string, keyDecisions []string, coreScheme string, decisions, openQuestions []string) string {
 	var b strings.Builder
 	b.WriteString("# 方案草案\n\n")
-	writeDeliberationExecutiveSummary(&b, s, coreScheme, decisions, openQuestions)
+	writeDeliberationExecutiveSummary(&b, s, executiveVerdict, keyDecisions, coreScheme, decisions, openQuestions)
 
 	b.WriteString("\n\n## 详细记录\n\n")
 	b.WriteString("### 主题\n\n")
@@ -100,12 +104,14 @@ func assembleDesignDraft(s meeting.State, coreScheme string, decisions, openQues
 	return strings.TrimSpace(b.String())
 }
 
-func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, coreScheme string, decisions, openQuestions []string) {
+func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, executiveVerdict string, keyDecisions []string, coreScheme string, decisions, openQuestions []string) {
 	b.WriteString("## Executive Summary\n\n")
 	fmt.Fprintf(b, "**主题**：%s\n\n", s.Topic)
 	if s.Goal != "" {
 		fmt.Fprintf(b, "**目标**：%s\n\n", s.Goal)
 	}
+
+	writeExecutiveVerdictBlock(b, executiveVerdict, keyDecisions)
 
 	b.WriteString("### 核心方案（摘要）\n\n")
 	if coreScheme != "" {
@@ -138,6 +144,51 @@ func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, core
 	}
 
 	b.WriteString("\n> 完整发言与 Q&A 见下方「详细记录」。\n")
+}
+
+func writeExecutiveVerdictBlock(b *strings.Builder, executiveVerdict string, keyDecisions []string) {
+	verdict := strings.TrimSpace(executiveVerdict)
+	if verdict == "" && len(keyDecisions) == 0 {
+		return
+	}
+	b.WriteString("### 总括结论\n\n")
+	if verdict != "" {
+		b.WriteString(verdict)
+		b.WriteString("\n\n")
+	}
+	if len(keyDecisions) > 0 {
+		b.WriteString("**Principal 需知**\n\n")
+		for _, item := range keyDecisions {
+			fmt.Fprintf(b, "- %s\n", item)
+		}
+		b.WriteString("\n")
+	}
+}
+
+func deriveExecutiveVerdict(topic, coreScheme string, decisions, openQuestions []string) (verdict string, keyDecisions []string) {
+	keyDecisions = normalizeSynthesisStrings(decisions, 3)
+	if len(keyDecisions) == 0 {
+		keyDecisions = normalizeSynthesisStrings(schemeBulletsFromText(coreScheme), 3)
+	}
+
+	var parts []string
+	if topic != "" {
+		parts = append(parts, fmt.Sprintf("围绕「%s」", topic))
+	}
+	if len(keyDecisions) > 0 {
+		parts = append(parts, fmt.Sprintf("建议采纳：%s", keyDecisions[0]))
+	} else if coreBullets := schemeBulletsFromText(coreScheme); len(coreBullets) > 0 {
+		parts = append(parts, fmt.Sprintf("建议方向：%s", coreBullets[0]))
+	}
+	if len(openQuestions) > 0 {
+		parts = append(parts, fmt.Sprintf("仍有 %d 项待 Principal 或后续会议拍板", len(openQuestions)))
+	} else if len(parts) > 0 {
+		parts = append(parts, "主要分歧已收束")
+	}
+	if len(parts) == 0 {
+		return "", keyDecisions
+	}
+	return truncateRunes(strings.Join(parts, "；")+"。", 600), keyDecisions
 }
 
 func schemeBulletsFromText(scheme string) []string {
