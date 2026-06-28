@@ -36,7 +36,10 @@ type Meeting struct {
 	MaxConfirmationCycles      int    `yaml:"max_confirmation_cycles"`
 	ConfirmationMode         string `yaml:"confirmation_mode"`
 	FreeDialogueMaxQuestions int    `yaml:"free_dialogue_max_questions"`
+	LLMModeratorRoundSummary bool   `yaml:"llm_moderator_round_summary"`
+	LLMModeratorExecutiveRecap bool `yaml:"llm_moderator_executive_recap"`
 	MeetPresets              []MeetPresetConfig `yaml:"-"`
+	MeetCasts                []MeetCastConfig   `yaml:"-"`
 }
 
 type Model struct {
@@ -87,6 +90,7 @@ type DiscordTransport struct {
 	MeetFreeDialogueQuestions int  `yaml:"meet_free_dialogue_questions"`
 	ParticipantBots         string `yaml:"participant_bots"`
 	Locale                  string `yaml:"locale"`
+	ReceptionAgentEnabled   bool   `yaml:"reception_agent_enabled"`
 	ParticipantIMBindings   ParticipantIMBindings `yaml:"-"`
 }
 
@@ -155,6 +159,8 @@ func defaults() Config {
 			MaxConfirmationCycles:    3,
 			ConfirmationMode:         "required",
 			FreeDialogueMaxQuestions: 1,
+			LLMModeratorRoundSummary: true,
+			LLMModeratorExecutiveRecap: true,
 		},
 		Model: Model{
 			Provider:     "deepseek",
@@ -193,6 +199,7 @@ func defaults() Config {
 				MeetFreeDialogueQuestions: 0,
 				ParticipantBots:           "designer,player,dev,ops",
 				Locale:                    "en",
+				ReceptionAgentEnabled:     true,
 			},
 		},
 	}
@@ -216,6 +223,8 @@ func applyEnv(cfg *Config) {
 	overrideInt(&cfg.Meeting.MaxConfirmationCycles, "ROUND_TABLE_MAX_CONFIRMATION_CYCLES")
 	overrideInt(&cfg.Meeting.FreeDialogueMaxQuestions, "ROUND_TABLE_FREE_DIALOGUE_MAX_QUESTIONS")
 	overrideString(&cfg.Meeting.ConfirmationMode, "ROUND_TABLE_CONFIRMATION_MODE")
+	overrideBool(&cfg.Meeting.LLMModeratorRoundSummary, "ROUND_TABLE_LLM_MODERATOR_ROUND_SUMMARY")
+	overrideBool(&cfg.Meeting.LLMModeratorExecutiveRecap, "ROUND_TABLE_LLM_MODERATOR_EXECUTIVE_RECAP")
 
 	overrideString(&cfg.Model.Provider, "ROUND_TABLE_MODEL_PROVIDER")
 	overrideString(&cfg.Model.BaseURL, "ROUND_TABLE_MODEL_BASE_URL")

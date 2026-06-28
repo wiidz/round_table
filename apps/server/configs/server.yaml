@@ -13,6 +13,8 @@ meeting:
   max_confirmation_cycles: 3
   confirmation_mode: required
   free_dialogue_max_questions: 1
+  llm_moderator_round_summary: true   # LLM 轮间摘要；关闭则回退规则提炼 (engine/moderator.go)
+  llm_moderator_executive_recap: true # 合成前 Executive Recap → moderator/executive-recap.md
 
 model:
   provider: deepseek
@@ -50,5 +52,6 @@ transport:
     # meet_mode / meet_max_rounds — use meeting.* in server.yaml or Web 设置 → 会议
     meet_confirmation: skip
     meet_free_dialogue_questions: 0
+    reception_agent_enabled: true   # LLM reception router for NL queries (ADR-0012); needs model API key
     # Participant bots speak as themselves; tokens in .env as DISCORD_BOT_TOKEN_<ID>
     participant_bots: "designer,player,dev,ops"

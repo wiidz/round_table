@@ -37,6 +37,7 @@ type SettingsResponse struct {
 	DiscordBots []DiscordBotState                 `json:"discord_bots,omitempty"`
 	MeetPresets         []MeetPresetConfig `json:"meet_presets,omitempty"`
 	MeetPresetsDefaults []MeetPresetConfig `json:"meet_presets_defaults,omitempty"`
+	MeetCasts           []MeetCastConfig   `json:"meet_casts,omitempty"`
 }
 
 // Service holds runtime config with optional SQLite app_settings overrides (P0.5).
@@ -96,6 +97,7 @@ func NewService(store SettingsStore) (*Service, error) {
 		applyDiscordBotTokens(&s.cfg, overrides)
 	}
 	s.refreshMeetPresetsLocked(s.settingsOverridesLocked())
+	s.refreshMeetCastsLocked(s.settingsOverridesLocked())
 	s.refreshMeetParticipantsLocked(s.settingsOverridesLocked())
 	if err := s.refreshParticipantIMBindingsLocked(context.Background()); err != nil {
 		return nil, err
@@ -145,6 +147,47 @@ func (s *Service) persistParticipantIMBindingsLocked(ctx context.Context, bindin
 
 func (s *Service) refreshMeetPresetsLocked(overrides map[string]string) {
 	s.cfg.Meeting.MeetPresets = meetPresetsFromOverrides(overrides, s.cfg)
+}
+
+func (s *Service) refreshMeetCastsLocked(overrides map[string]string) {
+	s.cfg.Meeting.MeetCasts = meetCastsFromOverrides(overrides, s.cfg)
+}
+
+// UpdateMeetCasts validates and persists Discord participant cast presets.
+func (s *Service) UpdateMeetCasts(ctx context.Context, casts []MeetCastConfig) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	roster := ParticipantRosterFromConfig(s.cfg)
+	normalized, err := normalizeMeetCasts(casts, roster)
+	if err != nil {
+		return err
+	}
+	if s.store != nil {
+		if err := s.store.SetSettings(ctx, map[string]string{MeetCastsSetting: formatMeetCastsJSON(normalized)}); err != nil {
+			return err
+		}
+	}
+	s.cfg.Meeting.MeetCasts = normalized
+	return nil
+}
+
+// ResetMeetCasts removes stored cast overrides.
+func (s *Service) ResetMeetCasts(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.store != nil {
+		if deleter, ok := s.store.(interface {
+			DeleteSettings(context.Context, ...string) error
+		}); ok {
+			if err := deleter.DeleteSettings(ctx, MeetCastsSetting); err != nil {
+				return err
+			}
+		}
+	}
+	s.cfg.Meeting.MeetCasts = nil
+	return nil
 }
 
 // UpdateMeetPresets validates and persists Discord preset menu entries.
@@ -232,6 +275,7 @@ func (s *Service) Update(ctx context.Context, updates map[string]string) error {
 	}
 	s.cfg = next
 	s.refreshMeetPresetsLocked(s.settingsOverridesLocked())
+	s.refreshMeetCastsLocked(s.settingsOverridesLocked())
 	return nil
 }
 
@@ -473,5 +517,6 @@ func (s *Service) SettingsView() SettingsResponse {
 		),
 		MeetPresets:         cfg.Meeting.MeetPresets,
 		MeetPresetsDefaults: DefaultMeetPresets(cfg),
+		MeetCasts:           cfg.Meeting.MeetCasts,
 	}
 }

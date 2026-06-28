@@ -40,7 +40,7 @@ const (
 	groupMeeting   = "会议"
 	groupTransport = "IM"
 
-	meetingSectionLimits   = "设定的上限"
+	meetingSectionLimits = "设定上限"
 
 	subDiscord   = "discord"
 	subTelegram  = "telegram"
@@ -211,17 +211,37 @@ var settingFields = []settingField{
 	},
 	{
 		Key: "OPENAI_API_KEY", Label: "OpenAI API Key", Group: groupLLM, Subsection: subOpenAI, Secret: true,
-		Description: "在 deploy/.env 配置，修改后需重启服务",
+		Description:      "在 deploy/.env 配置，修改后需重启服务",
 		secretConfigured: func() bool { return os.Getenv("OPENAI_API_KEY") != "" },
 	},
 	{
 		Key: "ANTHROPIC_API_KEY", Label: "Anthropic API Key", Group: groupLLM, Subsection: subAnthropic, Secret: true,
-		Description: "在 deploy/.env 配置，修改后需重启服务",
+		Description:      "在 deploy/.env 配置，修改后需重启服务",
 		secretConfigured: func() bool { return os.Getenv("ANTHROPIC_API_KEY") != "" },
 	},
 	{
+		Key: "ROUND_TABLE_LLM_MODERATOR_ROUND_SUMMARY", Label: "LLM 轮间摘要", Group: groupMeeting,
+		Section: meetingSectionLimits, Editable: true, InputType: "switch",
+		Description: "开启后，每轮辩论结束由 Moderator LLM 归纳本轮进展、共识、分歧与下轮焦点（写入 moderator/round-N-summary.md）。\n\n关闭则使用规则提炼（按专家发言抽 bullet，见 engine/moderator.go）。\n\n需要已配置 LLM API Key；无 Model 或调用失败时自动回退规则。",
+		apply: func(c *Config, v string) error {
+			c.Meeting.LLMModeratorRoundSummary = parseBoolSetting(v)
+			return nil
+		},
+		read: func(c Config) string { return formatBoolSetting(c.Meeting.LLMModeratorRoundSummary) },
+	},
+	{
+		Key: "ROUND_TABLE_LLM_MODERATOR_EXECUTIVE_RECAP", Label: "LLM Executive Recap", Group: groupMeeting,
+		Section: meetingSectionLimits, Editable: true, InputType: "switch",
+		Description: "研讨就绪后、设计草案合成前，由 Moderator LLM 写整场会议回顾（moderator/executive-recap.md，并写入 MINUTES.md）。\n\n关闭则跳过；需要 LLM API Key。",
+		apply: func(c *Config, v string) error {
+			c.Meeting.LLMModeratorExecutiveRecap = parseBoolSetting(v)
+			return nil
+		},
+		read: func(c Config) string { return formatBoolSetting(c.Meeting.LLMModeratorExecutiveRecap) },
+	},
+	{
 		Key: "ROUND_TABLE_MAX_ROUNDS_PER_SEGMENT", Label: "辩论轮次上限", Group: groupMeeting,
-		Section: meetingSectionLimits,
+		Section:  meetingSectionLimits,
 		Editable: true, InputType: "number", Min: intSettingBound(1), Max: intSettingBound(20),
 		Placeholder: "5",
 		Description: "单个 Running Segment 内辩论轮（Round 1+）的硬上限，不含 Pre-meeting Round 0。\n\n预设菜单中单场轮次不可超过此值；达上限仍未 Consensus / 合成就绪时按 ADR-0005 / ADR-0011 兜底。",
@@ -237,7 +257,7 @@ var settingFields = []settingField{
 	},
 	{
 		Key: "ROUND_TABLE_MIN_ROUNDS_BEFORE_SYNTHESIS", Label: "合成就绪最少轮数", Group: groupMeeting,
-		Section: meetingSectionLimits,
+		Section:  meetingSectionLimits,
 		Editable: true, InputType: "number", Min: intSettingBound(1), Max: intSettingBound(20),
 		Placeholder: "2",
 		Description: "研讨型（deliberation）会议：至少进行几轮辩论后，Moderator 才会运行合成就绪检测（DeliberationReadinessChecked）。\n\n通常应 ≤ 辩论轮次上限。",
@@ -253,7 +273,7 @@ var settingFields = []settingField{
 	},
 	{
 		Key: "ROUND_TABLE_MAX_CONFIRMATION_CYCLES", Label: "确认关轮次上限", Group: groupMeeting,
-		Section: meetingSectionLimits,
+		Section:  meetingSectionLimits,
 		Editable: true, InputType: "number", Min: intSettingBound(1), Max: intSettingBound(10),
 		Placeholder: "3",
 		Description: "仅当预设或会议开启「需确认」时生效。\n\n每场会议 Principal 审阅合成方案的次数上限（含首次呈报，不是单独的「驳回计数」）。\n\nPrincipal 驳回后会继续讨论并再次进入确认；若在第 N 次确认仍驳回（N = 本上限），须在三项中选择：强制批准、继续研讨或中止会议。\n\n例：上限 3 → 最多 3 次确认呈报；第 1、2 次驳回可继续讨论，第 3 次仍驳回则触发兜底选择。",
@@ -338,7 +358,7 @@ func IsPersistableSettingKey(key string) bool {
 	if IsEditableSettingKey(key) {
 		return true
 	}
-	return key == DiscordBotProfilesSetting || key == DiscordBotTokensSetting || key == MeetPresetsSetting || key == MeetParticipantsSetting || key == ParticipantIMBindingsSetting || key == DiscordModeratorRoleSetting || key == DiscordBotsMigrationV2Setting
+	return key == DiscordBotProfilesSetting || key == DiscordBotTokensSetting || key == MeetPresetsSetting || key == MeetCastsSetting || key == MeetParticipantsSetting || key == ParticipantIMBindingsSetting || key == DiscordModeratorRoleSetting || key == DiscordBotsMigrationV2Setting
 }
 
 func applySettingsMap(cfg *Config, m map[string]string) error {

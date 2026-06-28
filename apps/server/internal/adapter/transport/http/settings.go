@@ -118,6 +118,53 @@ func (h *Handler) handleResetMeetPresets(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, h.config.SettingsView())
 }
 
+func (h *Handler) handlePutMeetCasts(w http.ResponseWriter, r *http.Request) {
+	if h.config == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "config service unavailable",
+		})
+		return
+	}
+	var body struct {
+		Casts []config.MeetCastConfig `json:"casts"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "invalid json",
+		})
+		return
+	}
+	if body.Casts == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "casts required",
+		})
+		return
+	}
+	if err := h.config.UpdateMeetCasts(r.Context(), body.Casts); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, h.config.SettingsView())
+}
+
+func (h *Handler) handleResetMeetCasts(w http.ResponseWriter, r *http.Request) {
+	if h.config == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "config service unavailable",
+		})
+		return
+	}
+	if err := h.config.ResetMeetCasts(r.Context()); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, h.config.SettingsView())
+}
+
 func (h *Handler) handleRefreshDiscordBotProfiles(w http.ResponseWriter, r *http.Request) {
 	if h.config == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
