@@ -10,5 +10,6 @@ mkdir -p \
   data/knowledge/participants \
   data/knowledge/principals \
   data/knowledge/shared \
-  data/transport
+  data/transport \
+  data/logs
 echo "data/ directories ready under $(pwd)/data"

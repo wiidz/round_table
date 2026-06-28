@@ -92,7 +92,7 @@ clean:
 docker-build:
 	docker compose build server
 
-## docker-up: start Web UI + API + Discord bot
+## docker-up: start Web UI + API + Discord (Supervisor, host network)
 docker-up:
 	docker compose up -d --build
 
@@ -100,13 +100,13 @@ docker-up:
 docker-down:
 	docker compose down
 
-## docker-logs: follow all service logs
+## docker-logs: follow server container logs
 docker-logs:
-	docker compose logs -f
+	docker compose logs -f server
 
-## docker-logs-discord: follow Discord bot logs only
+## docker-logs-discord: follow Discord transport log file (Supervisor child)
 docker-logs-discord:
-	docker compose logs -f discord
+	tail -f data/logs/discord-transport.log
 
 ## web-install: install web dependencies
 web-install:

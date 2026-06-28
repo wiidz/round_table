@@ -17,6 +17,14 @@ fixdir /app/data/knowledge/participants
 fixdir /app/data/knowledge/principals
 fixdir /app/data/knowledge/shared
 fixdir /app/data/transport
+fixdir /app/data/logs
+
+# Host network: bind directly on the host. Prefer deploy/.env ROUND_TABLE_ADDR; else derive from port vars.
+if [ -z "$ROUND_TABLE_ADDR" ]; then
+	port="${ROUND_TABLE_HTTP_PORT:-${ROUND_TABLE_WEB_PORT:-7777}}"
+	port="${port#:}"
+	export ROUND_TABLE_ADDR=":${port}"
+fi
 
 if ! su-exec roundtable sh -c 'touch /app/data/workspaces/.write-test && rm -f /app/data/workspaces/.write-test'; then
 	echo "roundtable: FATAL: cannot write to /app/data/workspaces (check bind mount permissions)" >&2
