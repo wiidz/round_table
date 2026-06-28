@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"round_table/apps/server/internal/platform/config"
+	wsfs "round_table/apps/server/internal/adapter/workspace/fs"
 )
 
 func TestHandleListMeetings(t *testing.T) {
@@ -35,6 +36,46 @@ func TestHandleListMeetings(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), `"total":3`) || !strings.Contains(rec.Body.String(), `"page_size":2`) {
+		t.Fatalf("body=%s", rec.Body.String())
+	}
+}
+
+func TestHandleGetMeeting(t *testing.T) {
+	dir := t.TempDir()
+	s := wsfs.NewStore(dir)
+	if err := s.EnsureMeeting("mtg-a", "topic"); err != nil {
+		t.Fatal(err)
+	}
+	meetingDoc := filepath.Join(dir, "mtg-a", "MEETING.md")
+	body := `# 会议简报
+
+| 项目 | 内容 |
+|------|------|
+| 会议状态 | 已结束 |
+
+## 会议主题
+
+Test Topic
+`
+	if err := os.WriteFile(meetingDoc, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/meetings/mtg-a", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Test Topic") {
 		t.Fatalf("body=%s", rec.Body.String())
 	}
 }

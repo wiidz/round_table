@@ -37,8 +37,7 @@ func (s *Store) ListMeetings() ([]workspace.MeetingIndex, error) {
 			UpdatedAt: dirUpdatedAt(filepath.Join(root, id)),
 		}
 		if data, err := s.Read(id, workspace.FileMeeting); err == nil {
-			idx.Topic = parseMeetingTopic(string(data))
-			idx.Status = parseMeetingStatus(string(data))
+			EnrichFromMeetingDoc(&idx, string(data))
 		}
 		out = append(out, idx)
 	}

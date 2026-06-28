@@ -9,6 +9,7 @@ import (
 	"round_table/apps/server/internal/adapter/profile"
 	profFS "round_table/apps/server/internal/adapter/profile/fs"
 	"round_table/apps/server/internal/adapter/storage"
+	"round_table/apps/server/internal/adapter/workspace"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	wsfs "round_table/apps/server/internal/adapter/workspace/fs"
 	"round_table/apps/server/internal/platform/config"
@@ -43,6 +44,7 @@ func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, configSvc *co
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.handleHealth)
 	mux.HandleFunc("GET /api/meetings", h.handleListMeetings)
+	mux.HandleFunc("GET /api/meetings/{id}", h.handleGetMeeting)
 	mux.HandleFunc("GET /api/principals", h.handleListPrincipals)
 	mux.HandleFunc("GET /api/principals/{id}", h.handleGetPrincipal)
 	mux.HandleFunc("PUT /api/principals/{id}/files/{filename}", h.handlePutPrincipalFile)
@@ -57,6 +59,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/settings/discord-bots", h.handlePutDiscordBots)
 	mux.HandleFunc("PUT /api/settings/meet-presets", h.handlePutMeetPresets)
 	mux.HandleFunc("POST /api/settings/meet-presets/reset", h.handleResetMeetPresets)
+	mux.HandleFunc("PUT /api/settings/meet-casts", h.handlePutMeetCasts)
+	mux.HandleFunc("POST /api/settings/meet-casts/reset", h.handleResetMeetCasts)
 	mux.HandleFunc("POST /api/settings/discord-bots/refresh-profiles", h.handleRefreshDiscordBotProfiles)
 	mux.HandleFunc("GET /api/settings/discord-transport/status", h.handleGetDiscordTransportStatus)
 	mux.HandleFunc("POST /api/settings/discord-transport/start", h.handlePostDiscordTransportStart)
@@ -81,6 +85,11 @@ func (h *Handler) handleListMeetings(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+		if h.workspace != nil {
+			for i := range result.Meetings {
+				result.Meetings[i] = h.workspace.EnrichMeetingIndex(result.Meetings[i])
+			}
+		}
 		writeJSON(w, http.StatusOK, result)
 		return
 	}
@@ -93,6 +102,20 @@ func (h *Handler) handleListMeetings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) handleGetMeeting(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	detail, err := h.workspace.ReadMeetingDetail(id)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if err == workspace.ErrNotFound {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, detail)
 }
 
 func (h *Handler) handleListPrincipals(w http.ResponseWriter, _ *http.Request) {
