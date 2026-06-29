@@ -22,7 +22,7 @@
 | **M0** | 文档 + ADR（本文） | ADR-0013 Draft，roadmap 更新 | ✅ |
 | **M1** | 状态层 + 摘要 + Drawer | turn 序号、condense、Drawer 可读 Markdown | ✅ |
 | **M2** | RoundTableStage 静态布局 | 3/5/6 人 roster 席位正确、司仪/我固定方位 | ✅ |
-| **M3** | Live 气泡 + 高亮/暗沉 | 新消息切换 activeSpeaker；每席 1 条；#turn 一致 |
+| **M3** | Live 气泡 + 高亮/暗沉 | 新消息切换 activeSpeaker；每席 1 条；#turn 一致 | ✅ |
 | **M4** | TranscriptStrip + 模式切换 | 小历史条、点击 Drawer；会议中进行切圆桌 |
 | **M5** | 降级与 polish | `< md` IM 降级、新消息浮钮、空状态 |
 
@@ -125,11 +125,11 @@ export interface ChatMessage {
 - [x] `round-table-stage.tsx`：中心议题占位、席位高亮/已发言态
 - [x] `use-roster-seats.ts`：`GET /participants` roster，消息 author 降级
 
-### M3 — Live 气泡（1–2 天）
+### M3 — Live 气泡（1–2 天） ✅
 
-- [ ] `live-bubble.tsx`：复用 `index.css` chat-bubble；props `highlighted`, `dimmed`, `turn`
-- [ ] 绑定 `latestBySeat`；新消息 200ms fade 切换 active
-- [ ] `#turn` 角标与 Strip 一致
+- [x] `live-bubble.tsx`：复用 `index.css` chat-bubble；`highlighted` / `dimmed` / `#turn`
+- [x] 绑定 `latestBySeat`；200ms transition 切换 active
+- [x] `#turn` 角标与 TranscriptStrip 一致；点击 Live 气泡开 Drawer
 
 ### M4 — 整合 + 模式切换（1 天）
 

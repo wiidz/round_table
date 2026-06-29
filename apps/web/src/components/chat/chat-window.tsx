@@ -126,9 +126,10 @@ export function ChatWindow({
 
         <RoundTableStage
           seats={seats}
-          messages={messages}
+          latestBySeat={latestBySeat}
           activeSpeakerId={activeSpeakerId}
           turnCount={turns.length}
+          onLiveMessageClick={setDrawerMessage}
         />
 
         <TranscriptStrip

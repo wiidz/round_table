@@ -217,4 +217,14 @@
     color: var(--semantic-danger);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--semantic-danger) 15%, transparent);
   }
+
+  .chat-bubble--live-highlight {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--ai-color) 22%, transparent),
+      0 4px 16px color-mix(in srgb, var(--ai-color) 18%, transparent);
+  }
+
+  .chat-bubble--live-dimmed {
+    filter: saturate(0.55);
+  }
 }
