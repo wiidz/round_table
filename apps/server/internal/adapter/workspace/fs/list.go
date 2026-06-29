@@ -39,6 +39,9 @@ func (s *Store) ListMeetings() ([]workspace.MeetingIndex, error) {
 		if data, err := s.Read(id, workspace.FileMeeting); err == nil {
 			EnrichFromMeetingDoc(&idx, string(data))
 		}
+		if data, err := s.Read(id, workspace.FileUsageSummary); err == nil {
+			EnrichFromUsageSummary(&idx, string(data))
+		}
 		out = append(out, idx)
 	}
 

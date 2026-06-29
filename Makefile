@@ -133,7 +133,7 @@ web-install:
 web-reinstall:
 	cd $(WEB) && rm -rf node_modules && npm ci
 
-## web-dev: start Vite dev server (ROUND_TABLE_WEB_PORT / ROUND_TABLE_HTTP_PORT in deploy/.env)
+## web-dev: start Vite dev server (also run make server-dev in another terminal)
 web-dev: web-install
 	cd $(WEB) && npm run dev
 

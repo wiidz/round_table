@@ -69,6 +69,36 @@ Delib
 	}
 }
 
+func TestEnrichFromMeetingDocTokenUsage(t *testing.T) {
+	doc := "**Token 用量**：共 11389 tokens（10 次 LLM 调用），详见 `usage/summary.md`。"
+	idx := workspaceMeetingIndex()
+	EnrichFromMeetingDoc(&idx, doc)
+	if idx.LLMCallCount != 10 {
+		t.Fatalf("llm_call_count=%d", idx.LLMCallCount)
+	}
+	if idx.TotalTokens != 11389 {
+		t.Fatalf("total_tokens=%d", idx.TotalTokens)
+	}
+}
+
+func TestEnrichFromUsageSummary(t *testing.T) {
+	doc := `# Token Usage
+
+| 指标 | 数值 |
+|------|------|
+| LLM 调用次数 | 10 |
+| Total tokens | **11389** |
+`
+	idx := workspaceMeetingIndex()
+	EnrichFromUsageSummary(&idx, doc)
+	if idx.LLMCallCount != 10 {
+		t.Fatalf("llm_call_count=%d", idx.LLMCallCount)
+	}
+	if idx.TotalTokens != 11389 {
+		t.Fatalf("total_tokens=%d", idx.TotalTokens)
+	}
+}
+
 func workspaceMeetingIndex() workspace.MeetingIndex {
 	return workspace.MeetingIndex{ID: "mtg-test"}
 }

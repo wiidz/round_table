@@ -77,6 +77,20 @@ func (h *Handler) handleListMeetings(w http.ResponseWriter, r *http.Request) {
 	page := queryInt(r, "page", 1)
 	pageSize := queryInt(r, "page_size", 10)
 
+	// Workspace dirs are the source of truth for listing (ADR-0009). SQLite meeting_index
+	// may lag behind (e.g. sync without WAL checkpoint, or legacy runs before indexing).
+	if h.workspace != nil {
+		result, err := h.workspace.ListMeetingsPage(page, pageSize)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
+		return
+	}
+
 	if h.meetings != nil {
 		result, err := h.meetings.ListMeetingsPage(r.Context(), page, pageSize)
 		if err != nil {
@@ -85,23 +99,15 @@ func (h *Handler) handleListMeetings(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		if h.workspace != nil {
-			for i := range result.Meetings {
-				result.Meetings[i] = h.workspace.EnrichMeetingIndex(result.Meetings[i])
-			}
-		}
 		writeJSON(w, http.StatusOK, result)
 		return
 	}
 
-	result, err := h.workspace.ListMeetingsPage(page, pageSize)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
-		return
-	}
-	writeJSON(w, http.StatusOK, result)
+	writeJSON(w, http.StatusOK, workspace.PaginatedMeetings{
+		Meetings: []workspace.MeetingIndex{},
+		Page:     page,
+		PageSize: pageSize,
+	})
 }
 
 func (h *Handler) handleGetMeeting(w http.ResponseWriter, r *http.Request) {

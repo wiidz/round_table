@@ -8,6 +8,8 @@ export interface MeetingIndex {
   participant_count?: number
   max_rounds?: number
   free_dialogue?: boolean
+  llm_call_count?: number
+  total_tokens?: number
   updated_at: string
 }
 

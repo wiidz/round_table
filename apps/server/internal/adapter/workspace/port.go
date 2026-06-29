@@ -24,6 +24,7 @@ const (
 	FileMeeting    = "MEETING.md"
 	FileMinutes    = "MINUTES.md"
 	FileActionItems = "action-items.md"
-	DirArtifacts   = "artifacts"
-	DirRounds      = "rounds"
+	DirArtifacts      = "artifacts"
+	DirRounds         = "rounds"
+	FileUsageSummary  = "usage/summary.md"
 )

@@ -1,12 +1,15 @@
 package fs
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"round_table/apps/server/internal/adapter/workspace"
 )
+
+var meetingDocTokenUsageRE = regexp.MustCompile(`共\s*(\d+)\s*tokens.*（(\d+)\s*次 LLM 调用）`)
 
 // EnrichFromMeetingDoc fills index fields from MEETING.md when present.
 func EnrichFromMeetingDoc(idx *workspace.MeetingIndex, doc string) {
@@ -30,11 +33,51 @@ func EnrichFromMeetingDoc(idx *workspace.MeetingIndex, doc string) {
 	if n := parseMeetingParticipantCount(doc); n > 0 {
 		idx.ParticipantCount = n
 	}
+	enrichFromMeetingDocTokenUsage(idx, doc)
+}
+
+// EnrichFromUsageSummary fills token usage fields from usage/summary.md when present.
+func EnrichFromUsageSummary(idx *workspace.MeetingIndex, doc string) {
+	if n := parseUsageTableInt(doc, "LLM 调用次数"); n > 0 {
+		idx.LLMCallCount = n
+	}
+	if n := parseUsageTableInt(doc, "Total tokens"); n > 0 {
+		idx.TotalTokens = n
+	}
+}
+
+func enrichFromMeetingDocTokenUsage(idx *workspace.MeetingIndex, doc string) {
+	if idx.LLMCallCount > 0 && idx.TotalTokens > 0 {
+		return
+	}
+	for _, line := range strings.Split(doc, "\n") {
+		if !strings.Contains(line, "Token 用量") {
+			continue
+		}
+		m := meetingDocTokenUsageRE.FindStringSubmatch(line)
+		if len(m) != 3 {
+			continue
+		}
+		if idx.TotalTokens == 0 {
+			if n, err := strconv.Atoi(m[1]); err == nil {
+				idx.TotalTokens = n
+			}
+		}
+		if idx.LLMCallCount == 0 {
+			if n, err := strconv.Atoi(m[2]); err == nil {
+				idx.LLMCallCount = n
+			}
+		}
+		return
+	}
 }
 
 func (s *Store) EnrichMeetingIndex(idx workspace.MeetingIndex) workspace.MeetingIndex {
 	if data, err := s.Read(idx.ID, workspace.FileMeeting); err == nil {
 		EnrichFromMeetingDoc(&idx, string(data))
+	}
+	if data, err := s.Read(idx.ID, workspace.FileUsageSummary); err == nil {
+		EnrichFromUsageSummary(&idx, string(data))
 	}
 	return idx
 }
@@ -104,6 +147,36 @@ func parseMeetingFreeDialogue(doc string) bool {
 		}
 	}
 	return strings.Contains(raw, "每人最多") || strings.Contains(raw, "轮提问")
+}
+
+func parseUsageTableInt(doc, label string) int {
+	prefix := "| " + label + " |"
+	for _, line := range strings.Split(doc, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		parts := strings.Split(line, "|")
+		if len(parts) < 3 {
+			return 0
+		}
+		return parseUsageCellInt(parts[2])
+	}
+	return 0
+}
+
+func parseUsageCellInt(raw string) int {
+	raw = strings.TrimSpace(raw)
+	raw = strings.Trim(raw, "*")
+	n := 0
+	for _, r := range raw {
+		if unicode.IsDigit(r) {
+			n = n*10 + int(r-'0')
+		} else if n > 0 {
+			break
+		}
+	}
+	return n
 }
 
 func parseMeetingParticipantCount(doc string) int {

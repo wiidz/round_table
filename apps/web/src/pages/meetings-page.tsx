@@ -94,7 +94,7 @@ export function MeetingsPage() {
             <code className="rounded-md bg-black/[0.04] px-1.5 py-0.5 font-mono text-[12px] ring-1 ring-inset ring-black/[0.05]">
               data/workspaces/
             </code>{' '}
-            下的历史 Meeting。**天平**（明亮橙底）为裁决型、**云朵**为研讨型；卡片含人数、轮次与自由对话配置。
+            下的历史 Meeting。**天平**（明亮橙底）为裁决型、**云朵**为研讨型；卡片含人数、轮次、自由对话与 LLM 用量。
           </>
         }
       />

@@ -13,6 +13,8 @@ type MeetingIndex struct {
 	ParticipantCount  int       `json:"participant_count,omitempty"`
 	MaxRounds         int       `json:"max_rounds,omitempty"`
 	FreeDialogue      bool      `json:"free_dialogue,omitempty"`
+	LLMCallCount      int       `json:"llm_call_count,omitempty"`
+	TotalTokens       int       `json:"total_tokens,omitempty"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 

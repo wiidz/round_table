@@ -208,31 +208,56 @@ sync_path() {
 
 sync_sqlite() {
 	local db="data/roundtable.db"
-	local src dst
 
 	case "$ACTION" in
 	push)
-		[ -f "$REPO_ROOT/$db" ] || return 0
-		src="$REPO_ROOT/$db"
-		dst="$REMOTE/$db"
+		sqlite_checkpoint "$REPO_ROOT/$db"
 		;;
 	pull)
-		src="$REMOTE/$db"
-		dst="$REPO_ROOT/$db"
-		;;
-	status)
-		if [ -f "$REPO_ROOT/$db" ]; then
-			echo "== $db (local → remote preview) =="
-			rsync "${RSYNC_FLAGS[@]}" "$REPO_ROOT/$db" "$REMOTE/$db" || true
-		fi
-		echo "== $db (remote → local preview) =="
-		rsync "${RSYNC_FLAGS[@]}" "$REMOTE/$db" "$REPO_ROOT/$db" 2>/dev/null || true
-		return 0
+		echo "→ checkpoint remote SQLite (merge WAL into main db)"
+		run_ssh "$SYNC_HOST" "test -f '${SYNC_REMOTE_ROOT}/${db}' && command -v sqlite3 >/dev/null && sqlite3 '${SYNC_REMOTE_ROOT}/${db}' 'PRAGMA wal_checkpoint(FULL);'" 2>/dev/null || true
 		;;
 	esac
 
-	echo "→ rsync $db ($ACTION)"
-	rsync "${RSYNC_FLAGS[@]}" "$src" "$dst"
+	local src dst suffix
+	for suffix in "" "-wal" "-shm"; do
+		case "$ACTION" in
+		push)
+			[ -f "$REPO_ROOT/$db$suffix" ] || continue
+			src="$REPO_ROOT/$db$suffix"
+			dst="$REMOTE/$db$suffix"
+			;;
+		pull)
+			src="$REMOTE/$db$suffix"
+			dst="$REPO_ROOT/$db$suffix"
+			;;
+		status)
+			if [ -f "$REPO_ROOT/$db$suffix" ]; then
+				echo "== $db$suffix (local → remote preview) =="
+				rsync "${RSYNC_FLAGS[@]}" "$REPO_ROOT/$db$suffix" "$REMOTE/$db$suffix" 2>/dev/null || true
+			fi
+			echo "== $db$suffix (remote → local preview) =="
+			rsync "${RSYNC_FLAGS[@]}" "$REMOTE/$db$suffix" "$REPO_ROOT/$db$suffix" 2>/dev/null || true
+			continue
+			;;
+		esac
+		echo "→ rsync $db$suffix ($ACTION)"
+		if [ "$ACTION" = "pull" ]; then
+			run_ssh "$SYNC_HOST" "test -f '${SYNC_REMOTE_ROOT}/${db}${suffix}'" || continue
+		fi
+		rsync "${RSYNC_FLAGS[@]}" "$src" "$dst"
+	done
+
+	if [ "$ACTION" = "pull" ] && [ "$DRY_RUN" -eq 0 ]; then
+		rm -f "$REPO_ROOT/$db-wal" "$REPO_ROOT/$db-shm"
+	fi
+}
+
+sqlite_checkpoint() {
+	local db="$1"
+	[ -f "$db" ] || return 0
+	command -v sqlite3 >/dev/null 2>&1 || return 0
+	sqlite3 "$db" 'PRAGMA wal_checkpoint(FULL);' 2>/dev/null || true
 }
 
 warn_if_servers_running() {

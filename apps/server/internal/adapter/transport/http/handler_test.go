@@ -1,6 +1,7 @@
 package httptransport
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"round_table/apps/server/internal/adapter/storage"
+	"round_table/apps/server/internal/adapter/workspace"
 	"round_table/apps/server/internal/platform/config"
 	wsfs "round_table/apps/server/internal/adapter/workspace/fs"
 )
@@ -39,6 +42,48 @@ func TestHandleListMeetings(t *testing.T) {
 		t.Fatalf("body=%s", rec.Body.String())
 	}
 }
+
+type stubMeetingCatalog struct {
+	total int
+}
+
+func (s stubMeetingCatalog) ListMeetingsPage(_ context.Context, _, _ int) (workspace.PaginatedMeetings, error) {
+	return workspace.PaginatedMeetings{
+		Meetings: []workspace.MeetingIndex{{ID: "mtg-index-only", Topic: "indexed"}},
+		Total:    s.total,
+		Page:     1,
+		PageSize: 10,
+	}, nil
+}
+
+func TestHandleListMeetingsPrefersWorkspaceOverCatalog(t *testing.T) {
+	dir := t.TempDir()
+	for _, id := range []string{"mtg-a", "mtg-b", "mtg-c"} {
+		if err := os.MkdirAll(filepath.Join(dir, id), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, stubMeetingCatalog{total: 1}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/meetings?page=1&page_size=10", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"total":3`) {
+		t.Fatalf("expected workspace scan total=3, body=%s", rec.Body.String())
+	}
+}
+
+var _ storage.MeetingCatalog = stubMeetingCatalog{}
 
 func TestHandleGetMeeting(t *testing.T) {
 	dir := t.TempDir()
