@@ -28,7 +28,7 @@ export function ChatPage() {
         />
       )}
 
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 overflow-visible">
         <ChatWindow
           className="h-full"
           connectionState={connectionState}

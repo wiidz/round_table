@@ -10,6 +10,7 @@ type Frame struct {
 	AuthorName string `json:"author_name,omitempty"`
 	At         string `json:"at,omitempty"`
 	Content    string `json:"content,omitempty"`
+	Turn       int    `json:"turn,omitempty"`
 	Error      string `json:"error,omitempty"`
 }
 

@@ -5,17 +5,20 @@ import { cn } from '@/lib/utils'
 interface RoundTableEmptyHintProps {
   loading: boolean
   rosterFromApi: boolean
-  participantCount: number
+  rosterTotal: number
+  seatedExpertCount: number
   className?: string
 }
 
 export function RoundTableEmptyHint({
   loading,
   rosterFromApi,
-  participantCount,
+  rosterTotal,
+  seatedExpertCount,
   className,
 }: RoundTableEmptyHintProps) {
-  if (participantCount > 0) return null
+  if (seatedExpertCount > 0) return null
+  if (rosterFromApi && rosterTotal > 0) return null
 
   let message: string
   if (loading) {

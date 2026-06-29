@@ -32,5 +32,5 @@ export function messageAvatar(message: ChatMessage): { id: string; name: string 
 }
 
 export function assignsTurn(role: ChatRole): boolean {
-  return role === 'moderator' || role === 'participant'
+  return role === 'moderator' || role === 'participant' || role === 'user'
 }

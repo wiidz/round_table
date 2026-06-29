@@ -2,7 +2,7 @@
 
 > **ADR**: [ADR-0013](../architecture/ADR-0013-web-round-table-live-ui.md)  
 > **基线回滚点**: `3561e2e`（`feat(web): 浏览器 WebChat Transport 与 IM 聊天窗`）  
-> **状态**: Draft  
+> **状态**: Accepted（M0–M5 已完成，2026-06-29）  
 > **最后更新**: 2026-06-29
 
 ---
@@ -178,13 +178,20 @@ export interface ChatMessage {
 
 ---
 
-## 后续（非 v1）
+## 后续（Phase 2）
 
-- WS / Event Store 推送权威 `turn` 与 Engine 对齐
-- Strip 按专家筛选 chips
-- 会议回放：按 turn  scrub
-- 中心议题区绑定 `GET /meetings/:id` 元数据
-- ADR 修订：是否永久移除 IM 视图或并存
+| 项 | 状态 | 说明 |
+|----|------|------|
+| Vitest 单测 | ✅ | `condenseMessage`、`assignTurn`、`computeSeats`、meeting id 解析 |
+| Strip 专家筛选 chips | ✅ | TranscriptStrip 按 speaker 过滤 |
+| 中心议题 API 绑定 | ✅ | 从状态回复解析 `meeting_id`，`GET /meetings/:id` 拉 topic |
+| WS 权威 `turn` 对齐 Engine | ✅ | Hub 会话递增 + 帧 `turn`；客户端优先服务端 |
+| 会议回放 turn scrub | ✅ | TranscriptScrubBar + Live/回放投影 |
+| ADR 修订 IM 并存策略 | ✅ | ADR-0013 §7 视图并存 |
+
+---
+
+## 后续（非 v1，原 backlog）
 
 ---
 

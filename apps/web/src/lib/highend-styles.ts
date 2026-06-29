@@ -34,6 +34,20 @@ export const sideTabLabelMotion = cn(
 
 export const hePressable = `${heSpring} active:scale-[0.98] motion-reduce:active:scale-100`
 
+/** Chat side rails beside max-w-6xl main (50vw - 50% = gutter to viewport edge). */
+export const chatSideRailLeftClass = [
+  'absolute right-full top-0 z-20 mr-4 flex h-full',
+  'w-[clamp(20rem,calc(50vw-50%-1rem),26rem)]',
+].join(' ')
+
+export const chatSideRailRightClass = [
+  'absolute left-full top-0 z-20 ml-4 flex h-full min-w-[20rem]',
+  'w-[calc(50vw-50%-1rem)]',
+].join(' ')
+
+/** Scroll container — inherits global CRM scrollbar */
+export const heScrollbar = 'overscroll-contain'
+
 export const hePageTitle =
   'text-balance text-[28px] font-semibold leading-[1.5] tracking-[-0.03em] text-text-primary'
 
@@ -87,6 +101,39 @@ export const heFormEmbed = [
   'rounded-xl bg-canvas',
   'shadow-[var(--field-inset-shadow)]',
   'ring-1 ring-inset ring-[var(--field-ring)]',
+].join(' ')
+
+/** Chat composer · CRM TodoCreateAiInput hero shell */
+export const chatComposerOuterClass = [
+  'rounded-[1.25rem] bg-[var(--hero-outer-bg)] p-1.5',
+  'ring-1 ring-[var(--hero-outer-ring)]',
+  heSpring,
+  'focus-within:ring-ai/30',
+  'focus-within:[box-shadow:var(--ai-glow-shadow)]',
+].join(' ')
+
+export const chatComposerInnerClass = [
+  'flex items-end gap-3 rounded-[calc(1.25rem-6px)] bg-surface p-3',
+  'shadow-[var(--field-inset-shadow)]',
+].join(' ')
+
+export const chatComposerTextareaClass = [
+  'min-h-[2.75rem] max-h-32 flex-1 resize-none border-0 bg-transparent px-1 py-1',
+  'text-[14px] leading-[1.65] text-text-primary shadow-none',
+  'outline-none focus:outline-none focus-visible:outline-none',
+  'ring-0 ring-transparent focus:ring-0 focus-visible:ring-0',
+  'placeholder:text-text-tertiary',
+  'disabled:cursor-not-allowed disabled:opacity-60',
+].join(' ')
+
+export const chatComposerSendClass = [
+  hePressable,
+  'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5',
+  'text-sm font-medium text-white bg-brand',
+  'shadow-[0_10px_28px_-10px_rgba(232,93,4,0.48)]',
+  'hover:bg-[var(--brand-color-hover)]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+  'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
 ].join(' ')
 
 export const heSubsectionTitleNeutral = [

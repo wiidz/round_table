@@ -20,7 +20,7 @@ export function firstSentence(text: string): string {
     return trimmed.slice(0, lineBreak).trim()
   }
 
-  const match = trimmed.match(/^[\s\S]*?[。！？!?](?:\s|$)/)
+  const match = trimmed.match(/^[\s\S]*?[。！？.!?]/)
   if (match) {
     return match[0].trim()
   }

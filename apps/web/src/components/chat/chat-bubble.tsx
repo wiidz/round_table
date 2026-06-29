@@ -1,11 +1,11 @@
 import { MarkdownDocument } from '@/components/markdown/markdown-document'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
-import { messageAvatar, messageLabel } from '@/lib/chat-display'
+import { assignsTurn, messageAvatar, messageLabel } from '@/lib/chat-display'
 import { formatChatTime } from '@/lib/format-date'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/types/chat'
 
-function bubbleShellClass(message: ChatMessage, isUser: boolean): string {
+export function bubbleShellClass(message: ChatMessage, isUser: boolean): string {
   if (isUser) {
     return 'chat-bubble chat-bubble--user chat-bubble--tail-right'
   }
@@ -19,18 +19,26 @@ function bubbleShellClass(message: ChatMessage, isUser: boolean): string {
   return 'chat-bubble chat-bubble--moderator chat-bubble--tail-left'
 }
 
-export function ChatBubble({ message }: { message: ChatMessage }) {
+export function ChatBubble({
+  message,
+  sequence,
+}: {
+  message: ChatMessage
+  sequence?: number | null
+}) {
   const isUser = message.role === 'user'
   const label = messageLabel(message)
   const avatar = messageAvatar(message)
   const timeLabel = formatChatTime(message.createdAt)
+  const sequenceNo = sequence ?? message.turn ?? null
+  const showSequence = assignsTurn(message.role) && sequenceNo != null
 
   return (
     <div className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
       <div className={cn('flex max-w-[min(100%,42rem)] flex-col gap-1', isUser && 'items-end')}>
         {label && (
           <p className="px-1 text-[11px] font-medium text-text-tertiary">
-            {message.turn != null ? `#${message.turn} · ${label}` : label}
+            {showSequence ? `#${sequenceNo} · ${label}` : label}
           </p>
         )}
 

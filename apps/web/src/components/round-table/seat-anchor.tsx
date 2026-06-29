@@ -1,6 +1,12 @@
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
 import { LiveBubble } from '@/components/round-table/live-bubble'
-import { seatBubbleTailClass, type SeatLayout } from '@/lib/round-table-layout'
+import {
+  isPoleSeat,
+  seatAnchorTransform,
+  seatBubbleTailClass,
+  seatContentLayoutClass,
+  type SeatLayout,
+} from '@/lib/round-table-layout'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/types/chat'
 
@@ -15,14 +21,6 @@ interface SeatAnchorProps {
   className?: string
 }
 
-function contentLayoutClass(seat: SeatLayout, hasLive: boolean): string {
-  if (!hasLive) return 'flex-col items-center gap-1'
-  if (seat.kind === 'moderator') return 'flex-col items-center gap-1'
-  if (seat.kind === 'principal') return 'flex-col-reverse items-center gap-1'
-  if (seat.x < 50) return 'flex-row items-start gap-1.5'
-  return 'flex-row-reverse items-start gap-1.5'
-}
-
 export function SeatAnchor({
   seat,
   liveMessage,
@@ -35,17 +33,23 @@ export function SeatAnchor({
 }: SeatAnchorProps) {
   const hasLive = liveMessage != null
   const tail = seatBubbleTailClass(seat)
+  const poleSeat = isPoleSeat(seat)
 
   return (
     <div
-      className={cn('absolute', className)}
+      className={cn(
+        'absolute',
+        hasLive && !poleSeat && 'max-w-[min(100%,18rem)]',
+        hasLive && poleSeat && 'max-w-[min(calc(100%-2rem),20rem)]',
+        className,
+      )}
       style={{
         left: `${seat.x}%`,
         top: `${seat.y}%`,
-        transform: 'translate(-50%, -50%)',
+        transform: seatAnchorTransform(seat, hasLive),
       }}
     >
-      <div className={cn('flex', contentLayoutClass(seat, hasLive))}>
+      <div className={cn('flex', seatContentLayoutClass(seat, hasLive))}>
         <div
           className={cn(
             'relative shrink-0 rounded-xl transition-all duration-200',
@@ -78,14 +82,16 @@ export function SeatAnchor({
             tail={tail}
             highlighted={highlighted}
             dimmed={dimmed}
+            compact={poleSeat}
             onClick={() => onLiveClick?.(liveMessage)}
+            className="min-w-0 flex-1"
           />
         )}
       </div>
 
       <p
         className={cn(
-          'mx-auto mt-1 max-w-[5rem] truncate text-center text-[10px] font-medium',
+          'mx-auto mt-1 max-w-full truncate text-center text-[10px] font-medium',
           highlighted ? 'text-ai' : focused ? 'text-brand' : 'text-text-secondary',
           dimmed && 'text-text-tertiary',
         )}

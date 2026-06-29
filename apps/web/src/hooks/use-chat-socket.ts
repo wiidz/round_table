@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { assignsTurn } from '@/lib/chat-display'
+import { assignTurnForRole } from '@/lib/assign-turn'
 import type { ChatConnectionState, ChatFrame, ChatMessage, ChatRole } from '@/types/chat'
 
 function chatWsUrl(): string {
@@ -57,16 +57,35 @@ export function useChatSocket() {
   const disposedRef = useRef(false)
   const nextTurnRef = useRef(1)
 
-  const pushMessage = useCallback((msg: Omit<ChatMessage, 'turn'> & { turn?: number }) => {
-    const withTurn: ChatMessage =
-      msg.turn != null
-        ? (msg as ChatMessage)
-        : assignsTurn(msg.role)
-          ? { ...msg, turn: nextTurnRef.current++ }
-          : { ...msg }
+  const pushMessage = useCallback(
+    (
+      msg: Omit<ChatMessage, 'turn'> & { turn?: number },
+      options?: { skipTurnAssign?: boolean },
+    ) => {
+      let withTurn: ChatMessage
+      if (msg.turn != null) {
+        withTurn = msg as ChatMessage
+        nextTurnRef.current = Math.max(nextTurnRef.current, msg.turn + 1)
+      } else if (options?.skipTurnAssign) {
+        withTurn = { ...msg }
+      } else {
+        const assigned = assignTurnForRole(msg.role, nextTurnRef.current)
+        nextTurnRef.current = assigned.nextTurn
+        withTurn = assigned.turn != null ? { ...msg, turn: assigned.turn } : { ...msg }
+      }
 
-    setMessages((prev) => [...prev, withTurn])
-  }, [])
+      setMessages((prev) => {
+        const index = prev.findIndex((item) => item.id === withTurn.id)
+        if (index >= 0) {
+          const next = [...prev]
+          next[index] = { ...next[index], ...withTurn }
+          return next
+        }
+        return [...prev, withTurn]
+      })
+    },
+    [],
+  )
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
@@ -124,6 +143,8 @@ export function useChatSocket() {
       }
 
       if (frame.type === 'message' && frame.content?.trim()) {
+        const serverTurn =
+          typeof frame.turn === 'number' && frame.turn > 0 ? frame.turn : undefined
         pushMessage({
           id: frame.id ?? nextMessageId(),
           role: parseFrameRole(frame.role),
@@ -131,6 +152,7 @@ export function useChatSocket() {
           authorId: frame.author_id,
           authorName: frame.author_name,
           createdAt: parseFrameTime(frame.at),
+          turn: serverTurn,
         })
       }
     }
@@ -179,7 +201,7 @@ export function useChatSocket() {
       }
 
       const id = nextMessageId()
-      pushMessage({ id, role: 'user', content: text, createdAt: Date.now() })
+      pushMessage({ id, role: 'user', content: text, createdAt: Date.now() }, { skipTurnAssign: true })
       ws.send(JSON.stringify({ type: 'message', id, content: text }))
       return true
     },

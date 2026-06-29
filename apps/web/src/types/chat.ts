@@ -10,6 +10,7 @@ export interface ChatFrame {
   author_id?: string
   author_name?: string
   at?: string
+  turn?: number
   content?: string
   error?: string
 }
@@ -21,7 +22,7 @@ export interface ChatMessage {
   authorId?: string
   authorName?: string
   createdAt: number
-  /** Global meeting speech index; moderator/participant only. */
+  /** Global speech index; moderator, participant, and user (委托人). */
   turn?: number
   pending?: boolean
   error?: boolean

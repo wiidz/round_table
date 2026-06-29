@@ -42,6 +42,32 @@ export function parsePhaseFromStatusReply(content: string): ChatMeetingPhase | n
   return null
 }
 
+const MEETING_ID_PATTERN = /`(mtg-[a-zA-Z0-9-]+)`/
+
+/** Extract meeting id from transport status / launch replies. */
+export function parseMeetingIdFromStatusReply(content: string): string | null {
+  const text = content.trim()
+  if (!text) return null
+
+  const idLine = text.match(/🆔\s*`(mtg-[^`\s]+)`/)
+  if (idLine?.[1]) return idLine[1]
+
+  const backtick = text.match(MEETING_ID_PATTERN)
+  if (backtick?.[1]) return backtick[1]
+
+  return null
+}
+
+export function parseMeetingIdFromMessages(messages: ChatMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]!
+    if (message.role !== 'moderator' && message.role !== 'system') continue
+    const id = parseMeetingIdFromStatusReply(message.content)
+    if (id) return id
+  }
+  return null
+}
+
 export function inferChatMeetingPhase(messages: ChatMessage[]): ChatMeetingPhase {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i]!

@@ -12,6 +12,7 @@ import type { ChatMessage } from '@/types/chat'
 
 interface TranscriptDrawerProps {
   message: ChatMessage | null
+  sequence?: number | null
   onClose: () => void
 }
 
@@ -20,7 +21,7 @@ function drawerAvatar(message: ChatMessage): { id: string; name: string } {
   return { id: speakerId(message), name: label }
 }
 
-export function TranscriptDrawer({ message, onClose }: TranscriptDrawerProps) {
+export function TranscriptDrawer({ message, sequence, onClose }: TranscriptDrawerProps) {
   const open = message != null
 
   useEffect(() => {
@@ -59,9 +60,16 @@ export function TranscriptDrawer({ message, onClose }: TranscriptDrawerProps) {
           <div className="flex min-w-0 items-start gap-3">
             <ProfileAvatar id={avatar.id} name={avatar.name} size="sm" />
             <div className="min-w-0">
-              <h2 id="transcript-drawer-title" className={heSubsectionTitleNeutral}>
-                {message.turn != null ? `#${message.turn} · ${label}` : label}
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {(sequence ?? message.turn) != null && (
+                  <span className="rounded-md bg-brand-soft px-2 py-0.5 font-mono text-[12px] font-semibold tabular-nums text-brand">
+                    #{(sequence ?? message.turn)!}
+                  </span>
+                )}
+                <h2 id="transcript-drawer-title" className={heSubsectionTitleNeutral}>
+                  {label}
+                </h2>
+              </div>
               <p className="mt-1 text-[12px] text-text-tertiary tabular-nums">
                 {at || formatChatTime(message.createdAt)}
               </p>

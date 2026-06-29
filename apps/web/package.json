@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -38,7 +39,8 @@
     "@vitejs/plugin-react": "^6.0.2",
     "tailwindcss": "^4.3.0",
     "typescript": "~5.8.3",
-    "vite": "^8.0.13"
+    "vite": "^8.0.13",
+    "vitest": "^3.2.6"
   },
   "optionalDependencies": {
     "@rolldown/binding-darwin-arm64": "1.1.3",

@@ -19,6 +19,7 @@ import type { MeetingDetail } from '@/types/meeting'
 
 interface MeetingDetailHeaderProps {
   detail: MeetingDetail
+  canReplay?: boolean
 }
 
 function MetaDot() {
@@ -59,7 +60,7 @@ function MetaItem({
   )
 }
 
-export function MeetingDetailHeader({ detail }: MeetingDetailHeaderProps) {
+export function MeetingDetailHeader({ detail, canReplay }: MeetingDetailHeaderProps) {
   const topic = detail.topic?.trim() || '（无主题）'
   const startedAt = detail.started_at?.trim()
   const participants = detail.participant_count ?? 0
@@ -75,8 +76,9 @@ export function MeetingDetailHeader({ detail }: MeetingDetailHeaderProps) {
       <h1 className={cn(hePageTitle, 'text-balance')}>{topic}</h1>
 
       <p className={hePageDesc}>
-        左侧按概览、交付物、过程文档浏览本场 Workspace 产出；选中文件后可在右侧预览
-        Markdown 或查看源码。
+        {canReplay
+          ? '在「文档」中浏览 Workspace 产出；在「回放」中以圆桌 Live、发言进度与侧栏详情复盘本场讨论。'
+          : '左侧按概览、交付物、过程文档浏览本场 Workspace 产出；选中文件后可在右侧预览 Markdown 或查看源码。'}
       </p>
 
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 text-[13px]">

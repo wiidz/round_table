@@ -63,8 +63,8 @@ export function computeRoundTableSeats(
   participants: RosterSeatInput[],
   options?: ComputeSeatsOptions,
 ): SeatLayout[] {
-  const radiusX = options?.radiusX ?? 40
-  const radiusY = options?.radiusY ?? 34
+  const radiusX = options?.radiusX ?? 32
+  const radiusY = options?.radiusY ?? 30
 
   const seats: SeatLayout[] = []
 
@@ -102,9 +102,35 @@ export function computeRoundTableSeats(
   return seats
 }
 
-/** Bubble tail points toward table center from this seat. */
-export function seatBubbleTailClass(seat: SeatLayout): 'left' | 'right' {
-  if (seat.kind === 'principal') return 'right'
-  if (seat.kind === 'moderator') return 'left'
+/** Bubble tail points toward avatar from the Live bubble. */
+export type BubbleTail = 'left' | 'right' | 'top' | 'bottom'
+
+export function seatBubbleTailClass(seat: SeatLayout): BubbleTail {
+  if (seat.kind === 'moderator' || seat.kind === 'principal') return 'right'
   return seat.x < 50 ? 'left' : 'right'
+}
+
+/** Top/bottom seats: Live bubble sits beside avatar (not above/below). */
+export function isPoleSeat(seat: SeatLayout): boolean {
+  return seat.kind === 'moderator' || seat.kind === 'principal'
+}
+
+/** @deprecated use isPoleSeat */
+export function isVerticalLiveSeat(seat: SeatLayout): boolean {
+  return isPoleSeat(seat)
+}
+
+/** Position anchor so Live bubbles grow inward, not off-screen. */
+export function seatAnchorTransform(seat: SeatLayout, hasLive: boolean): string {
+  if (!hasLive || isPoleSeat(seat)) return 'translate(-50%, -50%)'
+  if (seat.x < 50) return 'translate(0, -50%)'
+  return 'translate(-100%, -50%)'
+}
+
+/** Flex direction: pole seats use horizontal bubble beside avatar. */
+export function seatContentLayoutClass(seat: SeatLayout, hasLive: boolean): string {
+  if (!hasLive) return 'flex-col items-center gap-1'
+  if (isPoleSeat(seat)) return 'flex-row-reverse items-start gap-2'
+  if (seat.x < 50) return 'flex-row items-start gap-2'
+  return 'flex-row-reverse items-start gap-2'
 }

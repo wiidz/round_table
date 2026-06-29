@@ -13,7 +13,8 @@ interface RoundTableStageProps {
   turnCount: number
   rosterLoading?: boolean
   rosterFromApi?: boolean
-  participantCount?: number
+  rosterTotal?: number
+  seatedExpertCount?: number
   centerTitle?: string
   centerSubtitle?: string
   onLiveMessageClick?: (message: ChatMessage) => void
@@ -33,7 +34,8 @@ export function RoundTableStage({
   turnCount,
   rosterLoading = false,
   rosterFromApi = false,
-  participantCount = 0,
+  rosterTotal = 0,
+  seatedExpertCount = 0,
   centerTitle,
   centerSubtitle,
   onLiveMessageClick,
@@ -54,12 +56,12 @@ export function RoundTableStage({
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_50%,var(--ai-soft)_0%,transparent_70%)] opacity-60" />
 
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-1/2"
+        className="pointer-events-none absolute left-1/2 top-1/2 z-[15] -translate-x-1/2 -translate-y-1/2"
         aria-hidden
       >
-        <div className="flex h-[7.5rem] w-[11rem] flex-col items-center justify-center rounded-[50%] bg-surface/90 px-4 text-center shadow-sm ring-1 ring-black/[0.08] sm:h-[8.5rem] sm:w-[12.5rem]">
-          <p className="text-[13px] font-semibold leading-snug text-text-primary">{title}</p>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-text-tertiary">{subtitle}</p>
+        <div className="flex h-[7rem] w-[10.5rem] flex-col items-center justify-center rounded-[50%] bg-surface px-4 text-center shadow-sm ring-1 ring-black/[0.08] sm:h-[7.5rem] sm:w-[11.5rem]">
+          <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-text-primary">{title}</p>
+          <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-text-tertiary">{subtitle}</p>
         </div>
       </div>
 
@@ -69,7 +71,7 @@ export function RoundTableStage({
         aria-hidden
       />
 
-      <div className="relative z-10 h-full min-h-[14rem] w-full pb-6">
+      <div className="relative z-10 h-full min-h-[14rem] w-full px-3 pb-6 pt-4 sm:px-6 md:px-8">
         {seats.map((seat) => {
           const liveMessage = latestBySeat.get(seat.id) ?? null
           const highlighted = activeSpeakerId === seat.id && liveMessage != null
@@ -97,7 +99,8 @@ export function RoundTableStage({
       <RoundTableEmptyHint
         loading={rosterLoading}
         rosterFromApi={rosterFromApi}
-        participantCount={participantCount}
+        rosterTotal={rosterTotal}
+        seatedExpertCount={seatedExpertCount}
       />
     </div>
   )

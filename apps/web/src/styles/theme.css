@@ -81,6 +81,14 @@
     0 4px 24px -8px rgba(232, 93, 4, 0.18),
     0 8px 32px -12px rgba(16, 18, 29, 0.1);
 
+  /* AI hero input · outer buffer ring (CRM TodoCreateAiInput) */
+  --hero-outer-bg: rgba(0, 0, 0, 0.025);
+  --hero-outer-ring: rgba(0, 0, 0, 0.04);
+
+  /* Scrollbar — CRM style.postcss */
+  --scrollbar-thumb: oklch(0.75 0 0 / 0.35);
+  --scrollbar-thumb-hover: oklch(0.65 0 0 / 0.5);
+
   /* shadcn mapping — Light */
   --background: var(--canvas);
   --foreground: var(--text-primary);
@@ -145,6 +153,12 @@ html.dark {
   --panel-hover-shadow:
     0 4px 24px -8px rgba(232, 93, 4, 0.22),
     0 8px 32px -12px rgba(0, 0, 0, 0.4);
+
+  --hero-outer-bg: rgba(255, 255, 255, 0.03);
+  --hero-outer-ring: var(--border-subtle);
+
+  --scrollbar-thumb: oklch(0.45 0 0 / 0.45);
+  --scrollbar-thumb-hover: oklch(0.55 0 0 / 0.55);
 
   --background: var(--canvas);
   --foreground: var(--text-primary);

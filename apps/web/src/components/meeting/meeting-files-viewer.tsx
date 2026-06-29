@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, FileText, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { MeetingDetailHeader } from '@/components/meeting/meeting-detail-header'
 import { MeetingFileNav } from '@/components/meeting/meeting-file-nav'
+import { MeetingReplayViewer } from '@/components/meeting/meeting-replay-viewer'
 import { MarkdownReader } from '@/components/markdown/markdown-reader'
 import {
   MarkdownViewToggle,
@@ -19,6 +20,10 @@ import {
   heTextarea,
 } from '@/lib/highend-styles'
 import {
+  hasWorkspaceTranscript,
+  workspaceTranscriptMessages,
+} from '@/lib/minutes-to-messages'
+import {
   defaultMeetingFileSelection,
   groupMeetingFileNames,
   meetingFileCaption,
@@ -30,6 +35,8 @@ import {
 import { cn } from '@/lib/utils'
 
 import type { MeetingDetail } from '@/types/meeting'
+
+type MeetingDetailView = 'files' | 'replay'
 
 interface MeetingFilesViewerProps {
   backTo: string
@@ -45,6 +52,7 @@ export function MeetingFilesViewer({
   const [detail, setDetail] = useState<MeetingDetail | null>(null)
   const [activeFile, setActiveFile] = useState('')
   const [viewMode, setViewMode] = useState<MarkdownViewMode>('preview')
+  const [detailView, setDetailView] = useState<MeetingDetailView>('files')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -91,6 +99,19 @@ export function MeetingFilesViewer({
 
   const content = activeFile && detail?.files ? detail.files[activeFile] ?? '' : ''
 
+  const canReplay = useMemo(
+    () => (detail?.files ? hasWorkspaceTranscript(detail.files) : false),
+    [detail?.files],
+  )
+
+  const replayMessages = useMemo(() => {
+    if (!detail?.files || !canReplay) return []
+    return workspaceTranscriptMessages(detail.files, detail.id, detail.started_at)
+  }, [detail, canReplay])
+
+  const meetingMd = detail?.files?.['MEETING.md'] ?? ''
+  const topic = detail?.topic?.trim() || '（无主题）'
+
   return (
     <div className="space-y-8">
       <Link
@@ -116,9 +137,53 @@ export function MeetingFilesViewer({
 
       {!loading && !error && detail && (
         <>
-          <MeetingDetailHeader detail={detail} />
+          <MeetingDetailHeader detail={detail} canReplay={canReplay} />
 
-          {fileNames.length === 0 ? (
+          {canReplay && (
+            <div
+              className="flex rounded-lg bg-black/[0.04] p-0.5 ring-1 ring-inset ring-black/[0.06]"
+              role="group"
+              aria-label="详情视图"
+            >
+              <button
+                type="button"
+                onClick={() => setDetailView('files')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors',
+                  detailView === 'files'
+                    ? 'bg-surface text-brand shadow-sm'
+                    : 'text-text-tertiary hover:text-text-secondary',
+                )}
+              >
+                <FileText className="size-3.5" aria-hidden />
+                文档
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailView('replay')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors',
+                  detailView === 'replay'
+                    ? 'bg-surface text-brand shadow-sm'
+                    : 'text-text-tertiary hover:text-text-secondary',
+                )}
+              >
+                <Users className="size-3.5" aria-hidden />
+                回放
+              </button>
+            </div>
+          )}
+
+          {detailView === 'replay' && canReplay ? (
+            <div className="relative overflow-visible">
+              <MeetingReplayViewer
+                topic={topic}
+                meetingMd={meetingMd}
+                messages={replayMessages}
+                className="h-[calc(100vh-16rem)] min-h-[28rem]"
+              />
+            </div>
+          ) : fileNames.length === 0 ? (
             <ProfileStatePanel
               title="暂无 Markdown 文件"
               description={

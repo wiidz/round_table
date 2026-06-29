@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { ChatBubble } from '@/components/chat/chat-bubble'
+import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/types/chat'
 
@@ -11,6 +12,7 @@ interface ImTranscriptViewProps {
 
 export function ImTranscriptView({ messages, className }: ImTranscriptViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sequenceMap = useMemo(() => buildMessageSequenceMap(messages), [messages])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -32,7 +34,11 @@ export function ImTranscriptView({ messages, className }: ImTranscriptViewProps)
         </p>
       )}
       {messages.map((message) => (
-        <ChatBubble key={message.id} message={message} />
+        <ChatBubble
+          key={message.id}
+          message={message}
+          sequence={messageSequenceNumber(message, sequenceMap)}
+        />
       ))}
     </div>
   )

@@ -1,6 +1,6 @@
 # ADR-0013: Web 圆桌 Live 视图（围坐发言 + Drawer 历史）
 
-**状态**: Draft  
+**状态**: Accepted  
 **日期**: 2026-06-29  
 **关联**: [CONSTITUTION.md](../CONSTITUTION.md), [ADR-0012-transport-reception-agent.md](./ADR-0012-transport-reception-agent.md), commit `3561e2e`（WebChat IM 基线）
 
@@ -109,11 +109,19 @@ activeSpeakerId: speakerId | null   // 最近一次占 turn 的发言者
 
 ### 6. 协议与后端
 
-**v1 不修改 WebSocket Frame**；`turn` 与 `latestBySeat` 纯前端从消息流推导。
+**v1** 不修改 WebSocket Frame；`turn` 与 `latestBySeat` 纯前端从消息流推导。
 
-可选 **v2**（非本 ADR 范围）：服务端推送 `turn` 字段，与 Engine Event 序号对齐，便于回放一致。
+**v2（Phase 2，2026-06-29）**：WebSocket `message` 帧新增可选字段 `turn`（int）。服务端 Hub 按会话为 `moderator` / `participant` 出站消息递增分配；浏览器优先采用服务端 `turn`，无字段时客户端降级自增。与 Engine Event `sequence` 仍独立——Transport 层发言序号，非 Event Store 序号。
 
-### 7. 回滚策略
+可选 **v3**：服务端推送与 Engine Event 序号对齐，便于跨 Transport 回放一致。
+
+### 7. 视图并存策略（Phase 2）
+
+- **IM 列表**与**圆桌 Live**永久并存，不删除 IM 基线（commit `3561e2e`）。
+- Setup / 空闲默认 IM；会议 running/post 默认圆桌；`< md` 降级 Strip-only。
+- 用户可手动切换「圆桌 / 列表」（宽屏）；窄屏隐藏 toggle。
+
+### 8. 回滚策略
 
 - IM 基线已提交：`3561e2e`。
 - 实现时保留 `ChatWindow`（或 `ChatViewMode = 'im' | 'roundtable'`），Feature flag / 输入态切换可一键回 IM。
@@ -145,7 +153,7 @@ activeSpeakerId: speakerId | null   // 最近一次占 turn 的发言者
 ### 负面 / 风险
 
 - 多席位 + 动画对 **窄屏、无障碍** 不友好 → 必须提供 IM 降级。
-- 前端 turn 与 Engine Event 序号可能 **短暂不一致**（仅 UI）；v2 可对齐。
+- Transport 层 `turn` 与 Engine Event `sequence` 独立；跨 Transport 回放一致留待 v3。
 - Roster 动态变化（setup 中途改人）需重新计算席位；需测试边界。
 
 ### 待实现

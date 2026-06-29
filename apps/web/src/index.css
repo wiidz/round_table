@@ -85,6 +85,43 @@
   button:disabled {
     cursor: not-allowed;
   }
+
+  /* Scrollbar — 默认隐藏，悬停或滚动时显示（CRM style.postcss） */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover {
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  html[data-scrolling] * {
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 9999px;
+  }
+
+  *:hover::-webkit-scrollbar-thumb,
+  html[data-scrolling] *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
 }
 
 @keyframes md-heading-target-flash {
@@ -182,6 +219,44 @@
     border-width: 6px 0 6px 7px;
     border-color: transparent;
     border-left-color: var(--chat-bubble-bg);
+  }
+
+  .chat-bubble--tail-top {
+    border-radius: 1rem;
+    border-top-left-radius: 5px;
+  }
+
+  .chat-bubble--tail-top::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -6px;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 6px 7px 6px;
+    border-color: transparent;
+    border-bottom-color: var(--chat-bubble-bg);
+  }
+
+  .chat-bubble--tail-bottom {
+    border-radius: 1rem;
+    border-bottom-left-radius: 5px;
+  }
+
+  .chat-bubble--tail-bottom::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 7px 6px 0 6px;
+    border-color: transparent;
+    border-top-color: var(--chat-bubble-bg);
   }
 
   .chat-bubble--user {

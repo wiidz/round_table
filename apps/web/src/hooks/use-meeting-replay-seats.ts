@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { fetchParticipants } from '@/api/participants'
-import { fetchMeeting } from '@/api/meetings'
-import type { ChatMeetingPhase } from '@/lib/chat-meeting-phase'
-import { parseMeetingIdFromMessages } from '@/lib/chat-meeting-phase'
 import {
-  parseMeetingParticipantsFromMessages,
   parseParticipantsFromMeetingMd,
   participantsFromMessages,
   resolveMeetingLineup,
 } from '@/lib/meeting-participants'
-import { computeRoundTableSeats, type RosterSeatInput, type SeatLayout } from '@/lib/round-table-layout'
+import { computeRoundTableSeats, type RosterSeatInput } from '@/lib/round-table-layout'
 import type { ChatMessage } from '@/types/chat'
 
 function enrichLabels(lineup: RosterSeatInput[], roster: RosterSeatInput[]): RosterSeatInput[] {
@@ -22,12 +18,18 @@ function enrichLabels(lineup: RosterSeatInput[], roster: RosterSeatInput[]): Ros
   }))
 }
 
-export function useRosterSeats(messages: ChatMessage[], phase: ChatMeetingPhase) {
+/** Roster for archived meeting replay (MEETING.md + transcript messages). */
+export function useMeetingReplaySeats(
+  meetingMd: string,
+  messages: ChatMessage[],
+) {
   const [roster, setRoster] = useState<RosterSeatInput[]>([])
   const [loading, setLoading] = useState(true)
-  const [meetingLineup, setMeetingLineup] = useState<RosterSeatInput[]>([])
 
-  const meetingId = useMemo(() => parseMeetingIdFromMessages(messages), [messages])
+  const meetingLineup = useMemo(
+    () => parseParticipantsFromMeetingMd(meetingMd),
+    [meetingMd],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -54,44 +56,17 @@ export function useRosterSeats(messages: ChatMessage[], phase: ChatMeetingPhase)
     }
   }, [])
 
-  useEffect(() => {
-    if (!meetingId || (phase !== 'running' && phase !== 'post')) {
-      setMeetingLineup([])
-      return
-    }
-
-    let cancelled = false
-    fetchMeeting(meetingId)
-      .then((detail) => {
-        if (cancelled) return
-        const md = detail.files?.['MEETING.md'] ?? ''
-        setMeetingLineup(parseParticipantsFromMeetingMd(md))
-      })
-      .catch(() => {
-        if (!cancelled) setMeetingLineup([])
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [meetingId, phase])
-
   const spoken = useMemo(() => participantsFromMessages(messages), [messages])
 
-  const messageLineup = useMemo(
-    () => parseMeetingParticipantsFromMessages(messages, roster),
-    [messages, roster],
-  )
-
   const participants = useMemo(() => {
-    const lineup = resolveMeetingLineup(phase, {
+    const lineup = resolveMeetingLineup('post', {
       roster,
       meetingMdParticipants: meetingLineup,
-      messageParticipants: messageLineup,
+      messageParticipants: [],
       spokenParticipants: spoken,
     })
     return enrichLabels(lineup, roster)
-  }, [phase, roster, meetingLineup, messageLineup, spoken])
+  }, [roster, meetingLineup, spoken])
 
   const seats = useMemo(() => computeRoundTableSeats(participants), [participants])
 
@@ -103,5 +78,3 @@ export function useRosterSeats(messages: ChatMessage[], phase: ChatMeetingPhase)
     rosterFromApi: roster.length > 0,
   }
 }
-
-export type { SeatLayout, RosterSeatInput }

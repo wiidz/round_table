@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
@@ -92,6 +93,10 @@ export default defineConfig(({ mode }) => {
       host,
       strictPort: true,
       proxy,
+    },
+    test: {
+      environment: 'node',
+      include: ['src/**/*.test.ts'],
     },
   }
 })

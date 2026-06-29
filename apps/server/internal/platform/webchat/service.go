@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"round_table/apps/server/internal/adapter/transport"
@@ -160,6 +159,18 @@ func (s *Service) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			Content:    content,
 		}
 
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		if err := s.hub.SendOutbound(r.Context(), sessionID, webtransport.Outbound{
+			ID:         in.ID,
+			Role:       webtransport.RoleUser,
+			Content:    content,
+			AuthorID:   sessionID,
+			AuthorName: "Web",
+			At:         now,
+		}); err != nil {
+			return
+		}
+
 		reply, handleErr := s.handler.Handle(r.Context(), msg)
 		if handleErr != nil {
 			_ = writeFrame(webtransport.Frame{
@@ -169,7 +180,6 @@ func (s *Service) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if strings.TrimSpace(reply.Content) != "" {
-			now := time.Now().UTC().Format(time.RFC3339Nano)
 			role := webtransport.RoleSystem
 			authorID := ""
 			authorName := ""
@@ -178,17 +188,13 @@ func (s *Service) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 				authorID = "moderator"
 				authorName = "司仪"
 			}
-			frame := webtransport.Frame{
-				Type:       webtransport.FrameMessage,
-				ID:         uuid.NewString(),
-				SessionID:  sessionID,
+			if err := s.hub.SendOutbound(r.Context(), sessionID, webtransport.Outbound{
 				Role:       role,
+				Content:    reply.Content,
 				AuthorID:   authorID,
 				AuthorName: authorName,
 				At:         now,
-				Content:    reply.Content,
-			}
-			if err := writeFrame(frame); err != nil {
+			}); err != nil {
 				return
 			}
 		}

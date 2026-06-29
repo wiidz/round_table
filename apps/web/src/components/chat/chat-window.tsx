@@ -1,19 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2, LayoutList, Users, Wifi, WifiOff } from 'lucide-react'
 
 import { ChatComposer } from '@/components/chat/chat-composer'
 import { ImTranscriptView } from '@/components/chat/im-transcript-view'
 import { RoundTableView } from '@/components/round-table/round-table-view'
 import { StripOnlyView } from '@/components/round-table/strip-only-view'
+import { TranscriptDetailPanel } from '@/components/round-table/transcript-detail-panel'
+import { TranscriptHistoryPanel } from '@/components/round-table/transcript-history-panel'
 import { TranscriptDrawer } from '@/components/round-table/transcript-drawer'
 import { Button } from '@/components/ui/button'
+import { useChatMeetingMeta } from '@/hooks/use-chat-meeting-meta'
 import { useChatViewMode } from '@/hooks/use-chat-view-mode'
 import { useMeetingTranscript } from '@/hooks/use-meeting-transcript'
-import { useNarrowScreen } from '@/hooks/use-media-query'
+import { useNarrowScreen, useMediaQuery } from '@/hooks/use-media-query'
 import { useRosterSeats } from '@/hooks/use-roster-seats'
 import { speakerId } from '@/lib/chat-display'
 import { phaseLabel } from '@/lib/chat-meeting-phase'
-import { hePanelShell, heSubsectionTitleNeutral } from '@/lib/highend-styles'
+import { maxTurnNumber } from '@/lib/meeting-transcript-projection'
+import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
+import { hePanelShell, heSubsectionTitleNeutral, chatSideRailLeftClass, chatSideRailRightClass } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
 import type { ChatConnectionState, ChatMessage } from '@/types/chat'
@@ -138,28 +143,66 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('')
   const [drawerMessage, setDrawerMessage] = useState<ChatMessage | null>(null)
+  const [scrubTurn, setScrubTurn] = useState<number | null>(null)
   const canSend = connectionState === 'open'
   const narrow = useNarrowScreen()
+  const wideSidePanel = useMediaQuery('(min-width: 96rem)')
 
   const { mode, phase, setMode } = useChatViewMode(messages)
   const layout = resolveLayout(narrow, phase, mode)
-  const { turns, activeSpeakerId, latestBySeat } = useMeetingTranscript(messages)
-  const { seats, participants, loading, rosterFromApi } = useRosterSeats(messages)
-  const activeMessageId =
-    activeSpeakerId != null ? latestBySeat.get(activeSpeakerId)?.id ?? null : null
+  const roundtableSidePanel = layout === 'roundtable' && wideSidePanel
+  const { turns, activeSpeakerId, latestBySeat, activeMessage, isScrubbing } =
+    useMeetingTranscript(messages, scrubTurn)
+  const { seats, participants, loading, rosterFromApi, rosterTotal } = useRosterSeats(messages, phase)
+  const { meetingId, topic: meetingTopic, loading: meetingMetaLoading } =
+    useChatMeetingMeta(messages)
+  const maxTurn = maxTurnNumber(turns)
+  const activeMessageId = activeMessage?.id ?? null
+  const sequenceMap = useMemo(() => buildMessageSequenceMap(messages), [messages])
+  const selectedSequence = drawerMessage
+    ? messageSequenceNumber(drawerMessage, sequenceMap)
+    : null
+
+  useEffect(() => {
+    if (phase !== 'running' && phase !== 'post') {
+      setScrubTurn(null)
+    }
+  }, [phase])
+
+  const centerTitle = meetingTopic ?? undefined
+  const centerSubtitle = useMemo(() => {
+    if (isScrubbing && scrubTurn != null) {
+      return `回放 · 第 ${scrubTurn} 轮发言`
+    }
+    if (meetingTopic) {
+      if (turns.length > 0) return `第 ${turns.length} 轮发言`
+      return meetingId ? `${meetingId.slice(0, 12)}…` : undefined
+    }
+    if (meetingMetaLoading && meetingId) return '加载议题…'
+    return undefined
+  }, [isScrubbing, scrubTurn, meetingTopic, turns.length, meetingMetaLoading, meetingId])
 
   const focusedSeatId = useMemo(
     () => (drawerMessage ? speakerId(drawerMessage) : null),
     [drawerMessage],
   )
 
-  const submitDraft = () => {
-    if (onSend(draft)) setDraft('')
+  const submitDraft = (text?: string) => {
+    const content = (text ?? draft).trim()
+    if (!content) return
+    if (onSend(content)) setDraft('')
   }
 
   return (
     <>
-      <div className={cn(hePanelShell, 'flex h-full min-h-0 flex-col overflow-hidden', className)}>
+      <div className="relative h-full min-h-0">
+        <div
+          className={cn(
+            hePanelShell,
+            'relative flex h-full min-h-0 flex-col overflow-hidden',
+            className,
+          )}
+        >
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
           <div>
             <h2 className={heSubsectionTitleNeutral}>与司仪对话</h2>
@@ -194,6 +237,7 @@ export function ChatWindow({
           </p>
         )}
 
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pb-[6.5rem]">
         {layout === 'roundtable' && (
           <RoundTableView
             seats={seats}
@@ -201,21 +245,31 @@ export function ChatWindow({
             latestBySeat={latestBySeat}
             activeSpeakerId={activeSpeakerId}
             focusedSeatId={focusedSeatId}
-            turnCount={turns.length}
+            turnCount={scrubTurn ?? turns.length}
+            maxTurn={maxTurn}
+            scrubTurn={scrubTurn}
+            onScrubTurnChange={setScrubTurn}
             activeMessageId={activeMessageId}
             selectedMessageId={drawerMessage?.id ?? null}
             rosterLoading={loading}
             rosterFromApi={rosterFromApi}
-            participantCount={participants.length}
+            rosterTotal={rosterTotal}
+            seatedExpertCount={participants.length}
+            centerTitle={centerTitle}
+            centerSubtitle={centerSubtitle}
             onSelectMessage={setDrawerMessage}
+            showTranscriptStrip={!roundtableSidePanel}
           />
         )}
 
-        {layout === 'list' && <ImTranscriptView messages={messages} />}
+        {layout === 'list' && <ImTranscriptView messages={messages} className="min-h-0 flex-1" />}
 
         {layout === 'strip-only' && (
           <StripOnlyView
             messages={messages}
+            maxTurn={maxTurn}
+            scrubTurn={scrubTurn}
+            onScrubTurnChange={setScrubTurn}
             activeMessageId={activeMessageId}
             selectedMessageId={drawerMessage?.id ?? null}
             onSelectMessage={setDrawerMessage}
@@ -223,8 +277,11 @@ export function ChatWindow({
         )}
 
         {lastError && connectionState === 'error' && (
-          <p className="shrink-0 px-5 pb-2 text-[12px] text-danger">{lastError}</p>
+          <p className="absolute bottom-[6.5rem] left-0 right-0 z-20 px-5 pb-1 text-[12px] text-danger">
+            {lastError}
+          </p>
         )}
+        </div>
 
         <ChatComposer
           draft={draft}
@@ -232,9 +289,34 @@ export function ChatWindow({
           onSend={submitDraft}
           disabled={!canSend}
         />
+        </div>
+
+        {roundtableSidePanel && (
+          <>
+            <TranscriptHistoryPanel
+              messages={messages}
+              activeMessageId={activeMessageId}
+              selectedId={drawerMessage?.id ?? null}
+              onSelect={setDrawerMessage}
+              className={chatSideRailLeftClass}
+            />
+            <TranscriptDetailPanel
+              message={drawerMessage}
+              sequence={selectedSequence}
+              onClear={() => setDrawerMessage(null)}
+              className={chatSideRailRightClass}
+            />
+          </>
+        )}
       </div>
 
-      <TranscriptDrawer message={drawerMessage} onClose={() => setDrawerMessage(null)} />
+      {!roundtableSidePanel && (
+        <TranscriptDrawer
+          message={drawerMessage}
+          sequence={selectedSequence}
+          onClose={() => setDrawerMessage(null)}
+        />
+      )}
     </>
   )
 }
