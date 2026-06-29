@@ -101,6 +101,8 @@ make docker-logs-discord             # data/logs/discord-transport.log
 
 结构说明见 [ADR-0008](./docs/architecture/ADR-0008-project-structure.md)。数据目录见 [data/README.md](./data/README.md)。
 
+**Web 会议详情**按 Workspace 相对路径展示产出，侧栏与正文标题均为「中文名 · 路径」（如 `会议纪要 · MINUTES.md` 与 `结论纪要 · artifacts/minutes.md` 并列可辨）。见 [apps/web/README.md](./apps/web/README.md)。
+
 ---
 
 ## 文档
@@ -114,6 +116,7 @@ make docker-logs-discord             # data/logs/discord-transport.log
 | [COMMITS.md](./docs/COMMITS.md) | Git Commit 规范 |
 | [domain/](./docs/domain/README.md) | 领域概念（Meeting、Principal、Moderator…） |
 | [adapters/discord-transport.md](./docs/adapters/discord-transport.md) | Discord 指令与频道行为 |
+| [apps/web/README.md](./apps/web/README.md) | Web UI 用语与 Workspace 文件展示 |
 | [roadmap.md](./docs/roadmap.md) | 产品路线图（P0–P4） |
 | [deploy/README.md](./deploy/README.md) | Ubuntu Docker 部署 |
 | [flow/](./docs/flow/context_diagram.md) | 状态机与上下文图 |

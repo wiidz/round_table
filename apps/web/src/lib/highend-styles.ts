@@ -35,7 +35,7 @@ export const sideTabLabelMotion = cn(
 export const hePressable = `${heSpring} active:scale-[0.98] motion-reduce:active:scale-100`
 
 export const hePageTitle =
-  'text-balance text-[28px] font-semibold leading-[1.2] tracking-[-0.03em] text-text-primary'
+  'text-balance text-[28px] font-semibold leading-[1.5] tracking-[-0.03em] text-text-primary'
 
 export const hePageDesc = 'mt-1.5 text-[14px] leading-[1.65] text-text-secondary'
 
@@ -130,9 +130,35 @@ export const heFilePillSelected = [
   'ring-1 ring-inset ring-primary/40 shadow-[var(--field-focus-shadow)]',
 ].join(' ')
 
+/** 会议侧栏文件项（多行内容时用 rounded-md，避免 pill 过长） */
+export const heFileNavItem = [
+  'rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium',
+  'bg-black/[0.02] text-text-secondary ring-1 ring-inset ring-black/[0.05]',
+  heSpring,
+  'hover:bg-brand-soft/60 hover:text-brand hover:ring-primary/25',
+].join(' ')
+
+export const heFileNavItemSelected = [
+  'rounded-md px-2.5 py-1.5 text-left text-[13px] font-semibold',
+  'bg-brand-soft text-brand',
+  'ring-1 ring-inset ring-primary/40 shadow-[var(--field-focus-shadow)]',
+].join(' ')
+
 export const heFileBadge = [
   'rounded-full px-2.5 py-0.5 text-[11px] font-medium',
   'bg-black/[0.03] text-text-secondary ring-1 ring-inset ring-black/[0.05]',
+].join(' ')
+
+/** 侧栏主交付物标记（未选中行） */
+export const hePrimaryDeliverableBadge = [
+  'rounded-full px-2 py-0.5 text-[10px] font-medium',
+  'bg-brand-soft text-brand ring-1 ring-inset ring-primary/25',
+].join(' ')
+
+/** 侧栏主交付物标记（选中行，叠在 brand-soft pill 上） */
+export const hePrimaryDeliverableBadgeOnBrand = [
+  'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+  'bg-white/80 text-brand shadow-sm ring-1 ring-inset ring-primary/35',
 ].join(' ')
 
 export const heEmptyPanel = [

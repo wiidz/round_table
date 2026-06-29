@@ -18,10 +18,10 @@ export function HomePage() {
           Build AI Teams, not AI Agents
         </p>
         <h1 className="max-w-2xl text-[28px] font-semibold leading-tight tracking-tight">
-          多智能体会议引擎 · Principal 工作台
+          多智能体会议引擎 · 委托人工作台
         </h1>
         <p className="max-w-2xl text-[15px] leading-relaxed text-text-secondary">
-          在 Web 端审阅 Confirmation Brief、阅读 Minutes 与 Artifacts，与 Discord
+          在 Web 端审阅确认关 Brief、阅读 MINUTES.md 会议纪要与工作区产出，与 Discord
           入口共享同一 Meeting Engine。
         </p>
       </section>
@@ -30,7 +30,7 @@ export function HomePage() {
         <Card>
           <CardHeader>
             <CardTitle>会议列表</CardTitle>
-            <CardDescription>查看历史 Meeting 与当前状态</CardDescription>
+            <CardDescription>查看历史会议与当前状态</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">
@@ -58,12 +58,12 @@ export function HomePage() {
               AI 产出
             </CardTitle>
             <CardDescription>
-              Participant / Moderator 发言与纪要统一用 AI 紫标识
+              专家 / 司仪发言与纪要统一用 AI 紫标识
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="ai" disabled>
-              阅读 Artifacts
+              阅读工作区产出
             </Button>
           </CardContent>
         </Card>

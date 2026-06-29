@@ -1,13 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { ThemeToggle } from '@/components/theme-toggle'
+import { domainNavLabel } from '@/lib/ui-labels'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/', label: '概览', end: true },
   { to: '/meetings', label: '会议', end: false },
-  { to: '/principals', label: 'Principal', end: false },
-  { to: '/participants', label: 'Participant', end: false },
+  { to: '/principals', label: domainNavLabel('principal'), end: false },
+  { to: '/participants', label: domainNavLabel('participant'), end: false },
   { to: '/settings', label: '设置', end: false },
 ]
 
@@ -23,7 +24,7 @@ export function AppShell() {
               </span>
               <div>
                 <p className="text-sm font-semibold tracking-tight">RoundTable</p>
-                <p className="text-xs text-text-tertiary">Principal UI</p>
+                <p className="text-xs text-text-tertiary">委托人工作台</p>
               </div>
             </div>
             <nav className="hidden items-center gap-1 sm:flex">

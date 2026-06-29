@@ -66,17 +66,17 @@ func (s *Store) ReadMeetingDetail(id string) (workspace.MeetingDetail, error) {
 	}
 
 	detail := workspace.MeetingDetail{
-		ID:        id,
-		UpdatedAt: dirUpdatedAt(dir),
-		Files:     files,
+		MeetingIndex: workspace.MeetingIndex{
+			ID:        id,
+			UpdatedAt: dirUpdatedAt(dir),
+		},
+		Files: files,
 	}
 	if doc, ok := files[workspace.FileMeeting]; ok {
-		idx := workspace.MeetingIndex{ID: id}
-		EnrichFromMeetingDoc(&idx, doc)
-		detail.Topic = idx.Topic
-		detail.Status = idx.Status
-		detail.Mode = idx.Mode
-		detail.StartedAt = idx.StartedAt
+		EnrichFromMeetingDoc(&detail.MeetingIndex, doc)
+	}
+	if doc, ok := files[workspace.FileUsageSummary]; ok {
+		EnrichFromUsageSummary(&detail.MeetingIndex, doc)
 	}
 
 	if len(files) == 0 {

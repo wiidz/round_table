@@ -1,8 +1,19 @@
 export const PROFILE_FILE_LABELS: Record<string, string> = {
-  'USER.md': 'USER · 偏好画像',
-  'SOUL.md': 'SOUL · 人格',
-  'AGENTS.md': 'AGENTS · 行为规则',
-  'TOOLS.md': 'TOOLS · 工具约定',
+  'USER.md': '偏好画像',
+  'SOUL.md': '人格',
+  'AGENTS.md': '行为规则',
+  'TOOLS.md': '工具约定',
+}
+
+/** Sidebar / header: 人格 · SOUL.md */
+export function profileFileCaption(filename: string): string {
+  const title = PROFILE_FILE_LABELS[filename]
+  if (!title) return filename
+  return `${title} · ${filename}`
+}
+
+export function profileFileHasTitle(filename: string): boolean {
+  return filename in PROFILE_FILE_LABELS
 }
 
 /** ADR-0010 规定的 Participant 标准档案三件套 */

@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { fetchParticipant, saveParticipantFile } from '@/api/participants'
 import { ProfileFilesEditor } from '@/components/profile-files-editor'
 import { PARTICIPANT_FILE_HINTS, PARTICIPANT_STANDARD_FILES } from '@/lib/profile-labels'
+import { domainPageEyebrow, domainNavLabel } from '@/lib/ui-labels'
 
 export function ParticipantDetailPage() {
   const { id: rawId } = useParams()
@@ -24,11 +25,11 @@ export function ParticipantDetailPage() {
   return (
     <ProfileFilesEditor
       role="participant"
-      eyebrow="Expert Profile"
+      eyebrow={domainPageEyebrow('participant')}
       pageTitle={id}
-      pageDescription="编辑 SOUL / AGENTS / TOOLS 档案，定义专家人格与 Meeting 内行为。"
+      pageDescription="编辑 SOUL.md / AGENTS.md / TOOLS.md 档案，定义专家（Participant）人格与会议内行为。"
       backTo="/participants"
-      backLabel="返回 Participant 列表"
+      backLabel={`返回${domainNavLabel('participant')}列表`}
       standardFiles={PARTICIPANT_STANDARD_FILES}
       fileHints={PARTICIPANT_FILE_HINTS}
       emptyHint="标准档案为 SOUL.md、AGENTS.md、TOOLS.md；打开页面时会从模板自动创建缺失文件。"

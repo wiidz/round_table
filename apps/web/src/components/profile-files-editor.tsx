@@ -9,7 +9,7 @@ import {
   type ProfileRole,
 } from '@/components/profile/profile-page-header'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
-import { MarkdownDocument } from '@/components/markdown/markdown-document'
+import { MarkdownReader } from '@/components/markdown/markdown-reader'
 import {
   MarkdownViewToggle,
   type MarkdownViewMode,
@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button'
 import {
   heColumnTitleAI,
   heColumnTitleBrand,
-  heFieldLabel,
   heFieldSurface,
   heFilePill,
   heFilePillSelected,
@@ -33,7 +32,7 @@ import {
   heEyebrowBrand,
 } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
-import { PROFILE_FILE_LABELS } from '@/lib/profile-labels'
+import { PROFILE_FILE_LABELS, profileFileCaption, profileFileHasTitle } from '@/lib/profile-labels'
 
 interface ProfileLoadData {
   id: string
@@ -268,7 +267,16 @@ export function ProfileFilesEditor({
                       !exists && 'opacity-60',
                     )}
                   >
-                    {PROFILE_FILE_LABELS[name] ?? name}
+                    {profileFileHasTitle(name) ? (
+                      <span className="flex min-w-0 flex-col gap-0.5 text-left">
+                        <span className="text-[13px]">{PROFILE_FILE_LABELS[name]}</span>
+                        <span className="font-mono text-[10px] text-text-tertiary/90">
+                          {name}
+                        </span>
+                      </span>
+                    ) : (
+                      name
+                    )}
                     {!exists && (
                       <span className="ml-1 text-[10px] text-text-tertiary">未创建</span>
                     )}
@@ -280,8 +288,9 @@ export function ProfileFilesEditor({
 
             <div className="flex min-w-0 flex-col gap-4">
               <div className="space-y-1">
-                <p className={heFieldLabel}>{PROFILE_FILE_LABELS[activeFile] ?? activeFile}</p>
-                <p className="font-mono text-xs text-text-tertiary">{activeFile}</p>
+                <p className="font-mono text-[12px] text-text-secondary">
+                  {profileFileCaption(activeFile)}
+                </p>
                 <p className="text-sm text-text-secondary">
                   {fileHints[activeFile] ?? 'Markdown 档案'}
                   {!Object.hasOwn(files, activeFile) && ' · 保存后将创建此文件'}
@@ -299,10 +308,10 @@ export function ProfileFilesEditor({
                 )}
               </div>
 
-              <div className={heFieldSurface}>
+              <div className={cn(heFieldSurface, 'relative overflow-visible')}>
                 {viewMode === 'preview' ? (
                   <div className="p-5 sm:p-6">
-                    <MarkdownDocument content={draft} constrained={false} />
+                    <MarkdownReader content={draft} constrained={false} />
                   </div>
                 ) : (
                   <textarea

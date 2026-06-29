@@ -3,7 +3,8 @@ import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { MeetingDetailHeader } from '@/components/meeting/meeting-detail-header'
-import { MarkdownDocument } from '@/components/markdown/markdown-document'
+import { MeetingFileNav } from '@/components/meeting/meeting-file-nav'
+import { MarkdownReader } from '@/components/markdown/markdown-reader'
 import {
   MarkdownViewToggle,
   type MarkdownViewMode,
@@ -11,17 +12,20 @@ import {
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { ApiError } from '@/api/client'
 import {
-  heFieldLabel,
   heFieldSurface,
-  heFilePill,
-  heFilePillSelected,
+  heFieldHint,
   hePanelShell,
   heSpring,
   heTextarea,
 } from '@/lib/highend-styles'
 import {
-  meetingFileLabel,
-  sortMeetingFileNames,
+  defaultMeetingFileSelection,
+  groupMeetingFileNames,
+  meetingFileCaption,
+  meetingFileCategory,
+  meetingFileDescription,
+  meetingModeKind,
+  MEETING_FILE_CATEGORY_LABELS,
 } from '@/lib/meeting-labels'
 import { cn } from '@/lib/utils'
 
@@ -44,9 +48,15 @@ export function MeetingFilesViewer({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const modeKind = useMemo(
+    () => meetingModeKind(detail?.mode_kind, detail?.mode),
+    [detail?.mode_kind, detail?.mode],
+  )
+
   const fileNames = useMemo(() => {
     if (!detail?.files) return []
-    return sortMeetingFileNames(Object.keys(detail.files))
+    const grouped = groupMeetingFileNames(Object.keys(detail.files))
+    return [...grouped.overview, ...grouped.deliverable, ...grouped.process]
   }, [detail])
 
   useEffect(() => {
@@ -56,8 +66,9 @@ export function MeetingFilesViewer({
       .then((data) => {
         if (cancelled) return
         setDetail(data)
-        const names = sortMeetingFileNames(Object.keys(data.files ?? {}))
-        setActiveFile(names[0] ?? '')
+        const names = Object.keys(data.files ?? {})
+        const kind = meetingModeKind(data.mode_kind, data.mode)
+        setActiveFile(defaultMeetingFileSelection(names, kind))
         setError(null)
       })
       .catch((err: unknown) => {
@@ -119,35 +130,45 @@ export function MeetingFilesViewer({
               }
             />
           ) : (
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
-              <aside className="space-y-2">
-                <p className={heFieldLabel}>Workspace 文件</p>
-                <nav className="flex flex-col gap-1.5">
-                  {fileNames.map((name) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setActiveFile(name)}
-                      className={cn(
-                        activeFile === name ? heFilePillSelected : heFilePill,
-                        'w-full truncate text-left',
-                      )}
-                      title={name}
-                    >
-                      {meetingFileLabel(name)}
-                    </button>
-                  ))}
-                </nav>
-                <p className="pt-1 font-mono text-[10px] text-text-tertiary/80">
-                  {activeFile}
-                </p>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+              <aside>
+                <MeetingFileNav
+                  names={fileNames}
+                  activeFile={activeFile}
+                  files={detail.files}
+                  modeKind={modeKind}
+                  onSelect={setActiveFile}
+                />
               </aside>
 
-              <section className="min-w-0 space-y-4">
+              <section className="min-w-0 space-y-4 overflow-visible">
+                {activeFile && (
+                  <div className="space-y-2">
+                    <p className="font-mono text-[12px] text-text-secondary">
+                      {meetingFileCaption(activeFile, modeKind)}
+                      <span className="ml-2 text-text-tertiary">
+                        · {MEETING_FILE_CATEGORY_LABELS[meetingFileCategory(activeFile)]}
+                      </span>
+                    </p>
+                    <p className={heFieldHint}>
+                      {meetingFileDescription(activeFile, modeKind)}
+                    </p>
+                  </div>
+                )}
                 <MarkdownViewToggle mode={viewMode} onChange={setViewMode} />
-                <div className={cn(heFieldSurface, 'min-h-[420px] p-5 sm:p-6')}>
+                <div
+                  className={cn(
+                    heFieldSurface,
+                    'relative min-h-[420px] overflow-visible p-5 sm:p-6',
+                  )}
+                >
                   {viewMode === 'preview' ? (
-                    <MarkdownDocument content={content} constrained={false} />
+                    <MarkdownReader
+                      key={activeFile}
+                      documentKey={activeFile}
+                      content={content}
+                      constrained={false}
+                    />
                   ) : (
                     <textarea
                       readOnly

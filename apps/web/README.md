@@ -1,8 +1,32 @@
 # RoundTable Web
 
-Principal UI — React + Vite + TypeScript + Tailwind v4 + shadcn/ui。
+Principal（委托人）工作台 — React + Vite + TypeScript + Tailwind v4 + shadcn/ui。
 
 设计规范见 [DESIGN.md](./DESIGN.md)（亮色 / 暗色双主题）。
+
+## 界面用语
+
+Web 端面向中文用户，领域概念遵循 [docs/NAMING.md](../../docs/NAMING.md)：
+
+| 域名词（代码/API） | 导航 / 主文案 | 页面标题格式 |
+|-------------------|---------------|--------------|
+| Participant | 专家 | 专家 · Participant |
+| Principal | 委托人 | 委托人 · Principal |
+| Moderator | 司仪 | — |
+
+**Workspace / 档案文件**统一显示为 **中文名 · 文件名**，例如：
+
+- `会议纪要 · MINUTES.md`（根目录完整过程纪要）
+- `结论纪要 · artifacts/minutes.md`（裁决型结论文档）
+- `方案草案 · artifacts/design-draft.md`
+- `第 2 轮摘要 · moderator/round-002-summary.md`
+- `会议回顾 · moderator/executive-recap.md`
+- `确认呈报清单 · confirmation/brief.md`
+- `人格 · SOUL.md`
+
+映射见 `src/lib/meeting-labels.ts`、`src/lib/profile-labels.ts`；域名词 helper 见 `src/lib/ui-labels.ts`。
+
+**会议详情侧栏**分为 **概览**（`MEETING.md` 会议简报、`usage/summary.md` Token 用量）、**交付物**与 **过程文档**。
 
 ## 要求
 

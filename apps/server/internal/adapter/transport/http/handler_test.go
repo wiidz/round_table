@@ -97,10 +97,17 @@ func TestHandleGetMeeting(t *testing.T) {
 | 项目 | 内容 |
 |------|------|
 | 会议状态 | 已结束 |
+| 辩论轮次上限 | 2（不含 Pre-meeting Round 0） |
 
 ## 会议主题
 
 Test Topic
+
+## 参会人员
+
+| 参会者 | 角色 | 专长 | 参会目标 |
+|--------|------|------|----------|
+| a | a | x | — |
 `
 	if err := os.WriteFile(meetingDoc, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
@@ -122,6 +129,9 @@ Test Topic
 	}
 	if !strings.Contains(rec.Body.String(), "Test Topic") {
 		t.Fatalf("body=%s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"participant_count"`) {
+		t.Fatalf("missing participant_count in body=%s", rec.Body.String())
 	}
 }
 

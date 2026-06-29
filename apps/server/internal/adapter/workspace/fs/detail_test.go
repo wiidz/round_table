@@ -24,10 +24,22 @@ func TestReadMeetingDetail(t *testing.T) {
 | 会议时间 | 2026-06-27 19:23 (CST) |
 | 会议状态 | 已结束 |
 | 会议模式 | 裁决型（decision） |
+| 辩论轮次上限 | 3（不含 Pre-meeting Round 0） |
+| Round 1 后自由对话 | 每人最多 1 轮提问 |
 
 ## 会议主题
 
 Auth Service 拆分
+
+## 参会人员
+
+| 参会者 | 角色 | 专长 | 参会目标 |
+|--------|------|------|----------|
+| a | a | x | — |
+| b | b | y | — |
+| c | c | z | — |
+
+**Token 用量**：共 500 tokens（2 次 LLM 调用），详见 usage/summary.md。
 `
 	if err := os.WriteFile(meetingDoc, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
@@ -39,6 +51,16 @@ Auth Service 拆分
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "mtg-a", "artifacts", "minutes.md"), []byte("# Conclusion\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "mtg-a", "usage"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "mtg-a", "usage", "summary.md"), []byte(`| 指标 | 数值 |
+|------|------|
+| LLM 调用次数 | 2 |
+| Total tokens | **999** |
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,7 +80,22 @@ Auth Service 拆分
 	if detail.StartedAt == "" {
 		t.Fatal("started_at empty")
 	}
-	if len(detail.Files) != 3 {
+	if detail.ParticipantCount != 3 {
+		t.Fatalf("participant_count=%d", detail.ParticipantCount)
+	}
+	if detail.MaxRounds != 3 {
+		t.Fatalf("max_rounds=%d", detail.MaxRounds)
+	}
+	if !detail.FreeDialogue {
+		t.Fatal("free_dialogue want true")
+	}
+	if detail.LLMCallCount != 2 {
+		t.Fatalf("llm_call_count=%d", detail.LLMCallCount)
+	}
+	if detail.TotalTokens != 999 {
+		t.Fatalf("total_tokens=%d want usage/summary override", detail.TotalTokens)
+	}
+	if len(detail.Files) != 4 {
 		t.Fatalf("files=%v", detail.Files)
 	}
 }

@@ -20,11 +20,6 @@ type MeetingIndex struct {
 
 // MeetingDetail includes markdown workspace files for one Meeting.
 type MeetingDetail struct {
-	ID        string            `json:"id"`
-	Topic     string            `json:"topic"`
-	Status    string            `json:"status"`
-	Mode      string            `json:"mode,omitempty"`
-	StartedAt string            `json:"started_at,omitempty"`
-	UpdatedAt time.Time         `json:"updated_at"`
-	Files     map[string]string `json:"files"`
+	MeetingIndex
+	Files map[string]string `json:"files"`
 }

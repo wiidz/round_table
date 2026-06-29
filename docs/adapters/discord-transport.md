@@ -24,6 +24,36 @@ Principal 绑定持久化：`data/transport/discord-principal.json`。
 
 ---
 
+## Web 会议详情（Principal 工作台）
+
+与 Discord 共用 `data/workspaces/{meeting_id}/` 产出。Web 侧栏按路径列出文件，**中文标签与相对路径并列**，避免 `MINUTES.md`（会议纪要）与 `artifacts/minutes.md`（结论纪要）混淆：
+
+| 相对路径 | 侧栏中文名 |
+|----------|------------|
+| `MEETING.md` | 会议简报 |
+| `MINUTES.md` | 会议纪要 |
+| `artifacts/design-draft.md` | 方案草案 |
+| `artifacts/open-questions.md` | 待决问题 |
+| `artifacts/minutes.md` | 归档纪要（研讨型）/ 结论纪要（裁决型） |
+| `confirmation/brief.md` | 确认呈报清单 |
+
+**侧栏分组**
+
+| 分组 | 包含 |
+|------|------|
+| **概览** | `MEETING.md`（会议简报）、`usage/summary.md`（Token 用量） |
+| **交付物** | `artifacts/*`、`confirmation/*`、`action-items.md` |
+| **过程文档** | `MINUTES.md`、`rounds/`、`moderator/`、`free-dialogue/`、`pre-meeting/` 等 |
+| `moderator/executive-recap.md` | 会议回顾 |
+| `rounds/round-NNN.md` | 第 N 轮研讨记录 |
+| `moderator/round-NNN-summary.md` | 第 N 轮摘要 |
+| `moderator/round-NNN-readiness.md` | 第 N 轮研讨就绪 |
+| `free-dialogue/after-round-NNN.md` | 第 N 轮后自由问答 |
+
+详见 [apps/web/README.md](../../apps/web/README.md)。
+
+---
+
 ## 指令一览
 
 ### 前缀指令（默认 `!rt`）

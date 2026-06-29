@@ -133,20 +133,7 @@ func (h *Handler) handleGetMeeting(w http.ResponseWriter, r *http.Request) {
 					detail.Files = make(map[string]string)
 				}
 				detail.Files[workspace.FileMeeting] = doc
-				idx := workspace.MeetingIndex{ID: id}
-				wsfs.EnrichFromMeetingDoc(&idx, doc)
-				if idx.Topic != "" {
-					detail.Topic = idx.Topic
-				}
-				if idx.Status != "" {
-					detail.Status = idx.Status
-				}
-				if idx.Mode != "" {
-					detail.Mode = idx.Mode
-				}
-				if idx.StartedAt != "" {
-					detail.StartedAt = idx.StartedAt
-				}
+				wsfs.EnrichFromMeetingDoc(&detail.MeetingIndex, doc)
 			}
 		}
 	}

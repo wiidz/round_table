@@ -476,7 +476,7 @@ export function MeetPresetsPanel({
               <SettingsFieldRow
                 label="自由对话"
                 htmlFor={`preset-${active.id}-free`}
-                hint="每位 Participant 在辩论前可提问的轮数；0 表示关闭。"
+                hint="每位专家（Participant）在辩论前可提问的轮数；0 表示关闭。"
               >
                 <Input
                   id={`preset-${active.id}-free`}

@@ -10,6 +10,7 @@ import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
+import { domainPageEyebrow, domainPageTitle } from '@/lib/ui-labels'
 
 import type { PrincipalIndex } from '@/types/principal'
 
@@ -34,7 +35,7 @@ export function PrincipalsPage() {
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载 Principal 列表')
+          setError('无法加载委托人列表')
         }
       })
       .finally(() => {
@@ -49,16 +50,16 @@ export function PrincipalsPage() {
     <div className="space-y-8">
       <ProfilePageHeader
         role="principal"
-        eyebrow="Decision Owner"
-        title="Principal"
+        eyebrow={domainPageEyebrow('principal')}
+        title={domainPageTitle('principal')}
         description={
           <>
-            管理{' '}
+            管理委托人（Principal）档案目录{' '}
             <code className="rounded-md bg-black/[0.04] px-1.5 py-0.5 font-mono text-[12px] ring-1 ring-inset ring-black/[0.05]">
               data/profiles/principals/
-            </code>{' '}
-            下的身份档案。标准文件为 <strong className="font-medium text-text-primary">USER.md</strong>
-            （ADR-0010）；亦可包含 SOUL.md 等 Markdown。
+            </code>
+            。标准文件为 <strong className="font-medium text-text-primary">USER.md</strong>
+            （偏好与背景，ADR-0010）；亦可包含 SOUL.md 等 Markdown。
           </>
         }
       />
@@ -71,7 +72,7 @@ export function PrincipalsPage() {
 
       {!loading && !error && principals.length === 0 && (
         <ProfileStatePanel
-          title="暂无 Principal 档案"
+          title="暂无委托人档案"
           description={
             <>
               Discord 绑定后会自动创建{' '}

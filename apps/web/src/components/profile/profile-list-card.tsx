@@ -9,7 +9,7 @@ import {
   hePanelShellHover,
   heSpring,
 } from '@/lib/highend-styles'
-import { PROFILE_FILE_LABELS } from '@/lib/profile-labels'
+import { profileFileCaption } from '@/lib/profile-labels'
 import { cn } from '@/lib/utils'
 
 import type { ProfileRole } from './profile-page-header'
@@ -62,7 +62,7 @@ export function ProfileListCard({
                   role === 'principal' ? heColumnTitleBrand : heColumnTitleAI
                 }
               >
-                {role === 'principal' ? '决策委托人' : '会议专家'}
+                {role === 'principal' ? '决策委托人' : '专家'}
               </p>
               <h2 className="mt-2 truncate text-[17px] font-semibold tracking-[-0.02em] text-text-primary">
                 {title}
@@ -82,7 +82,7 @@ export function ProfileListCard({
                     file.present === false && 'opacity-45 line-through decoration-text-tertiary/50',
                   )}
                 >
-                  {PROFILE_FILE_LABELS[file.name] ?? file.name}
+                  {profileFileCaption(file.name)}
                 </span>
               ))}
             </div>

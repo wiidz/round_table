@@ -19,6 +19,7 @@ import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
+import { domainPageEyebrow, domainPageTitle } from '@/lib/ui-labels'
 import { Button } from '@/components/ui/button'
 import { hePressable } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
@@ -50,7 +51,7 @@ export function ParticipantsPage() {
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载 Participant 列表')
+          setError('无法加载专家列表')
         }
       })
       .finally(() => {
@@ -136,11 +137,11 @@ export function ParticipantsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <ProfilePageHeader
           role="participant"
-          eyebrow="Expert Profile"
-          title="Participant"
+          eyebrow={domainPageEyebrow('participant')}
+          title={domainPageTitle('participant')}
           description={
             <>
-              管理会议专家：代号、名称与 SOUL / AGENTS / TOOLS 档案。代号与名称均不可重复；修改代号会同步重命名档案目录。
+              管理会议专家（Participant）：代号、名称与 SOUL / AGENTS / TOOLS 档案。代号与名称均不可重复；修改代号会同步重命名档案目录。
             </>
           }
         />
@@ -162,10 +163,10 @@ export function ParticipantsPage() {
 
       {!loading && !error && participants.length === 0 && (
         <ProfileStatePanel
-          title="暂无 Participant 档案"
+          title="暂无专家档案"
           description={
             <>
-              点击「添加专家」创建第一位专家，或在{' '}
+              点击「添加专家」创建第一位专家（Participant），或在{' '}
               <code className="font-mono text-xs">data/profiles/participants/</code>{' '}
               下手动新建目录。
             </>

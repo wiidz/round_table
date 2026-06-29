@@ -11,7 +11,7 @@ import {
 } from '@/lib/highend-styles'
 import {
   PARTICIPANT_STANDARD_FILES,
-  PROFILE_FILE_LABELS,
+  profileFileCaption,
 } from '@/lib/profile-labels'
 import { cn } from '@/lib/utils'
 
@@ -107,7 +107,7 @@ export function ParticipantGridCard({
               return (
                 <span
                   key={file}
-                  title={PROFILE_FILE_LABELS[file] ?? file}
+                  title={profileFileCaption(file)}
                   className={cn(
                     'rounded-md px-2 py-0.5 font-mono text-[10px] ring-1 ring-inset',
                     present
