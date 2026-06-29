@@ -58,6 +58,20 @@ func ParseParticipantBotMapping(raw string) map[string]string {
 	return out
 }
 
+// NewMappedBotPool returns a pool with pre-wired senders (e.g. browser chat transport).
+func NewMappedBotPool(defaultSender ChannelSender, byID map[string]ChannelSender) *BotPool {
+	cp := make(map[string]ChannelSender, len(byID))
+	for id, sender := range byID {
+		if id = strings.TrimSpace(id); id != "" && sender != nil {
+			cp[id] = sender
+		}
+	}
+	return &BotPool{
+		Default: defaultSender,
+		byID:    cp,
+	}
+}
+
 // OpenBotPool connects send-only participant bots. Missing tokens are skipped (fallback to Default).
 func OpenBotPool(opts PoolOptions) (*BotPool, error) {
 	if opts.Default == nil {

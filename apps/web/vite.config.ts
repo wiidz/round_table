@@ -59,16 +59,22 @@ export default defineConfig(({ mode }) => {
   warnIfChromeBlockedPort(port)
   const proxyTarget = apiProxyTarget(env)
   const host = devHost(env)
+  const httpPort = envPort(env.ROUND_TABLE_HTTP_PORT, 7777)
+  const chatWsDevUrl = `ws://127.0.0.1:${httpPort}/api/chat/ws`
 
   const proxy = {
     '/api': {
       target: proxyTarget,
       changeOrigin: true,
+      ws: true,
     },
   }
 
   return {
     plugins: [tailwindcss(), react()],
+    define: {
+      'import.meta.env.VITE_CHAT_WS_DEV': JSON.stringify(chatWsDevUrl),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),

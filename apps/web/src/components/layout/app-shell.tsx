@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/', label: '概览', end: true },
+  { to: '/chat', label: '聊天', end: false },
   { to: '/meetings', label: '会议', end: false },
   { to: '/principals', label: domainNavLabel('principal'), end: false },
   { to: '/participants', label: domainNavLabel('participant'), end: false },

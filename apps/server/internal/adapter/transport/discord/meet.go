@@ -134,8 +134,7 @@ func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (
 }
 
 func (r *MeetRunner) checkBeginSetup(msg transport.Inbound, loc Locale) (string, bool) {
-	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
-	binding, ok := r.Registry.Get(scope)
+	binding, ok := r.bindingFor(msg)
 	if !ok {
 		return meetNeedBindText(loc), true
 	}
@@ -241,13 +240,16 @@ func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
 // launch starts the meeting asynchronously after configuration is confirmed.
 func (r *MeetRunner) launch(msg transport.Inbound, cfg meetLaunchConfig) (string, error) {
 	loc := r.locale()
-	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
-	binding, ok := r.Registry.Get(scope)
+	binding, ok := r.bindingFor(msg)
 	if !ok {
 		return meetNeedBindText(loc), nil
 	}
 
-	meetingID := fmt.Sprintf("mtg-dc-%d", time.Now().Unix())
+	meetingPrefix := "mtg-dc"
+	if msg.Platform == "web" {
+		meetingPrefix = "mtg-web"
+	}
+	meetingID := fmt.Sprintf("%s-%d", meetingPrefix, time.Now().Unix())
 	if err := r.sessions.tryStart(msg.ChannelID, meetingID); err != nil {
 		if busy := extractBusyMeetingID(err); busy != "" {
 			return meetChannelBusyText(loc, busy), nil

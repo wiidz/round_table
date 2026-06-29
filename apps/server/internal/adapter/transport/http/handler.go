@@ -16,6 +16,7 @@ import (
 	"round_table/apps/server/internal/engine"
 	"round_table/apps/server/internal/platform/config"
 	"round_table/apps/server/internal/platform/discordsvc"
+	"round_table/apps/server/internal/platform/webchat"
 )
 
 // Handler serves REST endpoints for web clients.
@@ -27,6 +28,7 @@ type Handler struct {
 	events     storage.Store
 	config     *config.Service
 	discordSvc *discordsvc.Supervisor
+	webChat    *webchat.Service
 }
 
 func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, events storage.Store, configSvc *config.Service, discordSvc *discordsvc.Supervisor) (*Handler, error) {
@@ -42,12 +44,14 @@ func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, events storag
 		events:     events,
 		config:     configSvc,
 		discordSvc: discordSvc,
+		webChat:    webchat.New(cfg, configSvc),
 	}, nil
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.handleHealth)
 	mux.HandleFunc("GET /api/system/runtime", h.handleGetRuntime)
+	mux.HandleFunc("GET /api/chat/ws", h.handleChatWebSocket)
 	mux.HandleFunc("GET /api/meetings", h.handleListMeetings)
 	mux.HandleFunc("GET /api/meetings/{id}", h.handleGetMeeting)
 	mux.HandleFunc("GET /api/principals", h.handleListPrincipals)
@@ -76,6 +80,14 @@ func (h *Handler) Register(mux *http.ServeMux) {
 
 func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleChatWebSocket(w http.ResponseWriter, r *http.Request) {
+	if h.webChat == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "chat unavailable"})
+		return
+	}
+	h.webChat.HandleWebSocket(w, r)
 }
 
 func (h *Handler) handleListMeetings(w http.ResponseWriter, r *http.Request) {

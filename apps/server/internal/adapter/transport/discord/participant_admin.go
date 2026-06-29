@@ -443,6 +443,11 @@ func (a *ParticipantAdmin) formatList(loc Locale) string {
 	return b.String()
 }
 
+// FormatList returns the expert roster for web chat and other callers outside discord handlers.
+func (a *ParticipantAdmin) FormatList(loc Locale) string {
+	return a.formatList(loc)
+}
+
 func (a *ParticipantAdmin) formatShow(loc Locale, item config.ParticipantRosterItem) string {
 	exp := strings.TrimSpace(item.Expertise)
 	if exp == "" {

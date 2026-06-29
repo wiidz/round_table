@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 
 import { AppShell } from '@/components/layout/app-shell'
+import { ChatPage } from '@/pages/chat-page'
 import { HomePage } from '@/pages/home-page'
 import { MeetingDetailPage } from '@/pages/meeting-detail-page'
 import { MeetingsPage } from '@/pages/meetings-page'
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'chat', element: <ChatPage /> },
       { path: 'meetings', element: <MeetingsPage /> },
       { path: 'meetings/:id', element: <MeetingDetailPage /> },
       { path: 'principals', element: <PrincipalsPage /> },

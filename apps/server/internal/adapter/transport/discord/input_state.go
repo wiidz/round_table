@@ -101,7 +101,14 @@ func (r *MeetRunner) meetingIDForPhase(channelID string, phase ChannelInputPhase
 }
 
 func formatInputPhaseStatus(loc Locale, phase ChannelInputPhase, meetingID string) string {
+	return formatInputPhaseStatusForPlatform(loc, phase, meetingID, "")
+}
+
+func formatInputPhaseStatusForPlatform(loc Locale, phase ChannelInputPhase, meetingID, platform string) string {
 	hint := inputPhaseHint(loc, phase)
+	if platform == "web" && phase == InputPhaseIdle {
+		hint = webIdleInputHint(loc)
+	}
 	if loc == LocaleZH {
 		title := inputPhaseTitleZH(phase)
 		if meetingID != "" {
@@ -247,6 +254,13 @@ func inputPhaseHint(loc Locale, phase ChannelInputPhase) string {
 	}
 }
 
+func webIdleInputHint(loc Locale) string {
+	if loc == LocaleZH {
+		return "可发送：**新会议** / **开个会** / **!rt 专家 列表** / **!rt help**"
+	}
+	return "**新会议** / **!rt meet** · **!rt expert list** · **!rt help**"
+}
+
 func phaseExpectsPrincipalInput(phase ChannelInputPhase) bool {
 	switch phase {
 	case InputPhaseSetupTopic, InputPhaseSetupParticipants, InputPhaseSetupBrief, InputPhaseSetupMenu, InputPhaseSetupCustom,
@@ -280,9 +294,27 @@ func (r *MeetRunner) MisplacedInputHint(msg transport.Inbound) (string, bool) {
 }
 
 func (r *MeetRunner) isScopePrincipal(msg transport.Inbound) bool {
-	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
-	binding, ok := r.Registry.Get(scope)
+	binding, ok := r.bindingFor(msg)
 	return ok && binding.ExternalID == msg.AuthorID
+}
+
+// bindingFor resolves Principal identity: web sessions are implicit; Discord uses Registry.
+func (r *MeetRunner) bindingFor(msg transport.Inbound) (principalbind.Binding, bool) {
+	if msg.Platform == "web" {
+		return principalbind.Binding{
+			PrincipalID: principalbind.PrincipalIDForExternal("web", msg.ChannelID),
+			Platform:    "web",
+			ExternalID:  msg.AuthorID,
+			DisplayName: "浏览器",
+			Scope:       principalbind.ScopeKey("web", "", msg.ChannelID),
+		}, true
+	}
+	if r.Registry == nil {
+		return principalbind.Binding{}, false
+	}
+	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
+	b, ok := r.Registry.Get(scope)
+	return b, ok
 }
 
 func formatMisplacedInputHint(loc Locale, phase ChannelInputPhase) string {

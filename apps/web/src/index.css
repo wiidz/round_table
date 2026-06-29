@@ -139,3 +139,82 @@
   margin: 0 -0.35em;
   animation: md-heading-target-flash 3s ease-in-out;
 }
+
+@layer components {
+  .chat-bubble {
+    position: relative;
+    padding: 0.75rem 1rem;
+    font-size: 14px;
+    line-height: 1.625;
+  }
+
+  .chat-bubble--tail-left {
+    border-radius: 1rem;
+    border-top-left-radius: 5px;
+  }
+
+  .chat-bubble--tail-left::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 14px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 7px 6px 0;
+    border-color: transparent;
+    border-right-color: var(--chat-bubble-bg);
+  }
+
+  .chat-bubble--tail-right {
+    border-radius: 1rem;
+    border-top-right-radius: 5px;
+  }
+
+  .chat-bubble--tail-right::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 14px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 0 6px 7px;
+    border-color: transparent;
+    border-left-color: var(--chat-bubble-bg);
+  }
+
+  .chat-bubble--user {
+    --chat-bubble-bg: var(--brand-color);
+    background-color: var(--brand-color);
+    color: #fff;
+  }
+
+  .chat-bubble--moderator {
+    --chat-bubble-bg: var(--ai-soft);
+    background-color: var(--ai-soft);
+    color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai-color) 10%, transparent);
+  }
+
+  .chat-bubble--participant {
+    --chat-bubble-bg: var(--surface);
+    background-color: var(--surface);
+    color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+
+  .chat-bubble--system {
+    --chat-bubble-bg: color-mix(in srgb, var(--text-primary) 3%, transparent);
+    background-color: color-mix(in srgb, var(--text-primary) 3%, transparent);
+    color: var(--text-secondary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  }
+
+  .chat-bubble--system-error {
+    --chat-bubble-bg: var(--semantic-danger-soft);
+    background-color: var(--semantic-danger-soft);
+    color: var(--semantic-danger);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--semantic-danger) 15%, transparent);
+  }
+}

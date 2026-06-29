@@ -22,3 +22,10 @@ export function formatDateTimeYMDHMS(value: string): string {
   const s = String(date.getSeconds()).padStart(2, '0')
   return `${y}-${m}-${d} ${h}:${min}:${s}`
 }
+
+/** Short time label for chat bubbles (local HH:mm). */
+export function formatChatTime(value: string | number | Date): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+}

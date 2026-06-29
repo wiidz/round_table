@@ -164,6 +164,15 @@ func (r *Reception) channelBusyForMutate(msg transport.Inbound) (string, bool) {
 }
 
 func (r *Reception) checkMutatingPrincipal(msg transport.Inbound) (string, bool) {
+	if msg.Platform == "web" {
+		if r.Meet != nil {
+			if reply, ok := r.Meet.checkBeginSetup(msg, r.loc()); ok {
+				return reply, true
+			}
+			return "", false
+		}
+		return WebChatMutatingUnavailableText(r.loc()), true
+	}
 	if r.Meet != nil {
 		return r.Meet.checkBeginSetup(msg, r.loc())
 	}

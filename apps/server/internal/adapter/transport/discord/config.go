@@ -13,6 +13,11 @@ func (r *MeetRunner) activeCfg() config.Config {
 	return r.Cfg
 }
 
+// ActiveCfg returns effective config (exported for web transport).
+func (r *MeetRunner) ActiveCfg() config.Config {
+	return r.activeCfg()
+}
+
 func (r *MeetRunner) dc() config.DiscordTransport {
 	if r.ConfigSvc != nil {
 		return r.ConfigSvc.Current().Transport.Discord
