@@ -23,7 +23,7 @@
 | **M1** | 状态层 + 摘要 + Drawer | turn 序号、condense、Drawer 可读 Markdown | ✅ |
 | **M2** | RoundTableStage 静态布局 | 3/5/6 人 roster 席位正确、司仪/我固定方位 | ✅ |
 | **M3** | Live 气泡 + 高亮/暗沉 | 新消息切换 activeSpeaker；每席 1 条；#turn 一致 | ✅ |
-| **M4** | TranscriptStrip + 模式切换 | 小历史条、点击 Drawer；会议中进行切圆桌 |
+| **M4** | TranscriptStrip + 模式切换 | 小历史条、点击 Drawer；会议中进行切圆桌 | ✅ |
 | **M5** | 降级与 polish | `< md` IM 降级、新消息浮钮、空状态 |
 
 ---
@@ -131,13 +131,12 @@ export interface ChatMessage {
 - [x] 绑定 `latestBySeat`；200ms transition 切换 active
 - [x] `#turn` 角标与 TranscriptStrip 一致；点击 Live 气泡开 Drawer
 
-### M4 — 整合 + 模式切换（1 天）
+### M4 — 整合 + 模式切换（1 天） ✅
 
-- [ ] `round-table-view.tsx` 组合 Stage + Strip + Drawer + Composer
-- [ ] `chat-page.tsx`：检测 meeting running phase 切视图  
-  - v1：关键词/heuristic — 收到 moderator 进度或用户发「会议状态」解析 phase（若后续有 API 则替换）
-  - v1 最小：**手动 toggle「圆桌 / 列表」** 按钮 + 默认列表，会议中自动切圆桌（可选 flag）
-- [ ] TranscriptStrip 固定高度、scroll、新消息浮钮
+- [x] `round-table-view.tsx` 组合 Stage + Strip + Drawer（Composer 在 ChatWindow）
+- [x] `use-chat-view-mode` + `chat-meeting-phase`：状态回复解析；running/post 自动圆桌
+- [x] 手动切换「圆桌 / 列表」；列表模式 `ImTranscriptView` 恢复 IM 气泡
+- [x] TranscriptStrip 固定 `h-36`、scroll、新消息浮钮
 
 ### M5 — 降级与 polish（0.5–1 天）
 

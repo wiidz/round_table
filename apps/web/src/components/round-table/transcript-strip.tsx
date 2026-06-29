@@ -55,8 +55,13 @@ export function TranscriptStrip({
   }
 
   return (
-    <div className={cn('relative shrink-0 border-t border-black/[0.06] bg-black/[0.015]', className)}>
-      <div className="flex items-center justify-between px-5 py-2">
+    <div
+      className={cn(
+        'relative flex shrink-0 flex-col border-t border-black/[0.06] bg-black/[0.015]',
+        className ?? 'h-36',
+      )}
+    >
+      <div className="flex shrink-0 items-center justify-between px-5 py-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
           发言记录 · {messages.length} 条
         </p>
@@ -65,7 +70,7 @@ export function TranscriptStrip({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="max-h-36 space-y-1 overflow-y-auto overscroll-contain px-3 pb-3"
+        className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-3"
       >
         {messages.length === 0 && (
           <p className="px-2 py-3 text-center text-[12px] text-text-tertiary">暂无消息</p>

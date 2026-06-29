@@ -1,19 +1,16 @@
 import { useState } from 'react'
-import { Loader2, SendHorizonal, Wifi, WifiOff } from 'lucide-react'
+import { Loader2, LayoutList, Users, Wifi, WifiOff } from 'lucide-react'
 
-import { RoundTableStage } from '@/components/round-table/round-table-stage'
+import { ChatComposer } from '@/components/chat/chat-composer'
+import { ImTranscriptView } from '@/components/chat/im-transcript-view'
+import { RoundTableView } from '@/components/round-table/round-table-view'
 import { TranscriptDrawer } from '@/components/round-table/transcript-drawer'
-import { TranscriptStrip } from '@/components/round-table/transcript-strip'
 import { Button } from '@/components/ui/button'
+import { useChatViewMode } from '@/hooks/use-chat-view-mode'
 import { useMeetingTranscript } from '@/hooks/use-meeting-transcript'
 import { useRosterSeats } from '@/hooks/use-roster-seats'
-import {
-  heFormEmbed,
-  hePanelShell,
-  hePressable,
-  heSpring,
-  heSubsectionTitleNeutral,
-} from '@/lib/highend-styles'
+import { phaseLabel } from '@/lib/chat-meeting-phase'
+import { hePanelShell, heSubsectionTitleNeutral } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
 import type { ChatConnectionState, ChatMessage } from '@/types/chat'
@@ -52,6 +49,49 @@ function ConnectionBadge({ state }: { state: ChatConnectionState }) {
   )
 }
 
+function ViewModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: 'list' | 'roundtable'
+  onChange: (mode: 'list' | 'roundtable') => void
+}) {
+  return (
+    <div
+      className="flex rounded-lg bg-black/[0.04] p-0.5 ring-1 ring-inset ring-black/[0.06]"
+      role="group"
+      aria-label="视图模式"
+    >
+      <button
+        type="button"
+        onClick={() => onChange('roundtable')}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors',
+          mode === 'roundtable'
+            ? 'bg-surface text-brand shadow-sm'
+            : 'text-text-tertiary hover:text-text-secondary',
+        )}
+      >
+        <Users className="size-3.5" aria-hidden />
+        圆桌
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('list')}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors',
+          mode === 'list'
+            ? 'bg-surface text-brand shadow-sm'
+            : 'text-text-tertiary hover:text-text-secondary',
+        )}
+      >
+        <LayoutList className="size-3.5" aria-hidden />
+        列表
+      </button>
+    </div>
+  )
+}
+
 interface ChatWindowProps {
   className?: string
   connectionState: ChatConnectionState
@@ -75,27 +115,14 @@ export function ChatWindow({
   const [drawerMessage, setDrawerMessage] = useState<ChatMessage | null>(null)
   const canSend = connectionState === 'open'
 
+  const { mode, phase, setMode } = useChatViewMode(messages)
   const { turns, activeSpeakerId, latestBySeat } = useMeetingTranscript(messages)
   const { seats } = useRosterSeats(messages)
   const activeMessageId =
     activeSpeakerId != null ? latestBySeat.get(activeSpeakerId)?.id ?? null : null
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!canSend) return
-    if (onSend(draft)) {
-      setDraft('')
-    }
-  }
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      if (!canSend) return
-      if (onSend(draft)) {
-        setDraft('')
-      }
-    }
+  const submitDraft = () => {
+    if (onSend(draft)) setDraft('')
   }
 
   return (
@@ -104,11 +131,14 @@ export function ChatWindow({
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
           <div>
             <h2 className={heSubsectionTitleNeutral}>与司仪对话</h2>
-            <p className="mt-1 text-[12px] text-text-tertiary">
-              浏览器 Transport · 无需 Principal · 可发起会议
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-text-tertiary">
+              <span>浏览器 Transport · 无需 Principal</span>
+              <span className="text-black/20">·</span>
+              <span>{phaseLabel(phase)}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ViewModeToggle mode={mode} onChange={setMode} />
             <ConnectionBadge state={connectionState} />
             {connectionState !== 'open' && (
               <Button type="button" variant="outline" size="sm" onClick={onReconnect}>
@@ -124,53 +154,31 @@ export function ChatWindow({
           </p>
         )}
 
-        <RoundTableStage
-          seats={seats}
-          latestBySeat={latestBySeat}
-          activeSpeakerId={activeSpeakerId}
-          turnCount={turns.length}
-          onLiveMessageClick={setDrawerMessage}
-        />
-
-        <TranscriptStrip
-          messages={messages}
-          activeMessageId={activeMessageId}
-          selectedId={drawerMessage?.id ?? null}
-          onSelect={setDrawerMessage}
-        />
+        {mode === 'roundtable' ? (
+          <RoundTableView
+            seats={seats}
+            messages={messages}
+            latestBySeat={latestBySeat}
+            activeSpeakerId={activeSpeakerId}
+            turnCount={turns.length}
+            activeMessageId={activeMessageId}
+            selectedMessageId={drawerMessage?.id ?? null}
+            onSelectMessage={setDrawerMessage}
+          />
+        ) : (
+          <ImTranscriptView messages={messages} />
+        )}
 
         {lastError && connectionState === 'error' && (
           <p className="shrink-0 px-5 pb-2 text-[12px] text-danger">{lastError}</p>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="shrink-0 border-t border-black/[0.05] bg-black/[0.015] px-5 py-4"
-        >
-          <div className={cn(heFormEmbed, 'flex items-end gap-3 p-3')}>
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={2}
-              placeholder={canSend ? '输入消息，Enter 发送，Shift+Enter 换行' : '连接中…'}
-              disabled={!canSend}
-              className={cn(
-                'min-h-[3rem] flex-1 resize-none border-0 bg-transparent px-1 py-1 text-[14px]',
-                'text-text-primary placeholder:text-text-tertiary focus:outline-none',
-                'disabled:cursor-not-allowed disabled:opacity-60',
-              )}
-            />
-            <Button
-              type="submit"
-              disabled={!canSend || !draft.trim()}
-              className={cn(hePressable, heSpring, 'shrink-0 gap-1.5 rounded-xs px-4')}
-            >
-              <SendHorizonal className="size-4" aria-hidden />
-              发送
-            </Button>
-          </div>
-        </form>
+        <ChatComposer
+          draft={draft}
+          onDraftChange={setDraft}
+          onSend={submitDraft}
+          disabled={!canSend}
+        />
       </div>
 
       <TranscriptDrawer message={drawerMessage} onClose={() => setDrawerMessage(null)} />

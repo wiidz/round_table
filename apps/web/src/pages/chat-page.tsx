@@ -16,7 +16,7 @@ export function ChatPage() {
           role="participant"
           eyebrow="Chat"
           title="聊天"
-          description="浏览器 Transport：与司仪对话、发起会议、查询状态与专家名录。无需 Principal 绑定。"
+          description="浏览器 Transport：围坐圆桌或列表视图与司仪对话、发起会议。Setup 默认列表，会议进行中自动切圆桌。"
         />
       </div>
 
