@@ -64,7 +64,7 @@ Pre-meeting (R0) → Debate (R1…) → [R1 后 Free Dialogue] → Moderator 总
 
 **Engine（CLI）**已实现：Event Sourcing 主循环、Pre-meeting（Round 0）、多轮辩论、Round 1 自由对话（含 Principal turn boundary 代问）、Moderator 轮间摘要、Consensus / Confirmation（含 ItemNotes、上限三选一）、deliberation 合成、Workspace 投影、Token 用量统计。
 
-**Discord**已实现：自然语言/`!rt` 发起、数字预设菜单、确认关交互、运行期干预、Principal 自由问答 `提问`、结束 artifact 推送与按需拉取、多 Bot 发言、中文 i18n、发送重试与重连提示。详见 [docs/adapters/discord-transport.md](./docs/adapters/discord-transport.md)。
+**Discord**已实现：自然语言/`!rt` 发起、**三步简报向导**（目标 / 讨论议题 / 边界与完成标准）、数字预设菜单、确认关交互、运行期干预、Principal 自由问答 `提问`、Executive Recap + 草案合成、结束 artifact 节选推送（拉取指令仅在最后一条）与按需拉取、多 Bot 发言、中文 i18n、Typing 指示、发送重试与重连提示。详见 [docs/adapters/discord-transport.md](./docs/adapters/discord-transport.md)。
 
 ```
 apps/server/cmd/meet/            # 本地 CLI 跑会
@@ -80,12 +80,13 @@ apps/server/internal/platform/   # config、bootstrap
 ```bash
 make test          # 运行测试
 make run           # 启动 :7777 /health
-make server-dev    # 热重载 API（另开终端）
+make server-dev    # 热重载 API + 自动拉起 Discord 子进程（另开终端）
 make web-dev       # Vite 前端 :5173（勿用 6666，Chrome 会拦截）
-make run-discord   # 启动 Discord bot（需 DISCORD_BOT_TOKEN）
+make run-discord   # 仅启动 Discord bot（需 DISCORD_BOT_TOKEN）
 make stop-discord  # 清理孤儿 Discord 进程（Ctrl+C 后若 Bot 仍在线）
 make meet-3round   # 三轮辩论场景（DeepSeek）
 make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y"'
+make sync-data-pull   # 从部署机拉取 data/workspaces 等（见 deploy/sync-data.sh）
 ```
 
 **Ubuntu 服务器 Docker 部署**（单容器 Web + API + Discord Supervisor）见 [deploy/README.md](./deploy/README.md)。

@@ -44,8 +44,11 @@ func TestPostMeetArtifacts(t *testing.T) {
 	if !strings.Contains(sender.messages[0], "会议纪要") || !strings.Contains(sender.messages[1], "方案草案") {
 		t.Fatalf("messages=%v", sender.messages)
 	}
-	if !strings.Contains(sender.messages[0], "获取纪要") {
-		t.Fatalf("expected fetch hint in first message: %q", sender.messages[0])
+	if strings.Contains(sender.messages[0], "获取纪要") {
+		t.Fatalf("fetch hint should not appear on first artifact: %q", sender.messages[0])
+	}
+	if !strings.Contains(sender.messages[len(sender.messages)-1], "获取纪要") {
+		t.Fatalf("expected fetch hint on last message only: %v", sender.messages)
 	}
 }
 

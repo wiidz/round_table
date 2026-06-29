@@ -9,11 +9,13 @@ Discord 是 RoundTable v0.2 的 **Principal 入口 Transport**：绑定身份、
 ## 启动
 
 ```bash
-# apps/server/.env
+# apps/server/.env 或 deploy/.env
 DISCORD_BOT_TOKEN=...
 DISCORD_BOT_TOKEN_DESIGNER=...   # 可选，多 Bot 发言
 
-make run-discord
+make run-discord          # 独立启动 Discord Transport
+make server-dev           # 热重载 HTTP；自动拉起 Discord 子进程（discord 包变更时会 rebuild tmp/roundtable-discord）
+make stop-discord         # 清理孤儿 Discord 进程
 ```
 
 配置：`apps/server/configs/server.yaml` → `transport.discord`（locale、预设、participant_bots 等）。
@@ -43,8 +45,20 @@ Principal 绑定持久化：`data/transport/discord-principal.json`。
 
 ### 会议配置（Setup 阶段）
 
+发起 `新会议` 后，主持人逐步引导：
+
+| 步骤 | 内容 | 跳过 |
+|------|------|------|
+| 1/3 目标 | 本场要交付什么 | 发送 `-` |
+| 2/3 讨论议题 | 子议题列表（每行一条） | 发送 `-` |
+| 3/3 边界与完成标准 | 讨论范围 / 不在范围 / 完成标准 | 发送 `-` |
+
+简报确认后进入预设菜单：
+
 - 研讨型预设 **1–6**，裁决型 **J1–J5**，**0** 进入自定义
 - 自定义步骤中 **0** 返回上一级
+
+**简报展示**：Discord 中议题以 `1）2）3）…` 纯文本编号（避免 markdown 列表吞编号）；完整字段写入 `MEETING.md`。
 
 ### 确认关（`confirmation_mode: required`）
 
@@ -83,7 +97,7 @@ Principal 绑定持久化：`data/transport/discord-principal.json`。
 | `会议状态` / `状态` | 查看当前频道输入态与可接受指令 |
 | `!rt status` | 同上 |
 
-结束时会自动推送短节选，并提示上述按需拉取指令。
+结束时会自动推送各交付物**短节选**（纪要 / 草案 / 待决等，视会议模式而定）；**按需拉取指令仅在最后一条节选末尾出现一次**，避免重复刷屏。
 
 ---
 
@@ -142,7 +156,7 @@ Discord 原生 API：`POST /channels/{channel_id}/typing`（discordgo：`Session
 | 自由问答 Q&A 正文 | Participant stream（不重复 progress 正文） |
 | Principal `提问` ack | 主 Bot |
 | 确认关 Brief | 主 Bot |
-| 结束交付物 | 主 Bot（短节选 + 按需拉取） |
+| 结束交付物 | 主 Bot（各 artifact 短节选；**拉取指令仅在最后一条末尾**） |
 | LLM 流式生成 | 对应 Bot 触发 Discord「正在输入」（`ChannelTyping`） |
 
 网络：发送失败自动重试 3 次；网关重连后向活跃会议频道发送恢复提示。

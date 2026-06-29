@@ -36,6 +36,7 @@ func (r *MeetRunner) postMeetArtifacts(ctx context.Context, channelID string, fi
 		specs = append(specs, artifactSpec{artifactTitle(loc, "conclusion"), "artifacts/minutes.md"})
 	}
 
+	var payloads []string
 	for _, spec := range specs {
 		data, err := ws.Read(meetingID, spec.path)
 		if err != nil || len(strings.TrimSpace(string(data))) == 0 {
@@ -43,8 +44,13 @@ func (r *MeetRunner) postMeetArtifacts(ctx context.Context, channelID string, fi
 		}
 		header := formatArtifactHeader(loc, spec.title, spec.path, meetingID)
 		body := excerptArtifact(string(data), artifactExcerptRunes, loc)
-		footer := artifactFetchHint(loc)
-		SendLong(r.Bots.Default, ctx, channelID, header+"\n\n"+body+"\n\n"+footer)
+		payloads = append(payloads, header+"\n\n"+body)
+	}
+	for i, msg := range payloads {
+		if i == len(payloads)-1 {
+			msg += "\n\n" + artifactFetchHint(loc, final.IsDeliberation())
+		}
+		SendLong(r.Bots.Default, ctx, channelID, msg)
 	}
 }
 
@@ -83,11 +89,17 @@ func artifactPathForKind(kind string) (path, title string, ok bool) {
 	}
 }
 
-func artifactFetchHint(loc Locale) string {
+func artifactFetchHint(loc Locale, deliberation bool) string {
 	if loc == LocaleZH {
-		return "📎 完整版：**获取纪要** · **获取草案** · **获取待决** · **获取结论**"
+		if deliberation {
+			return "📎 完整版：**获取纪要** · **获取草案** · **获取待决**"
+		}
+		return "📎 完整版：**获取纪要** · **获取结论**"
 	}
-	return "📎 Full text: **get minutes** · **get draft** · **get open** · **get conclusion**"
+	if deliberation {
+		return "📎 Full text: **get minutes** · **get draft** · **get open**"
+	}
+	return "📎 Full text: **get minutes** · **get conclusion**"
 }
 
 func artifactTitle(loc Locale, kind string) string {

@@ -75,7 +75,9 @@ DISCORD_BOT_TOKEN_DESIGNER=...
 非敏感选项在 **`apps/server/configs/server.yaml`** → `transport.discord`（`locale`、`meet_mode`、预设默认值、`max_confirmation_cycles`、`participant_bots` 等）。
 
 ```bash
-make run-discord
+make run-discord    # 独立启动
+make server-dev     # HTTP 热重载 + 自动拉起 Discord（源码变更时 rebuild 子进程 binary）
+make stop-discord   # 清理孤儿进程
 ```
 
 **完整指令与行为**见 [docs/adapters/discord-transport.md](../../docs/adapters/discord-transport.md)。摘要：
@@ -83,11 +85,11 @@ make run-discord
 | 阶段 | 能力 |
 |------|------|
 | 身份 | `!rt principal bind/whoami/unbind` |
-| 发起 | `新会议` / `!rt meet` + 预设 **1–6** / **J1–J5** / 自定义 |
+| 发起 | `新会议` → 主题 → 参会阵容 → **简报三步** → 预设 **1–6** / **J1–J5** / 自定义 |
 | 确认关 | 批准/驳回、ItemNotes（`2: 意见`）、触顶三选一 |
 | 运行中 | 暂停/恢复/终止、立即合成/强制共识 |
 | 自由问答 | `提问 [participant] …`（Round 1 后） |
-| 结束 | 自动短节选 + `获取纪要/草案/待决/结论` |
+| 结束 | 各交付物短节选 + **最后一条**附 `获取纪要/草案/待决/结论` 提示 |
 
 绑定数据：`data/transport/discord-principal.json`。每频道同时一场会；进度与 Brief 由主 Bot 推送，Participant 发言由对应 Bot 发出。
 
