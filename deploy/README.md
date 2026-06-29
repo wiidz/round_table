@@ -42,8 +42,8 @@ volumes:
 # 若 ShellCrash mixed-port=4567，拉基础镜像可能也需要代理：
 export HTTP_PROXY=http://127.0.0.1:4567 HTTPS_PROXY=http://127.0.0.1:4567
 
-# 从双容器升级到单容器时务必清理旧 discord 容器（否则会重复回复）
-sh deploy/ensure-clean-discord.sh
+# 从双容器升级到单容器时，先确认没有旧 roundtable-discord 容器残留
+docker ps -a | grep roundtable || true
 
 docker compose up -d --build
 # 或：make docker-up
@@ -166,8 +166,8 @@ volumes:
 | 重启后 Principal 要重新 bind | `transport` 卷是否挂载；是否用了 `docker compose down -v` |
 | 会议跑完但 `data/workspaces` 空 | bind mount 是否指向 `./data`；`sh deploy/init-data-dirs.sh` |
 | entrypoint `cannot write to /app/data/workspaces` | 宿主机 `data/workspaces` 权限；`sudo chown -R 1000:1000 data/` |
-| Web 显示 Discord 已停但 Bot 在线 | 旧版双容器残留；`sh deploy/ensure-clean-discord.sh` |
-| **主持人消息成对重复**（如两次「请输入会议主题」） | **两个 Discord Transport 同时在线**（旧 `roundtable-discord` 容器 + Supervisor 子进程）；见下方 |
+| Web 显示 Discord 已停但 Bot 在线 | 宿主机上仍有孤儿 `roundtable-discord` 进程；见下方「主持人消息重复」 |
+| **主持人消息成对重复**（如两次「请输入会议主题」） | **两个 Transport 同时用同一 Bot Token 连 Discord**；见下方 |
 
 ## 数据卷权限（entrypoint）
 
@@ -184,17 +184,30 @@ ls -la data/workspaces
 
 ## 主持人消息重复（双 Transport）
 
-升级单容器后，若 **未删除** 旧 `roundtable-discord` 容器，会出现两个进程用同一 Bot Token 连 Discord，同一条「新会议」会触发 **两次**「请输入会议主题」。
+同一 Bot Token 只能有一个 Gateway 连接。若 **两个** `roundtable-discord` 进程同时在线（常见原因：本地 `Ctrl+C` 只停了 server、Supervisor 子进程未退出；或本地与服务器共用同一 Token），每条用户消息会被处理两次，主持人回复也会成对出现。
+
+排查：
 
 ```bash
-docker ps -a | grep roundtable
-pgrep -af roundtable-discord   # 正常应只有 1 条（Supervisor 子进程）
-
-sh deploy/ensure-clean-discord.sh
-docker compose up -d --build --force-recreate server
+pgrep -af roundtable-discord   # 正常应只有 1 条
+docker ps -a | grep roundtable # 确认无旧独立 discord 容器
 ```
 
-确认日志只有一条 `discord transport auto-started`，且 `data/logs/discord-transport.log` 里只有一次 `discord bot connected`。
+处理：
+
+```bash
+# 服务器
+docker compose down
+pkill -f roundtable-discord || true
+docker compose up -d --build
+
+# 本地开发（server-dev 启用了 auto_start 时）
+make stop-discord
+```
+
+修复后日志应只有一条 `discord transport auto-started`，`data/logs/discord-transport.log` 里只有一次 `discord bot connected`。
+
+> server 收到 SIGINT/SIGTERM 时会调用 `Supervisor.Shutdown()`；Linux 子进程还设置了 `Pdeathsig`，父进程异常退出时子进程也会收到 SIGTERM。
 
 ## 文件说明
 

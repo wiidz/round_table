@@ -78,10 +78,6 @@ func (s *Supervisor) Start(_ context.Context, cfg config.Config) error {
 
 	terminateDiscordTransportProcesses(cfg)
 
-	if n := CountDiscordTransportProcesses(); n > 0 {
-		log.Printf("[supervisor] warning: %d roundtable-discord process(es) still running after cleanup — remove orphan containers (docker rm -f roundtable-discord) to avoid duplicate Discord replies", n)
-	}
-
 	serverRoot, err := filepath.Abs(config.ServerRoot())
 	if err != nil {
 		return fmt.Errorf("resolve server root: %w", err)
@@ -94,7 +90,7 @@ func (s *Supervisor) Start(_ context.Context, cfg config.Config) error {
 	cmd := exec.Command(bin)
 	cmd.Dir = serverRoot
 	cmd.Env = withDiscordRunEnv(config.DiscordChildEnv(cfg))
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.SysProcAttr = discordChildProcAttr()
 
 	logFilePath := logPath(cfg)
 	logFile, err := openLogFile(logFilePath)
@@ -203,6 +199,16 @@ func (s *Supervisor) Stop() error {
 			return fmt.Errorf("discord transport did not stop in time")
 		}
 		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// Shutdown stops the managed discord transport child if running (no error when idle).
+func (s *Supervisor) Shutdown() {
+	if !s.Status().Running {
+		return
+	}
+	if err := s.Stop(); err != nil {
+		log.Printf("discord transport shutdown: %v", err)
 	}
 }
 

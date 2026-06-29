@@ -79,21 +79,6 @@ func (s *meetSetupSessions) pending(channelID string) bool {
 	return ok
 }
 
-// beginIfAbsent stores sess when the channel has no pending setup (atomic vs concurrent handlers).
-// Returns true when stored, false when a setup was already pending.
-func (s *meetSetupSessions) beginIfAbsent(channelID string, sess meetSetupSession) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.byChannel == nil {
-		s.byChannel = make(map[string]meetSetupSession)
-	}
-	if _, ok := s.byChannel[channelID]; ok {
-		return false
-	}
-	s.byChannel[channelID] = sess
-	return true
-}
-
 func (r *MeetRunner) meetPresets(loc Locale) []meetPreset {
 	return buildMeetPresets(r.activeCfg().Meeting.MeetPresets, loc)
 }

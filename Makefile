@@ -13,7 +13,7 @@ TOPIC_GAME_CLASS    := 设计新职业「影舞者」的核心技能与定位
 
 WEB     := ./apps/web
 
-.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-reinstall web-dev web-preview web-build
+.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord stop-discord docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-reinstall web-dev web-preview web-build
 
 SCENARIO_3ROUND := data/_templates/scenarios/3-round-debate
 TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 撤销）并批准进入开发？
@@ -26,6 +26,11 @@ run:
 run-discord:
 	https_proxy=http://127.0.0.1:7897 http_proxy=http://127.0.0.1:7897 all_proxy=socks5://127.0.0.1:7897 \
 	go run $(DISCORD_CMD)/main.go
+
+## stop-discord: stop orphan Discord transport processes (local dev / after Ctrl+C)
+stop-discord:
+	-pkill -f 'roundtable-discord' || true
+	-pkill -f 'apps/server/cmd/discord/main.go' || true
 
 ## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in deploy/.env)
 meet:

@@ -81,6 +81,7 @@ apps/server/internal/platform/   # config、bootstrap
 make test          # 运行测试
 make run           # 启动 :7777 /health
 make run-discord   # 启动 Discord bot（需 DISCORD_BOT_TOKEN）
+make stop-discord  # 清理孤儿 Discord 进程（Ctrl+C 后若 Bot 仍在线）
 make meet-3round   # 三轮辩论场景（DeepSeek）
 make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y"'
 ```

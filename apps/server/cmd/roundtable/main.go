@@ -65,6 +65,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	defer discordSvc.Shutdown()
 
 	if err := server.Run(ctx, cfg.Addr(), httptransport.WithCORS(mux)); err != nil {
 		log.Fatalf("server: %v", err)

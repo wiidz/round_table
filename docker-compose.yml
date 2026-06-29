@@ -55,7 +55,7 @@ services:
           "CMD",
           "sh",
           "-c",
-          'p="$${ROUND_TABLE_ADDR#:}"; [ -z "$$p" ] && p="$${ROUND_TABLE_HTTP_PORT:-$${ROUND_TABLE_WEB_PORT:-7777}}"; wget -qO- "http://127.0.0.1:$$p/health"',
+          'p="$${ROUND_TABLE_ADDR#:}"; [ -z "$$p" ] && p="$${ROUND_TABLE_HTTP_PORT:-7777}"; wget -qO- "http://127.0.0.1:$$p/health"',
         ]
       interval: 30s
       timeout: 5s

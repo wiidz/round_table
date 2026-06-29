@@ -30,3 +30,8 @@ func TestSupervisorStopNotRunning(t *testing.T) {
 		t.Fatal("expected error when not running")
 	}
 }
+
+func TestSupervisorShutdownIdle(t *testing.T) {
+	var s Supervisor
+	s.Shutdown() // must not panic or error
+}
