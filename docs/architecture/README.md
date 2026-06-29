@@ -20,6 +20,8 @@ Domain 概念见 [docs/domain/](../domain/README.md)，权威原则见 [CONSTITU
 | [ADR-0009](./ADR-0009-meeting-workspace.md) | Meeting Workspace 文件产出 | Accepted |
 | [ADR-0010](./ADR-0010-agent-profiles.md) | Agent Profile 身份层 | Accepted |
 | [ADR-0011](./ADR-0011-meeting-mode.md) | Meeting Mode（decision / deliberation） | Accepted |
+| [ADR-0012](./ADR-0012-transport-reception-agent.md) | Transport Reception Agent（自然语义接待层） | Accepted |
+| [ADR-0013](./ADR-0013-web-round-table-live-ui.md) | Web 圆桌 Live 视图（围坐发言 + Drawer 历史） | Draft |
 
 ---
 
@@ -40,4 +42,4 @@ Domain 概念见 [docs/domain/](../domain/README.md)，权威原则见 [CONSTITU
 
 | 编号 | 主题 | 来源 |
 |------|------|------|
-| — | （暂无） | — |
+| — | Web 圆桌 Live v2（WS turn 与 Engine 对齐） | [ADR-0013](./ADR-0013-web-round-table-live-ui.md) §6 |
