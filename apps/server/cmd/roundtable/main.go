@@ -14,10 +14,12 @@ import (
 	"round_table/apps/server/internal/platform/bootstrap"
 	"round_table/apps/server/internal/platform/config"
 	"round_table/apps/server/internal/platform/discordsvc"
+	"round_table/apps/server/internal/platform/procstats"
 	"round_table/apps/server/internal/platform/server"
 )
 
 func main() {
+	procstats.MarkServerStarted()
 	base := config.Load()
 
 	store, err := bootstrap.OpenStorage(base.Storage)

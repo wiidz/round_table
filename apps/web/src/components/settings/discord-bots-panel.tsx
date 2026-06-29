@@ -48,7 +48,7 @@ type ExpertSelectOption = ExpertOption & {
   disabled?: boolean
 }
 
-type BotTabKey = 'moderator' | `participant-${number}`
+import { resolveDiscordBotTab, type DiscordBotTabKey } from '@/lib/discord-bot-nav'
 
 const APP_ID_PATTERN = /^\d{17,20}$/
 
@@ -756,6 +756,7 @@ export function DiscordBotsPanel({
   onAutoStartChange,
   onSaved,
   generalFooter,
+  initialBotId,
 }: {
   bots: DiscordBotState[]
   guildId: string
@@ -764,6 +765,8 @@ export function DiscordBotsPanel({
   onAutoStartChange: (checked: boolean) => void
   onSaved: (resp: SettingsResponse) => void
   generalFooter?: ReactNode
+  /** 从概览等页跳转时预选 Bot 侧栏 Tab */
+  initialBotId?: string
 }) {
   const moderator = useMemo(() => bots.find((b) => b.id === 'moderator'), [bots])
   const [primaryRoleId, setPrimaryRoleId] = useState(
@@ -773,7 +776,9 @@ export function DiscordBotsPanel({
   const [moderatorBoundParticipantId, setModeratorBoundParticipantId] = useState('')
   const [participants, setParticipants] = useState<ParticipantDraft[]>(() => toParticipantDrafts(bots))
   const [expertRoster, setExpertRoster] = useState<ExpertOption[]>([])
-  const [activeTab, setActiveTab] = useState<BotTabKey>('moderator')
+  const [activeTab, setActiveTab] = useState<DiscordBotTabKey>(() =>
+    resolveDiscordBotTab(initialBotId, bots),
+  )
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -792,6 +797,11 @@ export function DiscordBotsPanel({
     setModeratorToken(mod?.token ?? '')
     setModeratorBoundParticipantId(mod?.bound_participant_id ?? '')
   }, [bots])
+
+  useEffect(() => {
+    if (!initialBotId) return
+    setActiveTab(resolveDiscordBotTab(initialBotId, bots))
+  }, [initialBotId, bots])
 
   useEffect(() => {
     let cancelled = false
@@ -1022,7 +1032,7 @@ export function DiscordBotsPanel({
           />
 
           {participants.map((p, index) => {
-            const key: BotTabKey = `participant-${index}`
+            const key: DiscordBotTabKey = `participant-${index}`
             const tabLabel = participantTabLabel(p, expertRoster, index)
             const appId = p.application_id.trim()
             return (

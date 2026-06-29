@@ -13,19 +13,23 @@ import (
 	"time"
 
 	"round_table/apps/server/internal/platform/config"
+	"round_table/apps/server/internal/platform/procstats"
 )
 
 const stopWaitTimeout = 15 * time.Second
 
 // Status is the Discord transport child process state (managed by this HTTP server).
 type Status struct {
-	Running   bool   `json:"running"`
-	Phase     string `json:"phase"` // stopped | starting | ready
-	PID       int    `json:"pid,omitempty"`
-	StartedAt string `json:"started_at,omitempty"`
-	ReadyAt   string `json:"ready_at,omitempty"`
-	LastExit  string `json:"last_exit,omitempty"`
-	LogPath   string `json:"log_path,omitempty"`
+	Running       bool   `json:"running"`
+	Phase         string `json:"phase"` // stopped | starting | ready
+	PID           int    `json:"pid,omitempty"`
+	StartedAt     string `json:"started_at,omitempty"`
+	ReadyAt       string `json:"ready_at,omitempty"`
+	LastExit      string `json:"last_exit,omitempty"`
+	LogPath       string `json:"log_path,omitempty"`
+	UptimeSeconds int64  `json:"uptime_seconds,omitempty"`
+	MemoryBytes   int64  `json:"memory_bytes,omitempty"`
+	MemorySource  string `json:"memory_source,omitempty"` // rss | heap
 }
 
 // Supervisor starts and stops the Discord transport (`go run apps/server/cmd/discord`).
@@ -64,6 +68,12 @@ func (s *Supervisor) statusLocked() Status {
 		if readyAt != "" {
 			out.ReadyAt = readyAt
 		}
+	}
+	if out.Running && out.PID > 0 && !s.startedAt.IsZero() {
+		snap := procstats.ProcessSnapshot(out.PID, s.startedAt)
+		out.UptimeSeconds = snap.UptimeSeconds
+		out.MemoryBytes = snap.MemoryBytes
+		out.MemorySource = snap.MemorySource
 	}
 	return out
 }

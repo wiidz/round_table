@@ -66,6 +66,9 @@ export interface DiscordTransportStatus {
   ready_at?: string
   last_exit?: string
   log_path?: string
+  uptime_seconds?: number
+  memory_bytes?: number
+  memory_source?: string
 }
 
 export interface DiscordTransportLogs {

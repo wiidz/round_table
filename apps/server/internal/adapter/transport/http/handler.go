@@ -47,6 +47,7 @@ func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, events storag
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", h.handleHealth)
+	mux.HandleFunc("GET /api/system/runtime", h.handleGetRuntime)
 	mux.HandleFunc("GET /api/meetings", h.handleListMeetings)
 	mux.HandleFunc("GET /api/meetings/{id}", h.handleGetMeeting)
 	mux.HandleFunc("GET /api/principals", h.handleListPrincipals)

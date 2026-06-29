@@ -46,8 +46,6 @@ import { useDiscordTransportStatus } from '@/hooks/use-discord-transport-status'
 import { readSettingsNav, writeSettingsNav } from '@/lib/settings-nav'
 import type { DiscordBotState, MeetCastConfig, MeetPresetConfig, SettingsFieldState, SettingsResponse, SettingsSubsectionMeta } from '@/types/settings'
 
-const storedNav = readSettingsNav()
-
 const settingsTabPill = cn(heFilePill, '!rounded-xs px-4 py-2.5 text-[15px]')
 const settingsTabPillSelected = cn(heFilePillSelected, '!rounded-xs px-4 py-2.5 text-[15px]')
 const settingsPanelShell = cn(hePanelShell, '!rounded-lg')
@@ -483,11 +481,24 @@ export function SettingsPage() {
   const [meetCasts, setMeetCasts] = useState<MeetCastConfig[]>([])
   const [subsections, setSubsections] = useState<Record<string, SettingsSubsectionMeta[]>>({})
   const [draft, setDraft] = useState<Record<string, string>>({})
-  const [activeTab, setActiveTab] = useState<string>(storedNav?.tab ?? TAB_ORDER[0])
-  const [activeSubsection, setActiveSubsection] = useState(storedNav?.subsection ?? '')
+  const [activeTab, setActiveTab] = useState(
+    () => readSettingsNav()?.tab ?? TAB_ORDER[0],
+  )
+  const [activeSubsection, setActiveSubsection] = useState(
+    () => readSettingsNav()?.subsection ?? '',
+  )
+  const [initialDiscordBotId] = useState(
+    () => readSettingsNav()?.discordBotId,
+  )
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const nav = readSettingsNav()
+    if (!nav?.discordBotId) return
+    writeSettingsNav({ tab: nav.tab, subsection: nav.subsection })
+  }, [])
 
   const grouped = useMemo(() => groupFields(fields), [fields])
   const tabs = useMemo(() => orderedTabs(grouped), [grouped])
@@ -908,6 +919,7 @@ export function SettingsPage() {
                   <div className={activeFields.length > 0 ? 'mt-10 border-t border-black/[0.05] pt-10' : 'mt-8'}>
                     <DiscordBotsPanel
                       bots={discordBots}
+                      initialBotId={initialDiscordBotId}
                       guildId={draft[DISCORD_GUILD_ID_KEY] ?? ''}
                       onGuildIdChange={(value) => updateField(DISCORD_GUILD_ID_KEY, value)}
                       autoStart={(draft[DISCORD_AUTO_START_KEY] ?? 'false') === 'true'}

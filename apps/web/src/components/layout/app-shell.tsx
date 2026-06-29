@@ -16,7 +16,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-canvas">
       <header className="sticky top-0 z-40 border-b border-border-subtle bg-surface/90 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2">
               <span className="inline-flex size-8 items-center justify-center rounded-lg bg-brand-soft text-sm font-semibold text-brand">
@@ -48,7 +48,7 @@ export function AppShell() {
           <ThemeToggle />
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <Outlet />
       </main>
     </div>
