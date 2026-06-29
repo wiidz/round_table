@@ -20,6 +20,11 @@ func TestLocalizeProgressZH(t *testing.T) {
 	if !strings.Contains(got, "已完成") {
 		t.Fatalf("got=%q", got)
 	}
+
+	got = localizeProgressZH("↩ confirmation rejected cycle=2 — starting round 5")
+	if got != "↩ 确认呈报第 2 次驳回 · 即将开始第 5 轮研讨" {
+		t.Fatalf("got=%q", got)
+	}
 }
 
 func TestFormatStreamStartZH(t *testing.T) {
@@ -28,7 +33,7 @@ func TestFormatStreamStartZH(t *testing.T) {
 		Phase:         "deliberation",
 		Detail:        "turn (1/4) · round 1",
 	}, LocaleZH)
-	if !strings.Contains(got, "策划") || !strings.Contains(got, "研讨") || !strings.Contains(got, "1/4") {
+	if !strings.Contains(got, "方案") || !strings.Contains(got, "研讨") || !strings.Contains(got, "1/4") {
 		t.Fatalf("got=%q", got)
 	}
 }

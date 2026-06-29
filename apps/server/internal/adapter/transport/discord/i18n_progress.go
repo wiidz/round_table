@@ -61,11 +61,11 @@ func localizeProgressEN(line string) string {
 	case strings.HasPrefix(line, "↩ confirmation rejected"):
 		var cycle, round int
 		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — starting round %d", &cycle, &round); err == nil {
-			return fmt.Sprintf("↩ Principal rejected · cycle %d · starting round %d", cycle, round)
+			return fmt.Sprintf("↩ Rejected (confirmation #%d) · starting debate round %d", cycle, round)
 		}
 		var cycleOnly int
 		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — adding one round", &cycleOnly); err == nil {
-			return fmt.Sprintf("↩ Principal rejected · cycle %d · adding one round", cycleOnly)
+			return fmt.Sprintf("↩ Rejected (confirmation #%d) · adding one debate round", cycleOnly)
 		}
 		if _, err := fmt.Sscanf(line, "↩ confirmation limit continue cycle=%d — reset cycles", &cycleOnly); err == nil {
 			return fmt.Sprintf("↩ Limit continue · cycle %d · cycles reset", cycleOnly)
@@ -219,7 +219,7 @@ func localizeProgressZH(line string) string {
 	case strings.HasPrefix(line, "… waiting for principal confirmation"):
 		var cycle int
 		if _, err := fmt.Sscanf(line, "… waiting for principal confirmation cycle=%d", &cycle); err == nil {
-			return fmt.Sprintf("⏳ 等待 Principal 确认 · 第 %d 轮", cycle)
+			return fmt.Sprintf("⏳ 等待 Principal 确认 · 呈报第 %d 次", cycle)
 		}
 
 	case strings.HasPrefix(line, "… confirmation limit reached"):
@@ -234,23 +234,23 @@ func localizeProgressZH(line string) string {
 	case strings.HasPrefix(line, "▶ confirmation prepared"):
 		var cycle int
 		if _, err := fmt.Sscanf(line, "▶ confirmation prepared cycle=%d", &cycle); err == nil {
-			return fmt.Sprintf("📎 确认清单已准备 · 第 %d 轮", cycle)
+			return fmt.Sprintf("📎 确认清单已准备 · 呈报第 %d 次", cycle)
 		}
 
 	case strings.HasPrefix(line, "★ confirmation approved"):
 		var cycle int
 		if _, err := fmt.Sscanf(line, "★ confirmation approved cycle=%d", &cycle); err == nil {
-			return fmt.Sprintf("✅ Principal 已确认 · 第 %d 轮", cycle)
+			return fmt.Sprintf("✅ Principal 已确认 · 呈报第 %d 次", cycle)
 		}
 
 	case strings.HasPrefix(line, "↩ confirmation rejected"):
 		var cycle, round int
 		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — starting round %d", &cycle, &round); err == nil {
-			return fmt.Sprintf("↩ Principal 驳回 · 第 %d 轮 · 追加第 %d 轮研讨", cycle, round)
+			return fmt.Sprintf("↩ 确认呈报第 %d 次驳回 · 即将开始第 %d 轮研讨", cycle, round)
 		}
 		var cycleOnly int
 		if _, err := fmt.Sscanf(line, "↩ confirmation rejected cycle=%d — adding one round", &cycleOnly); err == nil {
-			return fmt.Sprintf("↩ Principal 驳回 · 第 %d 轮 · 追加 1 轮研讨", cycleOnly)
+			return fmt.Sprintf("↩ 确认呈报第 %d 次驳回 · 追加 1 轮研讨", cycleOnly)
 		}
 
 	case strings.HasPrefix(line, "⏸ meeting paused"):

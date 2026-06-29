@@ -190,7 +190,7 @@ func inputPhaseHint(loc Locale, phase ChannelInputPhase) string {
 		case InputPhaseSetupParticipants:
 			return "发送 **阵容编号**（如 C1）、**专家编号/名字**（如 1,2 或 designer,player），**0** 全员，或 **取消会议**。"
 		case InputPhaseSetupBrief:
-			return "按主持人上一条提示填写 **目标 / 议程 / 范围**；发送 **-** 跳过当前步，**取消会议** 放弃。"
+			return "按主持人上一条提示填写 **目标 / 讨论议题 / 边界与完成标准**；发送 **-** 跳过当前步，**取消会议** 放弃。"
 		case InputPhaseSetupMenu:
 			return "发送预设编号 **1–6** / **J1–J5**，**0** 自定义，**取消会议** 放弃。"
 		case InputPhaseSetupCustom:

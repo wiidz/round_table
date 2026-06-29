@@ -70,39 +70,10 @@ func assembleDesignDraft(s meeting.State, executiveVerdict string, keyDecisions 
 	var b strings.Builder
 	b.WriteString("# 方案草案\n\n")
 	writeDeliberationExecutiveSummary(&b, s, executiveVerdict, keyDecisions, coreScheme, decisions, openQuestions)
-
-	b.WriteString("\n\n## 详细记录\n\n")
-	b.WriteString("### 主题\n\n")
-	b.WriteString(s.Topic)
-	if s.Goal != "" {
-		b.WriteString("\n\n### 目标\n\n")
-		b.WriteString(s.Goal)
-	}
-
-	if s.PreMeetingSummary != "" {
-		b.WriteString("\n\n### 初始视角（Pre-meeting）\n\n")
-		b.WriteString(strings.TrimSpace(s.PreMeetingSummary))
-	}
-
-	b.WriteString("\n\n### 各轮贡献汇总\n\n")
-	for _, r := range s.Minutes.Rounds {
-		if r.RoundNumber <= 0 {
-			continue
-		}
-		fmt.Fprintf(&b, "#### Round %d\n\n%s\n\n", r.RoundNumber, strings.TrimSpace(r.Summary))
-		if mod, ok := s.ModeratorSummaries[r.RoundNumber]; ok {
-			fmt.Fprintf(&b, "##### Moderator 提炼\n\n%s\n\n", strings.TrimSpace(mod))
-		}
-	}
-
-	if s.FreeDialogueCompleted && s.FreeDialogueSummary != "" {
-		b.WriteString("### 自由对话要点\n\n")
-		b.WriteString(strings.TrimSpace(s.FreeDialogueSummary))
-		b.WriteString("\n\n")
-	}
-
 	return strings.TrimSpace(b.String())
 }
+
+const designDraftRecordFooter = "> 完整发言、各轮记录与自由对话见 `MINUTES.md` 与 `rounds/`。\n"
 
 func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, executiveVerdict string, keyDecisions []string, coreScheme string, decisions, openQuestions []string) {
 	b.WriteString("## Executive Summary\n\n")
@@ -118,7 +89,7 @@ func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, exec
 		b.WriteString(coreScheme)
 		b.WriteByte('\n')
 	} else {
-		b.WriteString("- （见各轮详细记录）\n")
+		b.WriteString("- （见 MINUTES.md 与各轮发言）\n")
 	}
 
 	b.WriteString("\n### 已决要点\n\n")
@@ -143,7 +114,7 @@ func writeDeliberationExecutiveSummary(b *strings.Builder, s meeting.State, exec
 		}
 	}
 
-	b.WriteString("\n> 完整发言与 Q&A 见下方「详细记录」。\n")
+	b.WriteString("\n" + designDraftRecordFooter)
 }
 
 func writeExecutiveVerdictBlock(b *strings.Builder, executiveVerdict string, keyDecisions []string) {
@@ -400,7 +371,7 @@ func collectDeliberationOpenQuestions(s meeting.State, decisions, spillover []st
 	if len(out) > 8 {
 		out = out[:8]
 	}
-	return out
+	return dedupeOpenQuestions(out)
 }
 
 func deliberationTextSources(s meeting.State) []string {

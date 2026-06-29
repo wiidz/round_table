@@ -26,9 +26,9 @@ func participantLabel(id string, loc Locale) string {
 	}
 	switch id {
 	case "designer":
-		return "策划"
+		return "方案"
 	case "player":
-		return "玩家"
+		return "代表"
 	case "dev":
 		return "开发"
 	case "ops":

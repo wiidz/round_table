@@ -22,14 +22,14 @@ type pendingTurn struct {
 
 // channelStream posts turn headers and formatted LLM output to a Discord channel.
 type channelStream struct {
-	pool       *BotPool
-	channelID  string
-	loc        Locale
-	buf        strings.Builder
-	speaker    string
-	phase      string
-	pending    pendingTurn
-	stopTyping func()
+	pool      *BotPool
+	channelID string
+	loc       Locale
+	buf       strings.Builder
+	speaker   string
+	phase     string
+	pending   pendingTurn
+	ctx       *meetChannelContext
 }
 
 func suppressDiscordStreamPost(phase string) bool {
@@ -42,25 +42,14 @@ func suppressDiscordStreamPost(phase string) bool {
 }
 
 func (s *channelStream) beginTyping(participantID string) {
-	s.endTyping()
-	if s.pool == nil {
-		return
+	if s.ctx != nil {
+		s.ctx.beginTyping(s.pool, participantID, s.channelID)
 	}
-	sender := s.pool.SenderFor(participantID)
-	if sender == nil {
-		return
-	}
-	typer, ok := sender.(TypingSender)
-	if !ok {
-		return
-	}
-	s.stopTyping = typer.StartTyping(s.channelID)
 }
 
 func (s *channelStream) endTyping() {
-	if s.stopTyping != nil {
-		s.stopTyping()
-		s.stopTyping = nil
+	if s.ctx != nil {
+		s.ctx.endTyping()
 	}
 }
 
@@ -70,11 +59,11 @@ func (s *channelStream) Start(meta stream.Meta) {
 	s.speaker = meta.ParticipantID
 	s.phase = meta.Phase
 
+	s.beginTyping(meta.ParticipantID)
+
 	if suppressDiscordStreamPost(meta.Phase) {
 		return
 	}
-
-	s.beginTyping(meta.ParticipantID)
 
 	skipHeader := meta.ParticipantID == "moderator" &&
 		(meta.Phase == "deliberation-readiness" || meta.Phase == "deliberation-synthesis")
@@ -110,7 +99,6 @@ func (s *channelStream) End() {
 		return
 	}
 	if suppressDiscordStreamPost(phase) {
-		s.endTyping()
 		return
 	}
 	if s.pool != nil && s.pool.HasBot(speaker) {
@@ -131,7 +119,9 @@ func (s *channelStream) CompleteTurn(participantID string, tokens int, elapsed t
 }
 
 func (s *channelStream) postTurn(speaker, raw string, tokens int, elapsed time.Duration) {
-	body := formatStreamForDiscord(raw, s.loc)
+	compactSynthesis := s.phase == "deliberation-synthesis" &&
+		s.ctx != nil && s.ctx.executiveRecapPosted
+	body := formatStreamForDiscord(raw, s.loc, compactSynthesis)
 	if body == "" {
 		body = fallbackStreamBody(raw, s.loc)
 	}
@@ -167,7 +157,7 @@ func formatTurnFooter(tokens int, elapsed time.Duration, loc Locale) string {
 	return fmt.Sprintf("\n\n_%d tokens_", tokens)
 }
 
-func formatStreamForDiscord(raw string, loc Locale) string {
+func formatStreamForDiscord(raw string, loc Locale, compactSynthesis bool) string {
 	if text := formatMarkdownModeratorStream(raw, loc); text != "" {
 		return text
 	}
@@ -177,7 +167,7 @@ func formatStreamForDiscord(raw string, loc Locale) string {
 	if text := formatReadinessStream(raw, loc); text != "" {
 		return text
 	}
-	if text := formatSynthesisStream(raw, loc); text != "" {
+	if text := formatSynthesisStream(raw, loc, compactSynthesis); text != "" {
 		return text
 	}
 	return ""
@@ -234,7 +224,7 @@ func fallbackStreamBody(raw string, loc Locale) string {
 	if text := formatReadinessStream(raw, loc); text != "" {
 		return text
 	}
-	if text := formatSynthesisStream(raw, loc); text != "" {
+	if text := formatSynthesisStream(raw, loc, false); text != "" {
 		return text
 	}
 	if looksLikeJSON(raw) {
@@ -284,7 +274,7 @@ func formatReadinessStream(raw string, loc Locale) string {
 	return strings.TrimSpace(b.String())
 }
 
-func formatSynthesisStream(raw string, loc Locale) string {
+func formatSynthesisStream(raw string, loc Locale, compactAfterRecap bool) string {
 	out, err := engine.ParseSynthesisOutput(raw)
 	if err != nil {
 		return ""
@@ -295,11 +285,17 @@ func formatSynthesisStream(raw string, loc Locale) string {
 	var b strings.Builder
 	if loc == LocaleZH {
 		b.WriteString("📋 **设计草案合成**\n")
+		if compactAfterRecap {
+			b.WriteString("\n_过程回顾见上方「会议回顾」；以下为结构化草案摘要。_\n")
+		}
 	} else {
 		b.WriteString("📋 **Design draft synthesis**\n")
+		if compactAfterRecap {
+			b.WriteString("\n_See executive recap above; structured draft summary below._\n")
+		}
 	}
-	if out.ExecutiveVerdict != "" {
-		fmt.Fprintf(&b, "%s\n\n", out.ExecutiveVerdict)
+	if !compactAfterRecap && out.ExecutiveVerdict != "" {
+		fmt.Fprintf(&b, "\n%s\n\n", out.ExecutiveVerdict)
 	}
 	if loc == LocaleZH {
 		writeBulletSection(&b, "📌 Principal 需知", out.KeyDecisions)

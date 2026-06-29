@@ -12,6 +12,8 @@ import (
 	"round_table/apps/server/internal/adapter/workspace"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	wsfs "round_table/apps/server/internal/adapter/workspace/fs"
+	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/engine"
 	"round_table/apps/server/internal/platform/config"
 	"round_table/apps/server/internal/platform/discordsvc"
 )
@@ -22,11 +24,12 @@ type Handler struct {
 	profile    *profFS.Store
 	bindings   *principalbind.Registry
 	meetings   storage.MeetingCatalog
+	events     storage.Store
 	config     *config.Service
 	discordSvc *discordsvc.Supervisor
 }
 
-func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, configSvc *config.Service, discordSvc *discordsvc.Supervisor) (*Handler, error) {
+func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, events storage.Store, configSvc *config.Service, discordSvc *discordsvc.Supervisor) (*Handler, error) {
 	reg, err := principalbind.NewRegistry(cfg.Transport.Discord.BindingsFile)
 	if err != nil {
 		return nil, err
@@ -36,6 +39,7 @@ func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, configSvc *co
 		profile:    profFS.NewStore(cfg.Profile.Root, cfg.Profile.Templates),
 		bindings:   reg,
 		meetings:   catalog,
+		events:     events,
 		config:     configSvc,
 		discordSvc: discordSvc,
 	}, nil
@@ -120,6 +124,31 @@ func (h *Handler) handleGetMeeting(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, status, map[string]string{"error": err.Error()})
 		return
+	}
+	if h.events != nil {
+		if envs, err := h.events.List(r.Context(), id); err == nil && len(envs) > 0 {
+			if s, err := meeting.Fold(id, envs); err == nil {
+				doc := engine.RenderMeetingDoc(s)
+				if detail.Files == nil {
+					detail.Files = make(map[string]string)
+				}
+				detail.Files[workspace.FileMeeting] = doc
+				idx := workspace.MeetingIndex{ID: id}
+				wsfs.EnrichFromMeetingDoc(&idx, doc)
+				if idx.Topic != "" {
+					detail.Topic = idx.Topic
+				}
+				if idx.Status != "" {
+					detail.Status = idx.Status
+				}
+				if idx.Mode != "" {
+					detail.Mode = idx.Mode
+				}
+				if idx.StartedAt != "" {
+					detail.StartedAt = idx.StartedAt
+				}
+			}
+		}
 	}
 	writeJSON(w, http.StatusOK, detail)
 }

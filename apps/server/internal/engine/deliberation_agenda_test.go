@@ -59,6 +59,12 @@ func TestAssembleDesignDraftFromAgenda(t *testing.T) {
 	if !strings.Contains(summary, "### 工程实现与平衡约束") {
 		t.Fatal("missing engineering section")
 	}
+	if strings.Contains(summary, "## 详细记录") {
+		t.Fatal("design-draft should not include detailed record appendix")
+	}
+	if !strings.Contains(summary, "MINUTES.md") {
+		t.Fatal("missing pointer to MINUTES.md")
+	}
 	if len(open) < 2 {
 		t.Fatalf("open = %v", open)
 	}

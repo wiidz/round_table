@@ -19,9 +19,9 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 	var b strings.Builder
 	if loc == LocaleZH {
 		if brief.MaxConfirmationCycles > 0 {
-			fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d/%d 轮\n", cycle, brief.MaxConfirmationCycles)
+			fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d/%d 次呈报\n", cycle, brief.MaxConfirmationCycles)
 		} else {
-			fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d 轮\n", cycle)
+			fmt.Fprintf(&b, "📋 **Principal 确认关** · 第 %d 次呈报\n", cycle)
 		}
 		fmt.Fprintf(&b, "🆔 `%s`\n\n", meetingID)
 		if brief.ExecutiveSummary != "" {
@@ -40,8 +40,8 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 		}
 		b.WriteString("请审阅方案草案，回复：\n")
 		b.WriteString("**批准** — 通过并归档\n")
-		b.WriteString("**驳回** — 追加 1 轮研讨（可附修改意见，如：`驳回 技能数值需重算`）\n")
-		b.WriteString("**逐项附注** — 如：`1: 通过  2: 技能树需重算`\n\n")
+		b.WriteString("**驳回** — 再开展 1 轮研讨（可附修改意见，如：`驳回 第二节需补充依据`）\n")
+		b.WriteString("**逐项附注** — 如：`1: 通过  2: 需重写摘要`\n\n")
 		b.WriteString("也可回复 **1** 批准 · **2** 驳回")
 		return strings.TrimRight(b.String(), "\n")
 	}
@@ -67,8 +67,8 @@ func formatConfirmationBrief(loc Locale, meetingID string, cycle int, brief even
 	}
 	b.WriteString("Reply:\n**approve** / **1** — accept and finish\n")
 	b.WriteString("**reject** / **2** — resume debate (optional feedback)\n")
-	b.WriteString("**Item notes** — e.g. `1: ok  2: rework skill tree`\n")
-	b.WriteString("Example: `reject need more detail on cooldowns`")
+	b.WriteString("**Item notes** — e.g. `1: ok  2: rework section 2`\n")
+	b.WriteString("Example: `reject need more detail on timeline`")
 	return strings.TrimRight(b.String(), "\n")
 }
 
@@ -82,7 +82,7 @@ func formatConfirmationLimitFallback(loc Locale, meetingID string, cycle int, br
 		}
 		b.WriteString("已达 `max_confirmation_cycles`，请选择下一步：\n\n")
 		b.WriteString("**1** — **强制批准**（按当前草案归档）\n")
-		b.WriteString("**2** — **继续研讨**（重置确认轮次，追加 1 轮；可附意见如 `2 技能树需重算`）\n")
+		b.WriteString("**2** — **继续研讨**（重置确认轮次，追加 1 轮；可附意见如 `2 需补充风险分析`）\n")
 		b.WriteString("**3** — **中止会议**（输出部分纪要）\n")
 		return strings.TrimRight(b.String(), "\n")
 	}
@@ -272,7 +272,7 @@ func confirmReceivedApproveText(loc Locale) string {
 
 func confirmReceivedRejectText(loc Locale) string {
 	if loc == LocaleZH {
-		return "↩ 已收到 **驳回**，将追加 **1 轮** 研讨…"
+		return "↩ 已收到 **驳回**。将再开展一轮研讨，合成后再次呈报确认…"
 	}
-	return "↩ **Rejected** — adding **one** debate round with your feedback…"
+	return "↩ **Rejected** — one more debate round will run, then confirmation again…"
 }

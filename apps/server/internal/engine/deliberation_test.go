@@ -38,8 +38,11 @@ func TestModeratorSynthesizeFinal_executiveSummary(t *testing.T) {
 	if !strings.Contains(summary, "### 已决要点") {
 		t.Fatal("missing decisions section")
 	}
-	if !strings.Contains(summary, "详细记录") {
-		t.Fatal("missing detailed section")
+	if strings.Contains(summary, "## 详细记录") {
+		t.Fatal("design-draft should not include detailed record appendix")
+	}
+	if !strings.Contains(summary, "MINUTES.md") {
+		t.Fatal("missing pointer to MINUTES.md")
 	}
 	if len(open) == 0 {
 		t.Fatal("expected open questions")
@@ -304,6 +307,19 @@ func TestIsTentativeStatementNotQuestion(t *testing.T) {
 	}
 	if isTentativeStatementNotQuestion("是否采用实体部署？") {
 		t.Fatal("real question should not be filtered")
+	}
+}
+
+func TestDedupeOpenQuestions(t *testing.T) {
+	items := []string{
+		"各方案优先级排序需明确（开发成本、玩家反馈、回收周期）",
+		"各方案优先级排序（开发成本、玩家反馈、回收周期）待明确",
+		"动态事件奖励是否可能演变成新日常负担？需要明确奖励类型与频次上限。",
+		"动态事件奖励定位是否可能演变成新日常负担，需在设计中约束。",
+	}
+	got := dedupeOpenQuestions(items)
+	if len(got) != 2 {
+		t.Fatalf("deduped=%v", got)
 	}
 }
 

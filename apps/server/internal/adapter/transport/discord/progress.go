@@ -16,15 +16,22 @@ type channelProgress struct {
 	loc                Locale
 	principal          *ChannelPrincipal
 	pendingEngineStart string
+	ctx                *meetChannelContext
 }
 
 func (p *channelProgress) Logf(format string, args ...any) {
 	line := fmt.Sprintf(format, args...)
+	if isModeratorGenerationProgress(line) {
+		p.beginModeratorTyping()
+	}
 	if round, body, ok := parseModeratorSummaryLine(line); ok {
 		p.postModeratorContent(formatModeratorRoundSummaryDiscord(round, body, p.loc))
 		return
 	}
 	if body, ok := parseExecutiveRecapLine(line); ok {
+		if p.ctx != nil {
+			p.ctx.executiveRecapPosted = true
+		}
 		p.postModeratorContent(formatExecutiveRecapDiscord(body, p.loc))
 		return
 	}
@@ -71,7 +78,20 @@ func (p *channelProgress) postModeratorContent(content string) {
 	if content == "" || p.pool.Default == nil {
 		return
 	}
+	p.endModeratorTyping()
 	SendLong(p.pool.Default, context.Background(), p.channelID, content)
+}
+
+func (p *channelProgress) beginModeratorTyping() {
+	if p.ctx != nil {
+		p.ctx.beginTyping(p.pool, "moderator", p.channelID)
+	}
+}
+
+func (p *channelProgress) endModeratorTyping() {
+	if p.ctx != nil {
+		p.ctx.endTyping()
+	}
 }
 
 func formatModeratorRoundSummaryDiscord(round int, body string, loc Locale) string {
@@ -160,6 +180,9 @@ func shouldPostProgress(line string) bool {
 		strings.HasPrefix(line, "◆ executive recap failed") ||
 		strings.HasPrefix(line, "◆ synthesis readiness round=") ||
 		strings.HasPrefix(line, "◆ synthesis completed (") {
+		return false
+	}
+	if strings.HasPrefix(line, "◇ synthesis readiness:") {
 		return false
 	}
 	for _, mark := range []string{"▶", "■", "★", "◇", "⏸", "↩"} {

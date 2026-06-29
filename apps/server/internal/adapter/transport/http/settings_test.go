@@ -23,7 +23,7 @@ func TestHandleSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err := NewHandler(svc.Current(), nil, svc, nil)
+	h, err := NewHandler(svc.Current(), nil, nil, svc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestHandleDiscordBots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err := NewHandler(svc.Current(), nil, svc, nil)
+	h, err := NewHandler(svc.Current(), nil, nil, svc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestHandleMeetPresets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err := NewHandler(svc.Current(), nil, svc, nil)
+	h, err := NewHandler(svc.Current(), nil, nil, svc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

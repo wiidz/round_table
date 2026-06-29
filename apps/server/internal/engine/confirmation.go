@@ -69,7 +69,6 @@ func (e *Engine) advanceConfirmation(ctx context.Context, s meeting.State) (meet
 		if err != nil {
 			return s, err
 		}
-		e.logf("↩ confirmation rejected cycle=%d — starting round %d", cycle, s.CurrentRound+1)
 		return e.startRound(ctx, s)
 	default:
 		return s, errUnknownPrincipalDecision

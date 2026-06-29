@@ -47,7 +47,7 @@ const receptionJSONSchema = `Respond with JSON only:
   "participant_ref": "existing expert id or display name for update/delete",
   "expertise": "optional expertise tag",
   "topic": "meeting topic for start_meeting",
-  "participant_query": "optional roster pick for start_meeting, e.g. 策划、玩家",
+  "participant_query": "optional roster pick for start_meeting, e.g. analyst, ops",
   "profile_file": "soul|agents|tools for update_participant_profile",
   "profile_content": "markdown body when provided inline"
 }

@@ -108,6 +108,7 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 		normalizeSynthesisStrings(out.Decisions, 10),
 		normalizeSynthesisStrings(out.OpenQuestions, 8),
 	)
+	openQuestions = dedupeOpenQuestions(openQuestions)
 	decisions = dedupeDecisionsAgainstCoreScheme(coreItems, decisions)
 	coreScheme := formatBulletList(coreItems, 6)
 	verdict, keyDecisions := normalizeExecutiveVerdict(out.ExecutiveVerdict, out.KeyDecisions, s.Topic, coreScheme, decisions, openQuestions)

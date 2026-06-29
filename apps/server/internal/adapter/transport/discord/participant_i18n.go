@@ -74,12 +74,12 @@ func formatExpertAskDisplayName(loc Locale) string {
 	if loc == LocaleZH {
 		return `🧑‍💼 **新建专家 · 1/4 名称**
 
-请发送 **显示名**（如「LOL 玩家代表」）。
+请发送 **显示名**（如「领域顾问」）。
 取消：发送 **取消专家**`
 	}
 	return `🧑‍💼 **New expert · 1/4 display name**
 
-Send the **display name** (e.g. LOL player advocate).
+Send the **display name** (e.g. domain advocate).
 Cancel: send **cancel expert**`
 }
 
@@ -89,14 +89,14 @@ func formatExpertAskID(loc Locale, suggested string) string {
 
 建议代号：`+"`%s`"+`
 
-请发送代号（小写英文，如 `+"`player_lol`"+`），或发 **自动** / **-%s** 使用建议。
+请发送代号（小写英文，如 `+"`domain_advocate`"+`），或发 **自动** / **-%s** 使用建议。
 取消：发送 **取消专家**`, suggested, suggested)
 	}
 	return fmt.Sprintf(`🧑‍💼 **New expert · 2/4 id**
 
 Suggested: `+"`%s`"+`
 
-Send codename (lowercase, e.g. `+"`player_lol`"+`) or **auto** / send suggested id as-is.
+Send codename (lowercase, e.g. `+"`domain_advocate`"+`) or **auto** / send suggested id as-is.
 Cancel: send **cancel expert**`, suggested)
 }
 
@@ -104,12 +104,12 @@ func formatExpertAskExpertise(loc Locale) string {
 	if loc == LocaleZH {
 		return `🧑‍💼 **新建专家 · 3/4 专长**
 
-请发送 **专长标签**（如 gameplay、玩家体验），或 **跳过** 使用默认。
+请发送 **专长标签**（如 security、合规），或 **跳过** 使用默认。
 取消：发送 **取消专家**`
 	}
 	return `🧑‍💼 **New expert · 3/4 expertise**
 
-Send an **expertise tag** (e.g. gameplay) or **skip** for default.
+Send an **expertise tag** (e.g. security, compliance) or **skip** for default.
 Cancel: send **cancel expert**`
 }
 
@@ -150,7 +150,7 @@ func formatExpertAskEditFields(loc Locale, item config.ParticipantRosterItem) st
 
 当前：名称=%s · 专长=%s · 代号=%s
 
-请一行发送修改（示例：`+"`名称=新名称, 专长=pvp`"+`）。
+请一行发送修改（示例：`+"`名称=新名称, 专长=合规`"+`）。
 可改字段：**名称** / **专长** / **代号**（无需改的字段可省略）。
 取消：发送 **取消专家**`, item.ID, item.DisplayName, exp, item.ID)
 	}
@@ -158,7 +158,7 @@ func formatExpertAskEditFields(loc Locale, item config.ParticipantRosterItem) st
 
 Current: name=%s · expertise=%s · id=%s
 
-Send updates in one line (e.g. `+"`name=New Name, expertise=pvp`"+`).
+Send updates in one line (e.g. `+"`name=New Name, expertise=compliance`"+`).
 Fields: **name** / **expertise** / **id**.
 Cancel: send **cancel expert**`, item.ID, item.DisplayName, exp, item.ID)
 }

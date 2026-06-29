@@ -36,6 +36,22 @@ func TestFormatBriefForEngineGoal(t *testing.T) {
 	}
 }
 
+func TestParseAgendaLines_preservesCommasInTopic(t *testing.T) {
+	got := parseAgendaLines("1）氪金方案（扭蛋、头饰、卡片）\n2）数值膨胀（+1% 双攻，冒险手册）")
+	want := []string{
+		"氪金方案（扭蛋、头饰、卡片）",
+		"数值膨胀（+1% 双攻，冒险手册）",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got=%v want=%v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("[%d] got=%q want=%q", i, got[i], want[i])
+		}
+	}
+}
+
 func TestAgendaTitlesToItems(t *testing.T) {
 	items := agendaTitlesToItems([]string{"核心技能", "职业定位"})
 	if len(items) != 2 || items[0].Title != "核心技能" || items[0].ID == "" {
@@ -68,6 +84,25 @@ func TestHandlePresetMenuPreservesBrief(t *testing.T) {
 	}
 }
 
+func TestFormatBriefSummaryBody_listsTopicsFully(t *testing.T) {
+	body := formatBriefSummaryBody(LocaleZH, meetBrief{
+		Goal: "输出草案",
+		AgendaTitles: []string{
+			"背景与约束梳理",
+			"方案选项对比与取舍",
+			"风险、依赖与后续行动",
+		},
+	})
+	if strings.Contains(body, " · ") {
+		t.Fatalf("topics should not be joined with middle dots: %q", body)
+	}
+	for _, want := range []string{"- 1. 背景与约束", "- 2. 方案选项", "- 3. 风险、依赖"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %q", want, body)
+		}
+	}
+}
+
 func TestBriefWizardToPresetMenu(t *testing.T) {
 	r := &MeetRunner{
 		Cfg: config.Config{Meeting: config.Meeting{MeetPresets: config.DefaultMeetPresets(config.Config{})}},
@@ -81,12 +116,12 @@ func TestBriefWizardToPresetMenu(t *testing.T) {
 		step:   setupStepBriefGoal,
 	}
 	sess, reply := r.advanceBriefGoal(sess, "输出方案草案", LocaleZH)
-	if sess.step != setupStepBriefAgenda || !strings.Contains(reply, "议程") {
-		t.Fatalf("agenda step: step=%v reply=%q", sess.step, reply)
+	if sess.step != setupStepBriefAgenda || !strings.Contains(reply, "讨论议题") {
+		t.Fatalf("topics step: step=%v reply=%q", sess.step, reply)
 	}
 	sess, reply = r.advanceBriefAgenda(sess, "定位\n循环", LocaleZH)
-	if sess.step != setupStepBriefScope || len(sess.config.Brief.AgendaTitles) != 2 {
-		t.Fatalf("scope step: step=%v agenda=%v", sess.step, sess.config.Brief.AgendaTitles)
+	if sess.step != setupStepBriefScope || len(sess.config.Brief.AgendaTitles) != 2 || !strings.Contains(reply, "边界与完成标准") {
+		t.Fatalf("scope step: step=%v agenda=%v reply=%q", sess.step, sess.config.Brief.AgendaTitles, reply)
 	}
 	sess, reply = r.advanceBriefScope(sess, "-", LocaleZH)
 	if sess.step != setupStepPresetMenu || !strings.Contains(reply, "请选择会议方案") {

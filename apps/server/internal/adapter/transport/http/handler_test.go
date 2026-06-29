@@ -24,7 +24,7 @@ func TestHandleListMeetings(t *testing.T) {
 		}
 	}
 
-	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, nil, nil, nil)
+	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestHandleListMeetingsPrefersWorkspaceOverCatalog(t *testing.T) {
 		}
 	}
 
-	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, stubMeetingCatalog{total: 1}, nil, nil)
+	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, stubMeetingCatalog{total: 1}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ Test Topic
 		t.Fatal(err)
 	}
 
-	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, nil, nil, nil)
+	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestHandleListPrincipals(t *testing.T) {
 
 	h, err := NewHandler(config.Config{
 		Profile: config.Profile{Root: dir, Templates: templates},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

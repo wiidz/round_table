@@ -14,7 +14,7 @@ func isFreeDialogueQuestionTrigger(content string) bool {
 }
 
 // parseFreeDialogueQuestion extracts question text and optional target participant ID.
-// Forms: `提问 designer 数值怎么定` · `提问 数值怎么定` · `ask player: scope?`
+// Forms: `提问 analyst 风险如何评估` · `提问 风险如何评估` · `ask ops: timeline?`
 func parseFreeDialogueQuestion(content string) (question, answererID string, ok bool) {
 	s := strings.TrimSpace(content)
 	if s == "" {
@@ -136,7 +136,7 @@ func freeDialogueQuestionConfirmBlocksText(loc Locale) string {
 
 func freeDialogueQuestionParseErrorText(loc Locale, err error) string {
 	if loc == LocaleZH {
-		return "❌ " + err.Error() + "\n用法：**提问** [参与者] 你的问题"
+		return "❌ " + err.Error() + "\n用法：**提问** [参与者] 你的问题（例：`提问 analyst 主要风险是什么`）"
 	}
-	return "❌ " + err.Error() + "\nUsage: **ask** [participant] your question"
+	return "❌ " + err.Error() + "\nUsage: **ask** [participant] your question (e.g. `ask analyst what are the main risks`)"
 }

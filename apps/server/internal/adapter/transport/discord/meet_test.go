@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -36,6 +37,9 @@ func TestShouldPostProgress(t *testing.T) {
 	if shouldPostProgress("◆ synthesis readiness round=2 ready=false (x)") {
 		t.Fatal("expected skip duplicate readiness line")
 	}
+	if shouldPostProgress("◇ synthesis readiness: ready (consensus reached)") {
+		t.Fatal("expected skip readiness — stream posts formatted body")
+	}
 	if shouldPostProgress("… waiting for principal decision") {
 		t.Fatal("expected skip waiting")
 	}
@@ -46,7 +50,7 @@ func TestShouldPostProgress(t *testing.T) {
 
 func TestFormatStreamForDiscord_participant(t *testing.T) {
 	raw := `{"content":"双入口触发","stance":"none","object_reason":""}`
-	got := formatStreamForDiscord(raw, LocaleZH)
+	got := formatStreamForDiscord(raw, LocaleZH, false)
 	if !strings.Contains(got, "双入口触发") {
 		t.Fatalf("got=%q", got)
 	}
@@ -54,7 +58,7 @@ func TestFormatStreamForDiscord_participant(t *testing.T) {
 
 func TestFormatStreamForDiscord_malformedParticipantJSON(t *testing.T) {
 	raw := `{"content":"玩家代表提到「流派多样性」，我想追问：你会不会觉得不便？」`
-	got := formatStreamForDiscord(raw, LocaleZH)
+	got := formatStreamForDiscord(raw, LocaleZH, false)
 	if strings.HasPrefix(got, "{") || got == "" {
 		t.Fatalf("expected parsed content, got=%q", got)
 	}
@@ -73,7 +77,7 @@ func TestFallbackStreamBody_neverLeaksRawJSON(t *testing.T) {
 
 func TestFormatStreamForDiscord_synthesis(t *testing.T) {
 	raw := `{"executive_verdict":"建议采用方案 A","key_decisions":["统一冷却"],"core_scheme":["A"],"decisions":["B"],"open_questions":["C?"]}`
-	got := formatStreamForDiscord(raw, LocaleZH)
+	got := formatStreamForDiscord(raw, LocaleZH, false)
 	for _, want := range []string{"方案 A", "Principal 需知", "统一冷却", "方案要点", "A", "已决事项", "B", "开放问题", "C?"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in %q", want, got)
@@ -83,7 +87,7 @@ func TestFormatStreamForDiscord_synthesis(t *testing.T) {
 
 func TestFormatStreamForDiscord_executiveRecapMarkdown(t *testing.T) {
 	raw := "## 会议回顾\n\n### 目标与议程覆盖\n已覆盖核心模块。"
-	got := formatStreamForDiscord(raw, LocaleZH)
+	got := formatStreamForDiscord(raw, LocaleZH, false)
 	if !strings.Contains(got, "会议回顾") || !strings.Contains(got, "目标与议程覆盖") {
 		t.Fatalf("got=%q", got)
 	}
@@ -100,15 +104,40 @@ func TestFallbackStreamBody_malformedSynthesisJSON(t *testing.T) {
 	}
 }
 
+func TestFormatSynthesisStream_compactAfterRecap(t *testing.T) {
+	raw := `{"executive_verdict":"重复的总括结论","key_decisions":["A"],"core_scheme":["B"],"open_questions":["C?"]}`
+	full := formatSynthesisStream(raw, LocaleZH, false)
+	compact := formatSynthesisStream(raw, LocaleZH, true)
+	if !strings.Contains(full, "重复的总括结论") {
+		t.Fatalf("full=%q", full)
+	}
+	if strings.Contains(compact, "重复的总括结论") {
+		t.Fatalf("compact should omit verdict: %q", compact)
+	}
+	if !strings.Contains(compact, "会议回顾") || !strings.Contains(compact, "Principal 需知") {
+		t.Fatalf("compact=%q", compact)
+	}
+}
+
 func TestChannelStream_suppressExecutiveRecapStream(t *testing.T) {
+	main := &typingStubSender{id: "main"}
 	capture := &captureSender{}
-	pool := &BotPool{Default: capture, byID: map[string]ChannelSender{"moderator": capture}}
-	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH}
+	pool := &BotPool{Default: main, byID: map[string]ChannelSender{"moderator": capture}}
+	ctx := &meetChannelContext{}
+	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH, ctx: ctx}
 	cs.Start(stream.Meta{ParticipantID: "moderator", Phase: "moderator-executive-recap"})
 	cs.buf.WriteString("## 会议回顾\n\n内容")
 	cs.End()
 	if len(capture.messages) != 0 {
 		t.Fatalf("stream should be suppressed, got %v", capture.messages)
+	}
+	if atomic.LoadInt32(&main.typingActive) != 1 {
+		t.Fatal("typing should continue until progress posts recap")
+	}
+	cp := &channelProgress{pool: pool, channelID: "ch1", loc: LocaleZH, ctx: ctx}
+	cp.Logf("◆ executive recap\n## 会议回顾\n\n内容")
+	if atomic.LoadInt32(&main.typingActive) != 0 {
+		t.Fatal("typing should stop after recap posted")
 	}
 }
 

@@ -321,8 +321,9 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 		defer r.Principal.UnbindMeeting(meetingID)
 	}
 
-	chProgress := &channelProgress{pool: r.Bots, channelID: channelID, loc: loc, principal: r.Principal}
-	chStream := &channelStream{pool: r.Bots, channelID: channelID, loc: loc}
+	chCtx := &meetChannelContext{}
+	chProgress := &channelProgress{pool: r.Bots, channelID: channelID, loc: loc, principal: r.Principal, ctx: chCtx}
+	chStream := &channelStream{pool: r.Bots, channelID: channelID, loc: loc, ctx: chCtx}
 
 	var eng *engine.Engine
 	var err error
@@ -381,8 +382,10 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 	}
 
 	summary := formatMeetDone(final, r.activeCfg().Workspace.Root, meetingID, loc)
+	chCtx.beginTyping(r.Bots, "moderator", channelID)
 	SendLong(r.Bots.Default, ctx, channelID, summary)
 	r.postMeetArtifacts(ctx, channelID, final, meetingID, loc)
+	chCtx.endTyping()
 	r.sessions.setLast(channelID, meetingID)
 }
 

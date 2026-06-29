@@ -2,6 +2,7 @@ package discordsvc
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +21,39 @@ func ResolveDiscordBinary(serverRoot string) (string, error) {
 	if bin, err := exec.LookPath("roundtable-discord"); err == nil {
 		return bin, nil
 	}
-	return buildDevDiscordBinary(serverRoot)
+	out := devDiscordBinaryPath(serverRoot)
+	if devDiscordBinaryStale(serverRoot, out) {
+		return buildDevDiscordBinary(serverRoot)
+	}
+	return out, nil
+}
+
+func devDiscordBinaryStale(serverRoot, out string) bool {
+	st, err := os.Stat(out)
+	if err != nil {
+		return true
+	}
+	binTime := st.ModTime()
+	mainGo := filepath.Join(serverRoot, "cmd", "discord", "main.go")
+	if fi, err := os.Stat(mainGo); err == nil && fi.ModTime().After(binTime) {
+		return true
+	}
+	discordPkg := filepath.Join(serverRoot, "internal", "adapter", "transport", "discord")
+	var stale bool
+	_ = filepath.WalkDir(discordPkg, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || stale {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		fi, err := d.Info()
+		if err == nil && fi.ModTime().After(binTime) {
+			stale = true
+		}
+		return nil
+	})
+	return stale
 }
 
 func buildDevDiscordBinary(serverRoot string) (string, error) {

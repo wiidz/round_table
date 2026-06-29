@@ -50,7 +50,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	h, err := httptransport.NewHandler(cfg, catalog, configSvc, discordSvc)
+	h, err := httptransport.NewHandler(cfg, catalog, store, configSvc, discordSvc)
 	if err != nil {
 		log.Fatalf("server: %v", err)
 	}

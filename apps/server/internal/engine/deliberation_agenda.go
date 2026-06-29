@@ -182,39 +182,6 @@ func assembleDesignDraftFromAgenda(s meeting.State, out synthesisAgendaOutput) (
 	b.WriteString("# 方案草案\n\n")
 	writeAgendaExecutiveSummary(&b, s, out)
 
-	b.WriteString("\n\n## 详细记录\n\n")
-	b.WriteString("### 主题\n\n")
-	b.WriteString(s.Topic)
-	if s.Goal != "" {
-		b.WriteString("\n\n### 目标\n\n")
-		b.WriteString(s.Goal)
-	}
-	if len(s.Agenda) > 0 {
-		b.WriteString("\n\n### 议程\n\n")
-		for _, item := range s.Agenda {
-			fmt.Fprintf(&b, "- **%s** (`%s`)\n", item.Title, agendaItemID(item))
-		}
-	}
-	if s.PreMeetingSummary != "" {
-		b.WriteString("\n\n### 初始视角（Pre-meeting）\n\n")
-		b.WriteString(strings.TrimSpace(s.PreMeetingSummary))
-	}
-	b.WriteString("\n\n### 各轮贡献汇总\n\n")
-	for _, r := range s.Minutes.Rounds {
-		if r.RoundNumber <= 0 {
-			continue
-		}
-		fmt.Fprintf(&b, "#### Round %d\n\n%s\n\n", r.RoundNumber, strings.TrimSpace(r.Summary))
-		if mod, ok := s.ModeratorSummaries[r.RoundNumber]; ok {
-			fmt.Fprintf(&b, "##### Moderator 提炼\n\n%s\n\n", strings.TrimSpace(mod))
-		}
-	}
-	if s.FreeDialogueCompleted && s.FreeDialogueSummary != "" {
-		b.WriteString("### 自由对话要点\n\n")
-		b.WriteString(strings.TrimSpace(s.FreeDialogueSummary))
-		b.WriteString("\n\n")
-	}
-
 	openQuestions = collectAgendaOpenQuestions(out)
 	return strings.TrimSpace(b.String()), openQuestions
 }
@@ -246,7 +213,7 @@ func formatAgendaSectionBody(summary, decisions, openQuestions []string) string 
 			fmt.Fprintf(&b, "- %s\n", line)
 		}
 	} else {
-		b.WriteString("- （本议程项讨论不足 — 见详细记录）\n")
+		b.WriteString("- （本议程项讨论不足 — 见 MINUTES.md）\n")
 	}
 	b.WriteByte('\n')
 
@@ -317,7 +284,7 @@ func writeAgendaExecutiveSummary(b *strings.Builder, s meeting.State, out synthe
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString("> 完整发言与 Q&A 见下方「详细记录」。\n")
+	b.WriteString("\n" + designDraftRecordFooter)
 }
 
 func collectAgendaSummaryBullets(out synthesisAgendaOutput) []string {
@@ -343,6 +310,13 @@ func collectAgendaOpenQuestions(out synthesisAgendaOutput) []string {
 	var all []string
 	appendUnique := func(items []string) {
 		for _, q := range items {
+			q = strings.TrimSpace(q)
+			if q == "" {
+				continue
+			}
+			if overlapsOpenQuestion(q, all) {
+				continue
+			}
 			key := normalizeQuestionKey(q)
 			if key == "" || seen[key] {
 				continue
@@ -358,7 +332,22 @@ func collectAgendaOpenQuestions(out synthesisAgendaOutput) []string {
 	if len(all) > 12 {
 		all = all[:12]
 	}
-	return all
+	return dedupeOpenQuestions(all)
+}
+
+func dedupeOpenQuestions(items []string) []string {
+	var out []string
+	for _, q := range items {
+		q = strings.TrimSpace(q)
+		if q == "" {
+			continue
+		}
+		if overlapsOpenQuestion(q, out) {
+			continue
+		}
+		out = append(out, q)
+	}
+	return out
 }
 
 func agendaReadinessSchemaHint(s meeting.State) string {

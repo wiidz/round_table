@@ -97,7 +97,8 @@ func parseAgendaLines(text string) []string {
 	if text == "" {
 		return nil
 	}
-	repl := strings.NewReplacer("；", "\n", ";", "\n", "，", "\n", ",", "\n")
+	// Only split on semicolons; commas appear inside topic text (e.g. parenthetical lists).
+	repl := strings.NewReplacer("；", "\n", ";", "\n")
 	text = repl.Replace(text)
 	var out []string
 	for _, line := range strings.Split(text, "\n") {
@@ -204,7 +205,7 @@ func formatAskBriefGoalPrompt(loc Locale, topic string) string {
 
 📌 主题：%s
 
-这场会要**交付什么**？（例如：输出技能框架草案 + 3 条待决项）
+这场会要**交付什么**？（例如：输出方案草案 + 待决清单）
 发送 **-** 跳过（使用默认目标）`, topic)
 	}
 	return fmt.Sprintf(`📋 **Meeting brief · 1/3 goal**
@@ -216,34 +217,43 @@ What should this meeting deliver? Send **-** to skip.`, topic)
 
 func formatAskBriefAgendaPrompt(loc Locale) string {
 	if loc == LocaleZH {
-		return `📋 **会议简报 · 2/3 议程**
+		return `📋 **会议简报 · 2/3 讨论议题**
 
-请列出要覆盖的子问题（每行一条，或 1、2、3 编号），例如：
-1）职业定位
-2）核心技能循环
-3）与战士的差异
+请列出本场要**讨论覆盖的子议题**（每行一条，或 1、2、3 编号），例如：
+1）背景与约束
+2）方案选项对比
+3）风险与依赖
+
+说明：此处是**要聊的具体议题**，与 MEETING.md 里的「会议流程」（Pre-meeting → 研讨轮次 → 合成）不是同一概念。
 
 发送 **-** 跳过`
 	}
-	return `📋 **Meeting brief · 2/3 agenda**
+	return `📋 **Meeting brief · 2/3 discussion topics**
 
-List sub-questions (one per line). Send **-** to skip.`
+List sub-topics to cover (one per line). These are **what to discuss**, not the meeting run-of-show in MEETING.md.
+
+Send **-** to skip.`
 }
 
 func formatAskBriefScopePrompt(loc Locale) string {
 	if loc == LocaleZH {
-		return `📋 **会议简报 · 3/3 范围**
+		return `📋 **会议简报 · 3/3 边界与完成标准**
 
-可选，一行或多行，例如：
-讨论范围：定位、核心循环
-不在范围：数值表、全职业平衡
-完成标准：每个议程至少 1 条结论或待决
+可选；**不是再列议题**，而是约束讨论深度、排除项与收工条件。一行或多行，例如：
+讨论范围：概念层与取舍方向
+不在范围：实施排期、详细成本表
+完成标准：每个讨论议题至少 1 条结论或待决
 
 发送 **-** 跳过`
 	}
-	return `📋 **Meeting brief · 3/3 scope**
+	return `📋 **Meeting brief · 3/3 boundaries & done criteria**
 
-Optional lines: 讨论范围 / 不在范围 / 完成标准. Send **-** to skip.`
+Optional — **not** another topic list. Set depth limits, exclusions, and when to wrap up, e.g.:
+In scope: concept-level trade-offs
+Out of scope: rollout schedule, detailed cost sheets
+Done when: each discussion topic has ≥1 decision or open item
+
+Send **-** to skip.`
 }
 
 func formatBriefSummary(loc Locale, cfg meetLaunchConfig) string {
@@ -294,21 +304,25 @@ func formatBriefSummaryBody(loc Locale, b meetBrief) string {
 	}
 	if len(b.AgendaTitles) > 0 {
 		if loc == LocaleZH {
-			lines = append(lines, "- 📑 议程："+strings.Join(b.AgendaTitles, " · "))
+			lines = append(lines, "📑 **讨论议题**：")
 		} else {
-			lines = append(lines, "- 📑 Agenda: "+strings.Join(b.AgendaTitles, " · "))
+			lines = append(lines, "📑 **Topics**：")
+		}
+		for i, title := range b.AgendaTitles {
+			// Discord treats "1." as bullet continuation when nested under "- …"; prefix each line with "- N."
+			lines = append(lines, fmt.Sprintf("- %d. %s", i+1, title))
 		}
 	}
 	if in := strings.TrimSpace(b.InScope); in != "" {
 		if loc == LocaleZH {
-			lines = append(lines, "- ✅ 讨论："+in)
+			lines = append(lines, "- ✅ 讨论范围："+in)
 		} else {
 			lines = append(lines, "- ✅ In scope: "+in)
 		}
 	}
 	if out := strings.TrimSpace(b.OutOfScope); out != "" {
 		if loc == LocaleZH {
-			lines = append(lines, "- ⛔ 不讨论："+out)
+			lines = append(lines, "- ⛔ 不在范围："+out)
 		} else {
 			lines = append(lines, "- ⛔ Out of scope: "+out)
 		}

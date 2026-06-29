@@ -32,7 +32,7 @@ func TestChannelStream_typingLifecycle(t *testing.T) {
 		Default: &typingStubSender{id: "main"},
 		byID:    map[string]ChannelSender{"designer": designer},
 	}
-	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH}
+	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH, ctx: &meetChannelContext{}}
 
 	cs.Start(stream.Meta{ParticipantID: "designer", Phase: "debate"})
 	if designer.typingStarts != 1 {
@@ -57,7 +57,7 @@ func TestChannelStream_typingLifecycle(t *testing.T) {
 func TestChannelStream_typingModeratorSynthesis(t *testing.T) {
 	main := &typingStubSender{id: "main"}
 	pool := &BotPool{Default: main}
-	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH}
+	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH, ctx: &meetChannelContext{}}
 
 	cs.Start(stream.Meta{ParticipantID: "moderator", Phase: "deliberation-synthesis"})
 	if main.typingStarts != 1 {
@@ -77,8 +77,47 @@ func TestChannelStream_fallbackHeaderWithoutDedicatedBot(t *testing.T) {
 	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH}
 
 	cs.Start(stream.Meta{ParticipantID: "designer", Phase: "debate"})
-	if len(main.messages) != 1 || !strings.Contains(main.messages[0], "策划") {
+	if len(main.messages) != 1 || !strings.Contains(main.messages[0], "方案") {
 		t.Fatalf("expected header fallback, messages=%v", main.messages)
+	}
+}
+
+func TestChannelStream_suppressedModeratorSummaryTyping(t *testing.T) {
+	main := &typingStubSender{id: "main"}
+	pool := &BotPool{Default: main}
+	ctx := &meetChannelContext{}
+	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH, ctx: ctx}
+
+	cs.Start(stream.Meta{ParticipantID: "moderator", Phase: "moderator-round-summary"})
+	if main.typingStarts != 1 {
+		t.Fatalf("typingStarts=%d", main.typingStarts)
+	}
+	cs.buf.WriteString("## Round 1 研讨摘要")
+	cs.End()
+	if atomic.LoadInt32(&main.typingActive) != 1 {
+		t.Fatal("typing should continue until progress posts summary")
+	}
+
+	cp := &channelProgress{pool: pool, channelID: "ch1", loc: LocaleZH, ctx: ctx}
+	cp.Logf("◆ moderator summary round=%d\n%s", 1, "## Round 1 研讨摘要")
+	if atomic.LoadInt32(&main.typingActive) != 0 {
+		t.Fatal("typing should stop after summary posted")
+	}
+}
+
+func TestChannelProgress_typingModeratorSummary(t *testing.T) {
+	main := &typingStubSender{id: "main"}
+	pool := &BotPool{Default: main}
+	ctx := &meetChannelContext{}
+	cp := &channelProgress{pool: pool, channelID: "ch1", loc: LocaleZH, ctx: ctx}
+
+	cp.Logf("◆ generating deliberation summary for round %d", 1)
+	if main.typingStarts != 1 {
+		t.Fatalf("typingStarts=%d", main.typingStarts)
+	}
+	cp.Logf("◆ moderator summary round=%d\n%s", 1, "body")
+	if atomic.LoadInt32(&main.typingActive) != 0 {
+		t.Fatal("typing should stop after summary posted")
 	}
 }
 
