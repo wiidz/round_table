@@ -96,7 +96,7 @@ func TestFormatBriefSummaryBody_listsTopicsFully(t *testing.T) {
 	if strings.Contains(body, " · ") {
 		t.Fatalf("topics should not be joined with middle dots: %q", body)
 	}
-	for _, want := range []string{"- 1. 背景与约束", "- 2. 方案选项", "- 3. 风险、依赖"} {
+	for _, want := range []string{"1）背景与约束", "2）方案选项", "3）风险、依赖"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %q", want, body)
 		}

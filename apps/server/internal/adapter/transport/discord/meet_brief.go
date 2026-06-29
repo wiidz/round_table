@@ -303,15 +303,22 @@ func formatBriefSummaryBody(loc Locale, b meetBrief) string {
 		}
 	}
 	if len(b.AgendaTitles) > 0 {
+		// Blank line breaks Discord list continuation from the goal bullet above.
+		lines = append(lines, "")
 		if loc == LocaleZH {
 			lines = append(lines, "📑 **讨论议题**：")
 		} else {
 			lines = append(lines, "📑 **Topics**：")
 		}
 		for i, title := range b.AgendaTitles {
-			// Discord treats "1." as bullet continuation when nested under "- …"; prefix each line with "- N."
-			lines = append(lines, fmt.Sprintf("- %d. %s", i+1, title))
+			// Plain 「N）」 lines — Discord eats markdown list numbers (- 1. …) in display/copy.
+			if loc == LocaleZH {
+				lines = append(lines, fmt.Sprintf("%d）%s", i+1, title))
+			} else {
+				lines = append(lines, fmt.Sprintf("%d. %s", i+1, title))
+			}
 		}
+		lines = append(lines, "")
 	}
 	if in := strings.TrimSpace(b.InScope); in != "" {
 		if loc == LocaleZH {

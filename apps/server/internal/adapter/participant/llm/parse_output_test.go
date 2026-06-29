@@ -114,6 +114,34 @@ func TestParseOutput_freeDialogueAskTrailingCornerQuote(t *testing.T) {
 	}
 }
 
+func TestParseOutput_cornerQuoteOpener(t *testing.T) {
+	raw := `{"content":「技能循环宏」在服务端视角属于「拟手动行为」——客户端以固定时序发送技能/使用道具指令，与手动玩家无差异。现有检测依赖操作间隔与行为熵，但宏指令通常是均匀间隔发送。","stance":"none","object_reason":""}`
+	out, err := parseOutput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsSubstring(out.Content, "技能循环宏") {
+		t.Fatalf("content = %q", out.Content)
+	}
+	if !containsSubstring(out.Content, "拟手动行为") {
+		t.Fatalf("content = %q", out.Content)
+	}
+	if out.Stance != "none" {
+		t.Fatalf("stance = %q", out.Stance)
+	}
+}
+
+func TestParseOutput_cornerQuoteOpenerTrailingCorner(t *testing.T) {
+	raw := `{"content":「技能循环宏」在服务端视角属于「拟手动行为」——客户端以固定时序发送技能/使用道具指令。`
+	out, err := parseOutput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsSubstring(out.Content, "技能循环宏") {
+		t.Fatalf("content = %q", out.Content)
+	}
+}
+
 func TestParseOutput_exportedParseOutput(t *testing.T) {
 	got, err := ParseOutput(`{"content":"同意","stance":"agree","object_reason":""}`)
 	if err != nil || got.Content != "同意" || got.Stance != "agree" {

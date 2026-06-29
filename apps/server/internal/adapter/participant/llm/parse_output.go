@@ -75,6 +75,7 @@ func cleanRaw(raw string) string {
 // repairMalformedJSON fixes common LLM JSON mistakes (Chinese closing quotes, missing ").
 func repairMalformedJSON(raw string) string {
 	raw = strings.TrimSpace(raw)
+	raw = repairContentCornerQuoteOpener(raw)
 	switch {
 	case strings.HasSuffix(raw, "」}"):
 		raw = raw[:len(raw)-len("」}")] + `"}` 
@@ -101,6 +102,30 @@ func repairMalformedJSON(raw string) string {
 	return raw
 }
 
+// repairContentCornerQuoteOpener fixes LLM using 「 as the JSON string opener after "content":.
+func repairContentCornerQuoteOpener(raw string) string {
+	for _, pair := range [][2]string{
+		{`"content":「`, `"content":"`},
+		{`"content": 「`, `"content": "`},
+	} {
+		if strings.Contains(raw, pair[0]) {
+			raw = strings.Replace(raw, pair[0], pair[1], 1)
+			break
+		}
+	}
+	// Closing delimiter before next field: 」,"stance" → ","stance"
+	for _, delim := range []string{
+		`」,"stance"`, `」, "stance"`,
+		`」,"object_reason"`, `」, "object_reason"`,
+	} {
+		if strings.Contains(raw, delim) {
+			raw = strings.Replace(raw, delim, strings.TrimPrefix(delim, "」"), 1)
+			break
+		}
+	}
+	return raw
+}
+
 func extractContentLoose(raw string) (string, bool) {
 	keyPos := strings.Index(raw, `"content"`)
 	if keyPos < 0 {
@@ -111,7 +136,36 @@ func extractContentLoose(raw string) (string, bool) {
 		return "", false
 	}
 	after = strings.TrimSpace(after[1:])
-	if len(after) == 0 || after[0] != '"' {
+	if len(after) == 0 {
+		return "", false
+	}
+	if strings.HasPrefix(after, "「") {
+		valueStart := keyPos + strings.Index(raw[keyPos:], "「") + len("「")
+		for _, delim := range []string{
+			`","stance"`, `", "stance"`, `","object_reason"`, `", "object_reason"`,
+			`,"stance"`, `,"object_reason"`,
+		} {
+			if pos := strings.Index(raw[valueStart:], delim); pos >= 0 {
+				content := strings.TrimSpace(raw[valueStart : valueStart+pos])
+				content = strings.TrimSuffix(content, "」")
+				return unescapeJSONString(content), true
+			}
+		}
+		trimmed := strings.TrimSpace(raw)
+		end := len(trimmed)
+		if strings.HasSuffix(trimmed, "}") {
+			end = strings.LastIndex(trimmed, "}")
+		}
+		if end > valueStart {
+			content := strings.TrimSpace(raw[valueStart:end])
+			content = strings.TrimSuffix(content, "」")
+			if content != "" {
+				return unescapeJSONString(content), true
+			}
+		}
+		return "", false
+	}
+	if after[0] != '"' {
 		return "", false
 	}
 	valueStart := keyPos + strings.Index(raw[keyPos:], `:"`) + len(`:"`)

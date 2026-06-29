@@ -12,23 +12,28 @@ import (
 )
 
 const responseSchema = `Respond ONLY with a JSON object (no markdown fences).
-Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+The JSON structure must use ASCII double quotes (") as shown below.
+Inside content text only, do NOT use ASCII double quotes — use 「」 for emphasis if needed.
 {"content":"<your spoken contribution>","stance":"agree|object|abstain","object_reason":"<required when stance is object, else empty string>"}`
 
 const preMeetingSchema = `Respond ONLY with a JSON object (no markdown fences).
-Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+The JSON structure must use ASCII double quotes (") as shown below.
+Inside content text only, do NOT use ASCII double quotes — use 「」 for emphasis if needed.
 {"content":"<your preliminary perspectives and evaluation angles>","stance":"none","object_reason":""}`
 
 const deliberationSchema = `Respond ONLY with a JSON object (no markdown fences).
-Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+The JSON structure must use ASCII double quotes (") as shown below.
+Inside content text only, do NOT use ASCII double quotes — use 「」 for emphasis if needed.
 {"content":"<your design contribution: ideas, constraints, trade-offs, and open questions from your role>","stance":"none","object_reason":""}`
 
 const freeDialogueAskSchema = `Respond ONLY with a JSON object (no markdown fences).
-Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+The JSON structure must use ASCII double quotes (") as shown below.
+Inside content text only, do NOT use ASCII double quotes — use 「」 for emphasis if needed.
 {"content":"<your question to the other participant>"}`
 
 const freeDialogueAnswerSchema = `Respond ONLY with a JSON object (no markdown fences).
-Do NOT use ASCII double quotes (") inside content — use 「」 for emphasis if needed.
+The JSON structure must use ASCII double quotes (") as shown below.
+Inside content text only, do NOT use ASCII double quotes — use 「」 for emphasis if needed.
 {"content":"<your answer to the question>"}`
 
 // Participant invokes an LLM with profile identity files (SOUL, AGENTS).
