@@ -21,7 +21,7 @@
 |------|------|------|
 | **M0** | 文档 + ADR（本文） | ADR-0013 Draft，roadmap 更新 | ✅ |
 | **M1** | 状态层 + 摘要 + Drawer | turn 序号、condense、Drawer 可读 Markdown | ✅ |
-| **M2** | RoundTableStage 静态布局 | 3/5/6 人 roster 席位正确、司仪/我固定方位 |
+| **M2** | RoundTableStage 静态布局 | 3/5/6 人 roster 席位正确、司仪/我固定方位 | ✅ |
 | **M3** | Live 气泡 + 高亮/暗沉 | 新消息切换 activeSpeaker；每席 1 条；#turn 一致 |
 | **M4** | TranscriptStrip + 模式切换 | 小历史条、点击 Drawer；会议中进行切圆桌 |
 | **M5** | 降级与 polish | `< md` IM 降级、新消息浮钮、空状态 |
@@ -118,12 +118,12 @@ export interface ChatMessage {
 - [x] `transcript-drawer.tsx`（侧栏全文 + MarkdownDocument）
 - [x] 临时挂在 IM 视图：Strip 点行开 Drawer（验证链路）
 
-### M2 — 席位布局（1 天）
+### M2 — 席位布局（1 天） ✅
 
-- [ ] `round-table-layout.ts`：`computeSeats(count, { principal, moderator }) → { id, angle, label }[]`
-- [ ] `seat-anchor.tsx`：绝对定位 `%` + transform
-- [ ] `round-table-stage.tsx`：中心议题占位、空 Live 态
-- [ ] Storybook 或 dev 页：3/5/6 人 snapshot（可选）
+- [x] `round-table-layout.ts`：`computeRoundTableSeats` + `participantAngles`
+- [x] `seat-anchor.tsx`：绝对定位 `%` + transform
+- [x] `round-table-stage.tsx`：中心议题占位、席位高亮/已发言态
+- [x] `use-roster-seats.ts`：`GET /participants` roster，消息 author 降级
 
 ### M3 — Live 气泡（1–2 天）
 

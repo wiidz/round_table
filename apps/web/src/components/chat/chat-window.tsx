@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Loader2, SendHorizonal, Wifi, WifiOff } from 'lucide-react'
 
-import { RoundTableStagePlaceholder } from '@/components/round-table/round-table-stage-placeholder'
+import { RoundTableStage } from '@/components/round-table/round-table-stage'
 import { TranscriptDrawer } from '@/components/round-table/transcript-drawer'
 import { TranscriptStrip } from '@/components/round-table/transcript-strip'
 import { Button } from '@/components/ui/button'
 import { useMeetingTranscript } from '@/hooks/use-meeting-transcript'
+import { useRosterSeats } from '@/hooks/use-roster-seats'
 import {
   heFormEmbed,
   hePanelShell,
@@ -75,6 +76,7 @@ export function ChatWindow({
   const canSend = connectionState === 'open'
 
   const { turns, activeSpeakerId, latestBySeat } = useMeetingTranscript(messages)
+  const { seats } = useRosterSeats(messages)
   const activeMessageId =
     activeSpeakerId != null ? latestBySeat.get(activeSpeakerId)?.id ?? null : null
 
@@ -122,7 +124,12 @@ export function ChatWindow({
           </p>
         )}
 
-        <RoundTableStagePlaceholder turnCount={turns.length} />
+        <RoundTableStage
+          seats={seats}
+          messages={messages}
+          activeSpeakerId={activeSpeakerId}
+          turnCount={turns.length}
+        />
 
         <TranscriptStrip
           messages={messages}
