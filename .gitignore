@@ -18,8 +18,11 @@ coverage.out
 # Local config / secrets
 apps/server/configs/local.yaml
 deploy/.env
+deploy/sync-data.env
 .env
 *.db
+*.db-shm
+*.db-wal
 
 # Air
 tmp/
@@ -32,6 +35,7 @@ data/knowledge/participants/
 data/knowledge/principals/
 data/knowledge/shared/
 data/transport/
+data/logs/
 
 # Web (apps/web)
 apps/web/node_modules/

@@ -13,7 +13,7 @@ TOPIC_GAME_CLASS    := 设计新职业「影舞者」的核心技能与定位
 
 WEB     := ./apps/web
 
-.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord stop-discord docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-reinstall web-dev web-preview web-build
+.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord stop-discord sync-data-push sync-data-pull sync-data-status docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-reinstall web-dev web-preview web-build
 
 SCENARIO_3ROUND := data/_templates/scenarios/3-round-debate
 TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 撤销）并批准进入开发？
@@ -31,6 +31,18 @@ run-discord:
 stop-discord:
 	-pkill -f 'roundtable-discord' || true
 	-pkill -f 'apps/server/cmd/discord/main.go' || true
+
+## sync-data-push: rsync local runtime data/ to remote (see deploy/sync-data.env)
+sync-data-push:
+	bash deploy/sync-data.sh push
+
+## sync-data-pull: rsync remote runtime data/ to local
+sync-data-pull:
+	bash deploy/sync-data.sh pull
+
+## sync-data-status: preview sync diff both directions (dry-run)
+sync-data-status:
+	bash deploy/sync-data.sh status
 
 ## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in deploy/.env)
 meet:
