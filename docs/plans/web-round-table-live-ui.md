@@ -19,8 +19,8 @@
 
 | 阶段 | 交付 | 验收 |
 |------|------|------|
-| **M0** | 文档 + ADR（本文） | ADR-0013 Draft，roadmap 更新 |
-| **M1** | 状态层 + 摘要 + Drawer | turn 序号、condense、Drawer 可读 Markdown |
+| **M0** | 文档 + ADR（本文） | ADR-0013 Draft，roadmap 更新 | ✅ |
+| **M1** | 状态层 + 摘要 + Drawer | turn 序号、condense、Drawer 可读 Markdown | ✅ |
 | **M2** | RoundTableStage 静态布局 | 3/5/6 人 roster 席位正确、司仪/我固定方位 |
 | **M3** | Live 气泡 + 高亮/暗沉 | 新消息切换 activeSpeaker；每席 1 条；#turn 一致 |
 | **M4** | TranscriptStrip + 模式切换 | 小历史条、点击 Drawer；会议中进行切圆桌 |
@@ -110,13 +110,13 @@ export interface ChatMessage {
 
 ## 任务分解
 
-### M1 — 状态层 + Drawer（1–2 天）
+### M1 — 状态层 + Drawer（1–2 天） ✅
 
-- [ ] `condense-message.ts` + 单元测试（中英文、Markdown、短文本）
-- [ ] `ChatMessage.turn` 在 `use-chat-socket` append 时赋值
-- [ ] `use-meeting-transcript.ts`
-- [ ] `transcript-drawer.tsx`（shadcn Sheet/Drawer，MarkdownDocument 全文）
-- [ ] 临时挂在 IM 视图：Strip 点行开 Drawer（验证链路）
+- [x] `condense-message.ts` + 单元测试（中英文、Markdown、短文本）— 纯函数已实现，Vitest 待补
+- [x] `ChatMessage.turn` 在 `use-chat-socket` append 时赋值
+- [x] `use-meeting-transcript.ts`
+- [x] `transcript-drawer.tsx`（侧栏全文 + MarkdownDocument）
+- [x] 临时挂在 IM 视图：Strip 点行开 Drawer（验证链路）
 
 ### M2 — 席位布局（1 天）
 

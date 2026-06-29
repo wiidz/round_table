@@ -21,6 +21,8 @@ export interface ChatMessage {
   authorId?: string
   authorName?: string
   createdAt: number
+  /** Global meeting speech index; moderator/participant only. */
+  turn?: number
   pending?: boolean
   error?: boolean
 }

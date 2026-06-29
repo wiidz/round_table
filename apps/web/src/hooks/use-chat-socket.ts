@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { assignsTurn } from '@/lib/chat-display'
 import type { ChatConnectionState, ChatFrame, ChatMessage, ChatRole } from '@/types/chat'
 
 function chatWsUrl(): string {
@@ -54,9 +55,17 @@ export function useChatSocket() {
   const reconnectTimer = useRef<number | null>(null)
   const connectGenRef = useRef(0)
   const disposedRef = useRef(false)
+  const nextTurnRef = useRef(1)
 
-  const appendMessage = useCallback((msg: ChatMessage) => {
-    setMessages((prev) => [...prev, msg])
+  const pushMessage = useCallback((msg: Omit<ChatMessage, 'turn'> & { turn?: number }) => {
+    const withTurn: ChatMessage =
+      msg.turn != null
+        ? (msg as ChatMessage)
+        : assignsTurn(msg.role)
+          ? { ...msg, turn: nextTurnRef.current++ }
+          : { ...msg }
+
+    setMessages((prev) => [...prev, withTurn])
   }, [])
 
   const connect = useCallback(() => {
@@ -69,6 +78,7 @@ export function useChatSocket() {
     }
 
     disposedRef.current = false
+    nextTurnRef.current = 1
     const gen = ++connectGenRef.current
 
     setConnectionState('connecting')
@@ -103,7 +113,7 @@ export function useChatSocket() {
       if (frame.type === 'error') {
         const errText = frame.error?.trim() || '请求失败'
         setLastError(errText)
-        appendMessage({
+        pushMessage({
           id: nextMessageId(),
           role: 'system',
           content: errText,
@@ -114,7 +124,7 @@ export function useChatSocket() {
       }
 
       if (frame.type === 'message' && frame.content?.trim()) {
-        appendMessage({
+        pushMessage({
           id: frame.id ?? nextMessageId(),
           role: parseFrameRole(frame.role),
           content: frame.content,
@@ -142,7 +152,7 @@ export function useChatSocket() {
         connect()
       }, 3000)
     }
-  }, [appendMessage])
+  }, [pushMessage])
 
   useEffect(() => {
     connect()
@@ -169,11 +179,11 @@ export function useChatSocket() {
       }
 
       const id = nextMessageId()
-      appendMessage({ id, role: 'user', content: text, createdAt: Date.now() })
+      pushMessage({ id, role: 'user', content: text, createdAt: Date.now() })
       ws.send(JSON.stringify({ type: 'message', id, content: text }))
       return true
     },
-    [appendMessage],
+    [pushMessage],
   )
 
   return {
