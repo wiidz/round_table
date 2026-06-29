@@ -8,9 +8,13 @@ interface RoundTableViewProps {
   messages: ChatMessage[]
   latestBySeat: Map<string, ChatMessage>
   activeSpeakerId: string | null
+  focusedSeatId: string | null
   turnCount: number
   activeMessageId: string | null
   selectedMessageId: string | null
+  rosterLoading: boolean
+  rosterFromApi: boolean
+  participantCount: number
   onSelectMessage: (message: ChatMessage) => void
 }
 
@@ -19,9 +23,13 @@ export function RoundTableView({
   messages,
   latestBySeat,
   activeSpeakerId,
+  focusedSeatId,
   turnCount,
   activeMessageId,
   selectedMessageId,
+  rosterLoading,
+  rosterFromApi,
+  participantCount,
   onSelectMessage,
 }: RoundTableViewProps) {
   return (
@@ -30,7 +38,11 @@ export function RoundTableView({
         seats={seats}
         latestBySeat={latestBySeat}
         activeSpeakerId={activeSpeakerId}
+        focusedSeatId={focusedSeatId}
         turnCount={turnCount}
+        rosterLoading={rosterLoading}
+        rosterFromApi={rosterFromApi}
+        participantCount={participantCount}
         onLiveMessageClick={onSelectMessage}
         className="min-h-0 flex-1"
       />

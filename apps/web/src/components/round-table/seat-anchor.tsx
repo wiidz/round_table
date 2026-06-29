@@ -9,6 +9,7 @@ interface SeatAnchorProps {
   liveMessage?: ChatMessage | null
   highlighted?: boolean
   dimmed?: boolean
+  focused?: boolean
   hasSpoken?: boolean
   onLiveClick?: (message: ChatMessage) => void
   className?: string
@@ -27,6 +28,7 @@ export function SeatAnchor({
   liveMessage,
   highlighted = false,
   dimmed = false,
+  focused = false,
   hasSpoken = false,
   onLiveClick,
   className,
@@ -48,15 +50,19 @@ export function SeatAnchor({
           className={cn(
             'relative shrink-0 rounded-xl transition-all duration-200',
             highlighted && 'ring-2 ring-ai ring-offset-2 ring-offset-surface',
-            !highlighted && !hasLive && hasSpoken && 'opacity-90',
-            !highlighted && !hasLive && !hasSpoken && 'opacity-75',
+            focused && !highlighted && 'ring-2 ring-brand ring-offset-2 ring-offset-surface',
+            !highlighted && !focused && !hasLive && hasSpoken && 'opacity-90',
+            !highlighted && !focused && !hasLive && !hasSpoken && 'opacity-75',
           )}
         >
           <ProfileAvatar
             id={seat.id}
             name={seat.label}
             size="sm"
-            className={cn(highlighted && 'shadow-[0_0_0_3px_var(--ai-soft)]')}
+            className={cn(
+              highlighted && 'shadow-[0_0_0_3px_var(--ai-soft)]',
+              focused && !highlighted && 'shadow-[0_0_0_3px_var(--brand-soft)]',
+            )}
           />
           {hasSpoken && !hasLive && (
             <span
@@ -80,7 +86,7 @@ export function SeatAnchor({
       <p
         className={cn(
           'mx-auto mt-1 max-w-[5rem] truncate text-center text-[10px] font-medium',
-          highlighted ? 'text-ai' : 'text-text-secondary',
+          highlighted ? 'text-ai' : focused ? 'text-brand' : 'text-text-secondary',
           dimmed && 'text-text-tertiary',
         )}
       >

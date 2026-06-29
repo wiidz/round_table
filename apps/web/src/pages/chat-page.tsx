@@ -16,7 +16,7 @@ export function ChatPage() {
           role="participant"
           eyebrow="Chat"
           title="聊天"
-          description="浏览器 Transport：围坐圆桌或列表视图与司仪对话、发起会议。Setup 默认列表，会议进行中自动切圆桌。"
+          description="浏览器 Transport：Setup 默认列表，会议进行中自动切圆桌；768px 以下窄屏会议期降级为发言记录列表。"
         />
       </div>
 

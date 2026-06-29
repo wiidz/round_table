@@ -1,3 +1,4 @@
+import { RoundTableEmptyHint } from '@/components/round-table/round-table-empty-hint'
 import type { SeatLayout } from '@/lib/round-table-layout'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/types/chat'
@@ -8,7 +9,11 @@ interface RoundTableStageProps {
   seats: SeatLayout[]
   latestBySeat: Map<string, ChatMessage>
   activeSpeakerId: string | null
+  focusedSeatId?: string | null
   turnCount: number
+  rosterLoading?: boolean
+  rosterFromApi?: boolean
+  participantCount?: number
   centerTitle?: string
   centerSubtitle?: string
   onLiveMessageClick?: (message: ChatMessage) => void
@@ -24,7 +29,11 @@ export function RoundTableStage({
   seats,
   latestBySeat,
   activeSpeakerId,
+  focusedSeatId = null,
   turnCount,
+  rosterLoading = false,
+  rosterFromApi = false,
+  participantCount = 0,
   centerTitle,
   centerSubtitle,
   onLiveMessageClick,
@@ -68,6 +77,7 @@ export function RoundTableStage({
             activeSpeakerId != null &&
             activeSpeakerId !== seat.id &&
             liveMessage != null
+          const focused = focusedSeatId === seat.id && !highlighted
 
           return (
             <SeatAnchor
@@ -76,6 +86,7 @@ export function RoundTableStage({
               liveMessage={liveMessage}
               highlighted={highlighted}
               dimmed={dimmed}
+              focused={focused}
               hasSpoken={spokenSeats.has(seat.id)}
               onLiveClick={onLiveMessageClick}
             />
@@ -83,11 +94,11 @@ export function RoundTableStage({
         })}
       </div>
 
-      {seats.filter((s) => s.kind === 'participant').length === 0 && turnCount === 0 && (
-        <p className="absolute bottom-3 left-0 right-0 text-center text-[11px] text-text-tertiary">
-          专家名录加载中或 roster 为空；发言后将按 author 入座
-        </p>
-      )}
+      <RoundTableEmptyHint
+        loading={rosterLoading}
+        rosterFromApi={rosterFromApi}
+        participantCount={participantCount}
+      />
     </div>
   )
 }
