@@ -2,14 +2,18 @@ package discord
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	participantllm "round_table/apps/server/internal/adapter/participant/llm"
+	"round_table/apps/server/internal/engine"
 	"round_table/apps/server/internal/stream"
 )
+
+var reRoundSummaryHeading = regexp.MustCompile(`(?m)^##\s*Round\s+(\d+)\s`)
 
 type pendingTurn struct {
 	speaker string
@@ -23,8 +27,18 @@ type channelStream struct {
 	loc        Locale
 	buf        strings.Builder
 	speaker    string
+	phase      string
 	pending    pendingTurn
 	stopTyping func()
+}
+
+func suppressDiscordStreamPost(phase string) bool {
+	switch phase {
+	case "moderator-executive-recap", "moderator-round-summary":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *channelStream) beginTyping(participantID string) {
@@ -54,6 +68,12 @@ func (s *channelStream) Start(meta stream.Meta) {
 	s.buf.Reset()
 	s.pending = pendingTurn{}
 	s.speaker = meta.ParticipantID
+	s.phase = meta.Phase
+
+	if suppressDiscordStreamPost(meta.Phase) {
+		return
+	}
+
 	s.beginTyping(meta.ParticipantID)
 
 	skipHeader := meta.ParticipantID == "moderator" &&
@@ -81,9 +101,15 @@ func (s *channelStream) Delta(delta string) {
 func (s *channelStream) End() {
 	raw := strings.TrimSpace(s.buf.String())
 	speaker := s.speaker
+	phase := s.phase
 	s.buf.Reset()
 	s.speaker = ""
+	s.phase = ""
 	if raw == "" {
+		s.endTyping()
+		return
+	}
+	if suppressDiscordStreamPost(phase) {
 		s.endTyping()
 		return
 	}
@@ -142,6 +168,9 @@ func formatTurnFooter(tokens int, elapsed time.Duration, loc Locale) string {
 }
 
 func formatStreamForDiscord(raw string, loc Locale) string {
+	if text := formatMarkdownModeratorStream(raw, loc); text != "" {
+		return text
+	}
 	if text := formatParticipantStream(raw, loc); text != "" {
 		return text
 	}
@@ -150,6 +179,23 @@ func formatStreamForDiscord(raw string, loc Locale) string {
 	}
 	if text := formatSynthesisStream(raw, loc); text != "" {
 		return text
+	}
+	return ""
+}
+
+func formatMarkdownModeratorStream(raw string, loc Locale) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if strings.HasPrefix(raw, "## 会议回顾") || strings.Contains(raw, "### 目标与议程覆盖") {
+		return formatExecutiveRecapDiscord(raw, loc)
+	}
+	if m := reRoundSummaryHeading.FindStringSubmatch(raw); len(m) == 2 {
+		round, err := strconv.Atoi(m[1])
+		if err == nil {
+			return formatModeratorRoundSummaryDiscord(round, raw, loc)
+		}
 	}
 	return ""
 }
@@ -179,29 +225,39 @@ func formatParticipantStream(raw string, loc Locale) string {
 }
 
 func fallbackStreamBody(raw string, loc Locale) string {
+	if text := formatMarkdownModeratorStream(raw, loc); text != "" {
+		return text
+	}
 	if text := formatParticipantStream(raw, loc); text != "" {
 		return text
 	}
-	if strings.Contains(raw, `"content"`) {
+	if text := formatReadinessStream(raw, loc); text != "" {
+		return text
+	}
+	if text := formatSynthesisStream(raw, loc); text != "" {
+		return text
+	}
+	if looksLikeJSON(raw) {
 		if loc == LocaleZH {
-			return "（发言解析失败，完整内容已写入会议记录）"
+			return "（内容解析失败，完整记录已写入 workspace）"
 		}
-		return "(Could not parse speech; full text is in the meeting record.)"
+		return "(Parse failed; full record is in the workspace.)"
 	}
 	return raw
 }
 
+func looksLikeJSON(raw string) bool {
+	raw = strings.TrimSpace(raw)
+	return strings.HasPrefix(raw, "{") || strings.HasPrefix(raw, "```json") || strings.HasPrefix(raw, "```\n{")
+}
+
 func formatReadinessStream(raw string, loc Locale) string {
-	var ready struct {
-		Ready     bool     `json:"ready"`
-		Rationale string   `json:"rationale"`
-		Gaps      []string `json:"gaps"`
-	}
-	if err := json.Unmarshal([]byte(raw), &ready); err != nil || ready.Rationale == "" && len(ready.Gaps) == 0 {
+	out, err := engine.ParseReadinessOutput(raw)
+	if err != nil || out.Rationale == "" && len(out.Gaps) == 0 {
 		return ""
 	}
 	var b strings.Builder
-	if ready.Ready {
+	if out.Ready {
 		if loc == LocaleZH {
 			b.WriteString("✅ **研讨就绪**\n")
 		} else {
@@ -212,16 +268,16 @@ func formatReadinessStream(raw string, loc Locale) string {
 	} else {
 		b.WriteString("⏳ **Continue deliberation**\n")
 	}
-	if ready.Rationale != "" {
-		fmt.Fprintf(&b, "%s\n", ready.Rationale)
+	if out.Rationale != "" {
+		fmt.Fprintf(&b, "%s\n", out.Rationale)
 	}
-	if len(ready.Gaps) > 0 {
+	if len(out.Gaps) > 0 {
 		if loc == LocaleZH {
 			b.WriteString("\n**📌 待补缺口**\n")
 		} else {
 			b.WriteString("\n**📌 Gaps**\n")
 		}
-		for _, gap := range ready.Gaps {
+		for _, gap := range out.Gaps {
 			fmt.Fprintf(&b, "- %s\n", gap)
 		}
 	}
@@ -229,16 +285,11 @@ func formatReadinessStream(raw string, loc Locale) string {
 }
 
 func formatSynthesisStream(raw string, loc Locale) string {
-	var syn struct {
-		CoreScheme    []string `json:"core_scheme"`
-		Decisions     []string `json:"decisions"`
-		OpenQuestions []string `json:"open_questions"`
-		Summary       string   `json:"summary"`
-	}
-	if err := json.Unmarshal([]byte(raw), &syn); err != nil {
+	out, err := engine.ParseSynthesisOutput(raw)
+	if err != nil {
 		return ""
 	}
-	if syn.Summary == "" && len(syn.CoreScheme) == 0 && len(syn.Decisions) == 0 && len(syn.OpenQuestions) == 0 {
+	if out.ExecutiveVerdict == "" && len(out.KeyDecisions)+len(out.CoreScheme)+len(out.Decisions)+len(out.OpenQuestions) == 0 {
 		return ""
 	}
 	var b strings.Builder
@@ -247,17 +298,19 @@ func formatSynthesisStream(raw string, loc Locale) string {
 	} else {
 		b.WriteString("📋 **Design draft synthesis**\n")
 	}
-	if syn.Summary != "" {
-		fmt.Fprintf(&b, "%s\n\n", syn.Summary)
+	if out.ExecutiveVerdict != "" {
+		fmt.Fprintf(&b, "%s\n\n", out.ExecutiveVerdict)
 	}
 	if loc == LocaleZH {
-		writeBulletSection(&b, "💡 方案要点", syn.CoreScheme)
-		writeBulletSection(&b, "✅ 已决事项", syn.Decisions)
-		writeBulletSection(&b, "❓ 开放问题", syn.OpenQuestions)
+		writeBulletSection(&b, "📌 Principal 需知", out.KeyDecisions)
+		writeBulletSection(&b, "💡 方案要点", out.CoreScheme)
+		writeBulletSection(&b, "✅ 已决事项", out.Decisions)
+		writeBulletSection(&b, "❓ 开放问题", out.OpenQuestions)
 	} else {
-		writeBulletSection(&b, "💡 Core scheme", syn.CoreScheme)
-		writeBulletSection(&b, "✅ Decisions", syn.Decisions)
-		writeBulletSection(&b, "❓ Open questions", syn.OpenQuestions)
+		writeBulletSection(&b, "📌 Key decisions", out.KeyDecisions)
+		writeBulletSection(&b, "💡 Core scheme", out.CoreScheme)
+		writeBulletSection(&b, "✅ Decisions", out.Decisions)
+		writeBulletSection(&b, "❓ Open questions", out.OpenQuestions)
 	}
 	return strings.TrimSpace(b.String())
 }

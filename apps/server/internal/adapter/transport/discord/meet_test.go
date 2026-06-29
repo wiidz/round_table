@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/stream"
 )
 
 func TestParseMeetArgs(t *testing.T) {
@@ -71,12 +72,43 @@ func TestFallbackStreamBody_neverLeaksRawJSON(t *testing.T) {
 }
 
 func TestFormatStreamForDiscord_synthesis(t *testing.T) {
-	raw := `{"core_scheme":["A"],"decisions":["B"],"open_questions":["C?"]}`
+	raw := `{"executive_verdict":"建议采用方案 A","key_decisions":["统一冷却"],"core_scheme":["A"],"decisions":["B"],"open_questions":["C?"]}`
 	got := formatStreamForDiscord(raw, LocaleZH)
-	for _, want := range []string{"方案要点", "A", "已决事项", "B", "开放问题", "C?"} {
+	for _, want := range []string{"方案 A", "Principal 需知", "统一冷却", "方案要点", "A", "已决事项", "B", "开放问题", "C?"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in %q", want, got)
 		}
+	}
+}
+
+func TestFormatStreamForDiscord_executiveRecapMarkdown(t *testing.T) {
+	raw := "## 会议回顾\n\n### 目标与议程覆盖\n已覆盖核心模块。"
+	got := formatStreamForDiscord(raw, LocaleZH)
+	if !strings.Contains(got, "会议回顾") || !strings.Contains(got, "目标与议程覆盖") {
+		t.Fatalf("got=%q", got)
+	}
+	if strings.Count(got, "## 会议回顾") > 0 {
+		t.Fatalf("duplicate heading in %q", got)
+	}
+}
+
+func TestFallbackStreamBody_malformedSynthesisJSON(t *testing.T) {
+	raw := `{"executive_verdict":"broken`
+	got := fallbackStreamBody(raw, LocaleZH)
+	if strings.HasPrefix(got, "{") {
+		t.Fatalf("should not leak JSON: %q", got)
+	}
+}
+
+func TestChannelStream_suppressExecutiveRecapStream(t *testing.T) {
+	capture := &captureSender{}
+	pool := &BotPool{Default: capture, byID: map[string]ChannelSender{"moderator": capture}}
+	cs := &channelStream{pool: pool, channelID: "ch1", loc: LocaleZH}
+	cs.Start(stream.Meta{ParticipantID: "moderator", Phase: "moderator-executive-recap"})
+	cs.buf.WriteString("## 会议回顾\n\n内容")
+	cs.End()
+	if len(capture.messages) != 0 {
+		t.Fatalf("stream should be suppressed, got %v", capture.messages)
 	}
 }
 

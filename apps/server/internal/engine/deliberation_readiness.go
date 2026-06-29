@@ -11,6 +11,7 @@ import (
 	"round_table/apps/server/internal/adapter/profile"
 	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/llmjson"
 	"round_table/apps/server/internal/stream"
 )
 
@@ -98,7 +99,7 @@ func (e *Engine) assessDeliberationReadiness(ctx context.Context, s meeting.Stat
 	}
 	e.logf("◆ readiness check done in %s", time.Since(start).Round(time.Millisecond))
 
-	out, parseErr := parseReadinessOutput(raw.Content)
+	out, parseErr := ParseReadinessOutput(raw.Content)
 	if parseErr != nil {
 		e.logf("◆ readiness parse failed (%v) — treating as not ready", parseErr)
 		return deliberationReadinessResult{
@@ -165,23 +166,13 @@ func buildDeliberationReadinessPrompt(s meeting.State) string {
 	return b.String()
 }
 
-func parseReadinessOutput(raw string) (readinessLLMOutput, error) {
-	raw = strings.TrimSpace(raw)
-	raw = strings.TrimPrefix(raw, "```json")
-	raw = strings.TrimPrefix(raw, "```")
-	raw = strings.TrimSuffix(raw, "```")
-	raw = strings.TrimSpace(raw)
+// ParseReadinessOutput parses deliberation readiness JSON with tolerant repair.
+func ParseReadinessOutput(raw string) (readinessLLMOutput, error) {
+	raw = llmjson.RepairObject(raw)
 
 	var out readinessLLMOutput
 	if err := json.Unmarshal([]byte(raw), &out); err == nil {
 		return out, nil
-	}
-	start := strings.Index(raw, "{")
-	end := strings.LastIndex(raw, "}")
-	if start >= 0 && end > start {
-		if err := json.Unmarshal([]byte(raw[start:end+1]), &out); err == nil {
-			return out, nil
-		}
 	}
 	return readinessLLMOutput{}, fmt.Errorf("invalid readiness JSON")
 }

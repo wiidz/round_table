@@ -49,7 +49,7 @@ func TestSynthesisResolvedBy(t *testing.T) {
 
 func TestParseReadinessOutput(t *testing.T) {
 	raw := `{"ready": true, "rationale": "要素已齐", "gaps": []}`
-	out, err := parseReadinessOutput(raw)
+	out, err := ParseReadinessOutput(raw)
 	if err != nil {
 		t.Fatal(err)
 	}

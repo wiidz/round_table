@@ -11,6 +11,7 @@ import (
 	"round_table/apps/server/internal/adapter/profile"
 	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/llmjson"
 	"round_table/apps/server/internal/stream"
 )
 
@@ -95,7 +96,7 @@ func (e *Engine) synthesizeDeliberationFinal(ctx context.Context, s meeting.Stat
 		return summary, openQuestions, tokenUsageFromModel(phaseLabel, modelName, s.CurrentRound, raw.Usage), agenda, nil
 	}
 
-	out, parseErr := parseSynthesisOutput(raw.Content)
+	out, parseErr := ParseSynthesisOutput(raw.Content)
 	if parseErr != nil {
 		e.logf("◆ LLM synthesis parse failed (%v) — falling back to rule-based", parseErr)
 		summary, openQuestions, agenda = moderatorSynthesizeFinal(s)
@@ -225,23 +226,13 @@ func writeSynthesisMeetingRecord(b *strings.Builder, s meeting.State) {
 	}
 }
 
-func parseSynthesisOutput(raw string) (synthesisLLMOutput, error) {
-	raw = strings.TrimSpace(raw)
-	raw = strings.TrimPrefix(raw, "```json")
-	raw = strings.TrimPrefix(raw, "```")
-	raw = strings.TrimSuffix(raw, "```")
-	raw = strings.TrimSpace(raw)
+// ParseSynthesisOutput parses deliberation synthesis JSON with tolerant repair.
+func ParseSynthesisOutput(raw string) (synthesisLLMOutput, error) {
+	raw = llmjson.RepairObject(raw)
 
 	var out synthesisLLMOutput
 	if err := json.Unmarshal([]byte(raw), &out); err == nil && synthesisOutputNonEmpty(out) {
 		return out, nil
-	}
-	start := strings.Index(raw, "{")
-	end := strings.LastIndex(raw, "}")
-	if start >= 0 && end > start {
-		if err := json.Unmarshal([]byte(raw[start:end+1]), &out); err == nil && synthesisOutputNonEmpty(out) {
-			return out, nil
-		}
 	}
 	return synthesisLLMOutput{}, fmt.Errorf("invalid synthesis JSON")
 }

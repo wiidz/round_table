@@ -6,11 +6,13 @@ import (
 	"strings"
 	"time"
 
+	participantllm "round_table/apps/server/internal/adapter/participant/llm"
 	"round_table/apps/server/internal/adapter/model"
 	"round_table/apps/server/internal/adapter/profile"
 	"round_table/apps/server/internal/adapter/workspace"
 	"round_table/apps/server/internal/domain/event"
 	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/llmjson"
 	"round_table/apps/server/internal/stream"
 )
 
@@ -184,14 +186,14 @@ func (e *Engine) buildModeratorRoundSummaryPrompt(s meeting.State) string {
 }
 
 func cleanRoundSummaryOutput(raw string) string {
-	raw = strings.TrimSpace(raw)
-	raw = strings.TrimPrefix(raw, "```markdown")
-	raw = strings.TrimPrefix(raw, "```md")
-	raw = strings.TrimPrefix(raw, "```")
-	raw = strings.TrimSuffix(raw, "```")
+	raw = llmjson.Clean(raw)
+	raw = strings.TrimPrefix(raw, "markdown")
+	raw = strings.TrimPrefix(raw, "md")
 	raw = strings.TrimSpace(raw)
 	if strings.HasPrefix(raw, "{") && strings.Contains(raw, `"content"`) {
-		return ""
+		if out, err := participantllm.ParseOutput(raw); err == nil {
+			raw = strings.TrimSpace(out.Content)
+		}
 	}
 	if len([]rune(raw)) < 40 {
 		return ""

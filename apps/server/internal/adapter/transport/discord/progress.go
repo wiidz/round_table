@@ -75,7 +75,7 @@ func (p *channelProgress) postModeratorContent(content string) {
 }
 
 func formatModeratorRoundSummaryDiscord(round int, body string, loc Locale) string {
-	body = strings.TrimSpace(body)
+	body = stripDuplicateModeratorHeading(body)
 	if loc == LocaleZH {
 		return fmt.Sprintf("📝 **主持人 · 第 %d 轮摘要**\n\n%s", round, body)
 	}
@@ -83,11 +83,22 @@ func formatModeratorRoundSummaryDiscord(round int, body string, loc Locale) stri
 }
 
 func formatExecutiveRecapDiscord(body string, loc Locale) string {
-	body = strings.TrimSpace(body)
+	body = stripDuplicateModeratorHeading(body)
 	if loc == LocaleZH {
 		return "📖 **会议回顾 · Executive Recap**\n\n" + body
 	}
 	return "📖 **Executive Recap**\n\n" + body
+}
+
+func stripDuplicateModeratorHeading(body string) string {
+	body = strings.TrimSpace(body)
+	for _, prefix := range []string{"## 会议回顾", "## Executive Recap"} {
+		if strings.HasPrefix(body, prefix) {
+			body = strings.TrimPrefix(body, prefix)
+			return strings.TrimLeft(body, "\n")
+		}
+	}
+	return body
 }
 
 func parseExecutiveRecapLine(line string) (body string, ok bool) {

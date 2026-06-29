@@ -113,3 +113,14 @@ func TestBuildModeratorRoundSummaryPrompt_includesStances(t *testing.T) {
 		t.Fatalf("prompt missing stance:\n%s", prompt)
 	}
 }
+
+func TestCleanRoundSummaryOutput_unwrapsJSONContent(t *testing.T) {
+	raw := `{"content":"## 会议回顾\n\n### 目标与议程覆盖\n已覆盖全部议程项，讨论围绕核心模块展开并形成可操作方案雏形。","stance":"none","object_reason":""}`
+	got := cleanRoundSummaryOutput(raw)
+	if !strings.Contains(got, "目标与议程覆盖") {
+		t.Fatalf("got=%q", got)
+	}
+	if strings.HasPrefix(got, "{") {
+		t.Fatalf("should unwrap JSON: %q", got)
+	}
+}

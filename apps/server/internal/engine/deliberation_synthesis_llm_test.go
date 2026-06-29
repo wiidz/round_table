@@ -30,7 +30,7 @@ func (f synthesisFakeModel) Complete(_ context.Context, _ model.Request) (model.
 
 func TestParseSynthesisOutput(t *testing.T) {
 	raw := `{"executive_verdict":"建议采用三连击方案","key_decisions":["统一冷却 8 秒"],"core_scheme":["方案 A"],"decisions":["采用三连击"],"open_questions":["冷却时间？"]}`
-	out, err := parseSynthesisOutput(raw)
+	out, err := ParseSynthesisOutput(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestParseSynthesisOutput(t *testing.T) {
 	}
 
 	wrapped := "```json\n" + raw + "\n```"
-	out, err = parseSynthesisOutput(wrapped)
+	out, err = ParseSynthesisOutput(wrapped)
 	if err != nil {
 		t.Fatal(err)
 	}
