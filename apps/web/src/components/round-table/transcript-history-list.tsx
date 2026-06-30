@@ -2,6 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { bubbleShellClass } from '@/components/chat/chat-bubble'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
+import {
+  sequenceBadgeToneFromHistoryItem,
+  TranscriptSequenceBadge,
+} from '@/components/round-table/transcript-sequence-badge'
 import { condenseMessage } from '@/lib/condense-message'
 import { assignsTurn, messageAvatar, messageLabel } from '@/lib/chat-display'
 import { formatChatTime } from '@/lib/format-date'
@@ -13,6 +17,7 @@ import {
   filterTranscriptBySpeaker,
   listTranscriptSpeakers,
 } from '@/lib/transcript-speakers'
+import { transcriptBubbleBadgePaddingTop, transcriptSpeakerLabelClass } from '@/lib/transcript-speaker-label'
 import { cn } from '@/lib/utils'
 import { heScrollbar } from '@/lib/highend-styles'
 import type { ChatMessage } from '@/types/chat'
@@ -92,40 +97,59 @@ function HistoryBubbleItem({
   return (
     <button
       type="button"
+      data-message-id={message.id}
       onClick={onSelect}
       className={cn(
-        'flex w-full flex-col gap-1 px-1 py-1 text-left transition-opacity',
-        isUser ? 'items-end' : 'items-start',
-        selected && 'opacity-100',
-        !selected && 'opacity-90 hover:opacity-100',
+        'group flex w-full rounded-lg px-1 py-1 text-left transition-[opacity,background-color] duration-200',
+        isUser ? 'justify-end' : 'justify-start',
+        selected && 'bg-ai-soft/40 opacity-100',
+        !selected && 'opacity-90 hover:bg-black/[0.02] hover:opacity-100',
       )}
     >
-      <p
-        className={cn(
-          'px-0.5 text-[10px] font-medium',
-          isUser && 'text-right',
-          selected && 'font-semibold text-brand',
-          active && !selected && 'text-ai',
-          !selected && !active && 'text-text-tertiary',
-        )}
-      >
-        {showSequence ? `#${sequence} · ${label}` : label}
-        {timeLabel && (
-          <span className="ml-1.5 font-normal tabular-nums opacity-80">{timeLabel}</span>
-        )}
-      </p>
-
       <div className={cn('flex max-w-[92%] items-start gap-2', isUser && 'flex-row-reverse')}>
-        <ProfileAvatar id={avatar.id} name={avatar.name} size="sm" className="shrink-0" />
-        <div
-          className={cn(
-            bubbleShellClass(message, isUser),
-            'min-w-0 px-3 py-2 text-[12px] leading-snug',
+        <div className="flex shrink-0 flex-col items-center gap-1.5">
+          <ProfileAvatar id={avatar.id} name={avatar.name} size="sm" className="shrink-0" />
+          {label && (
+            <p
+              className={transcriptSpeakerLabelClass({
+                highlighted: selected,
+                focused: active && !selected,
+              })}
+            >
+              {label}
+            </p>
           )}
-        >
-          <p className={cn('line-clamp-4 whitespace-pre-wrap', isUser ? 'text-white' : 'text-text-primary')}>
-            {summary || '（空）'}
-          </p>
+        </div>
+        <div className="relative min-w-0 flex-1">
+          {showSequence && sequence != null && (
+            <TranscriptSequenceBadge
+              sequence={sequence}
+              tone={sequenceBadgeToneFromHistoryItem(selected, active)}
+            />
+          )}
+          <div
+            className={cn(
+              bubbleShellClass(message, isUser),
+              'chat-bubble--interactive relative min-w-0 !px-3 !pb-5 text-[12px] leading-snug transition-shadow duration-200',
+              showSequence ? transcriptBubbleBadgePaddingTop : '!pt-2',
+              selected && 'chat-bubble--live-highlight',
+              active && !selected && 'ring-1 ring-ai/20',
+            )}
+          >
+            <p className={cn('line-clamp-3 whitespace-pre-wrap', isUser ? 'text-white' : 'text-text-primary')}>
+              {summary || '（空）'}
+            </p>
+            {timeLabel && (
+              <span
+                className={cn(
+                  'pointer-events-none absolute bottom-1 left-3 text-[9px] font-normal tabular-nums',
+                  isUser ? 'text-white/45' : 'text-text-tertiary/70',
+                )}
+              >
+                {timeLabel}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </button>
@@ -157,6 +181,12 @@ export function TranscriptHistoryList({
       setFilterSpeakerId(null)
     }
   }, [speakers, filterSpeakerId])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-message-id="${selectedId}"]`)
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [selectedId, visibleMessages])
 
   useEffect(() => {
     const el = scrollRef.current

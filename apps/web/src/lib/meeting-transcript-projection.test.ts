@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ChatMessage } from '@/types/chat'
-import { maxTurnNumber, projectTranscriptAtTurn } from '@/lib/meeting-transcript-projection'
+import { activeMessageAtScrubTurn, maxTurnNumber, projectTranscriptAtTurn, scrubTurnForMessage } from '@/lib/meeting-transcript-projection'
 
 function turnMsg(turn: number, role: ChatMessage['role'], id: string): ChatMessage {
   return {
@@ -38,5 +38,29 @@ describe('projectTranscriptAtTurn', () => {
 describe('maxTurnNumber', () => {
   it('returns highest turn', () => {
     expect(maxTurnNumber([turnMsg(1, 'moderator', 'a'), turnMsg(5, 'participant', 'b')])).toBe(5)
+  })
+})
+
+describe('activeMessageAtScrubTurn', () => {
+  it('returns the last message visible at scrub turn', () => {
+    const turns = [
+      turnMsg(1, 'moderator', 'm1'),
+      turnMsg(2, 'participant', 'dev'),
+      turnMsg(3, 'participant', 'design'),
+    ]
+    expect(activeMessageAtScrubTurn(turns, 2)?.id).toBe('dev')
+    expect(activeMessageAtScrubTurn(turns, null)?.id).toBe('design')
+  })
+})
+
+describe('scrubTurnForMessage', () => {
+  it('returns null at live tail', () => {
+    const msg = turnMsg(5, 'participant', 'dev')
+    expect(scrubTurnForMessage(msg, 5)).toBeNull()
+  })
+
+  it('returns turn when before max', () => {
+    const msg = turnMsg(3, 'participant', 'dev')
+    expect(scrubTurnForMessage(msg, 5)).toBe(3)
   })
 })

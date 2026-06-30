@@ -33,3 +33,17 @@ export function maxTurnNumber(turns: ChatMessage[]): number {
   if (turns.length === 0) return 0
   return Math.max(...turns.map((m) => m.turn ?? 0))
 }
+
+/** Message highlighted at the scrub position (last visible turn). */
+export function activeMessageAtScrubTurn(
+  turns: ChatMessage[],
+  scrubTurn: number | null,
+): ChatMessage | null {
+  return projectTranscriptAtTurn(turns, scrubTurn).activeMessage
+}
+
+/** Map a selected message to scrub bar position (null = live tail at maxTurn). */
+export function scrubTurnForMessage(message: ChatMessage, maxTurn: number): number | null {
+  if (message.turn == null || maxTurn <= 0) return null
+  return message.turn >= maxTurn ? null : message.turn
+}

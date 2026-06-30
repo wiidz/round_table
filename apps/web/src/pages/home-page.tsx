@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { ArrowRight, Bot, LayoutList, UserRound, Users } from 'lucide-react'
+import { ArrowRight, Bot, FileStack, LayoutList, UserRound, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { fetchBriefTemplates } from '@/api/brief-templates'
 import { fetchAllMeetings, fetchMeetings } from '@/api/meetings'
 import { fetchParticipants } from '@/api/participants'
 import { fetchPrincipals } from '@/api/principals'
@@ -122,6 +123,7 @@ export function HomePage() {
   const [allMeetings, setAllMeetings] = useState<MeetingIndex[]>([])
   const [meetingTotal, setMeetingTotal] = useState(0)
   const [principalCount, setPrincipalCount] = useState(0)
+  const [briefTemplateCount, setBriefTemplateCount] = useState(0)
   const [participantCount, setParticipantCount] = useState(0)
   const [discordBots, setDiscordBots] = useState<DiscordBotState[]>([])
   const [transportUnavailable, setTransportUnavailable] = useState(false)
@@ -137,11 +139,6 @@ export function HomePage() {
       .catch(() => setRuntime(null))
   }, [])
 
-  const handleTransportRefresh = useCallback(() => {
-    void discordTransport.refresh()
-    refreshRuntime()
-  }, [discordTransport, refreshRuntime])
-
   useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -150,15 +147,17 @@ export function HomePage() {
       fetchMeetings(1, RECENT_MEETINGS),
       fetchAllMeetings(),
       fetchPrincipals(),
+      fetchBriefTemplates(),
       fetchParticipants(),
       fetchSettings().catch(() => null),
     ])
-      .then(([meetingsRes, allMeetingsRes, principalsRes, participantsRes, settingsRes]) => {
+      .then(([meetingsRes, allMeetingsRes, principalsRes, briefsRes, participantsRes, settingsRes]) => {
         if (cancelled) return
         setMeetings(meetingsRes.meetings ?? [])
         setAllMeetings(allMeetingsRes)
         setMeetingTotal(meetingsRes.total ?? allMeetingsRes.length)
         setPrincipalCount(principalsRes.principals?.length ?? 0)
+        setBriefTemplateCount(briefsRes.templates?.length ?? 0)
         setParticipantCount(participantsRes.participants?.length ?? 0)
         setDiscordBots(settingsRes?.discord_bots ?? [])
         setError(null)
@@ -242,8 +241,8 @@ export function HomePage() {
         </div>
 
         {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }, (_, i) => (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {Array.from({ length: 5 }, (_, i) => (
               <div
                 key={i}
                 className={cn(hePanelShell, 'h-[148px] animate-pulse bg-black/[0.02]')}
@@ -251,7 +250,7 @@ export function HomePage() {
             ))}
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <DashboardStat
               label="会议"
               value={String(meetingTotal)}
@@ -265,9 +264,17 @@ export function HomePage() {
               to="/meetings"
             />
             <DashboardStat
+              label="简报模板"
+              value={String(briefTemplateCount)}
+              hint="可复用 Meeting Brief（ADR-0014）"
+              icon={FileStack}
+              accent="brand"
+              to="/brief-templates"
+            />
+            <DashboardStat
               label={domainNavLabel('principal')}
               value={String(principalCount)}
-              hint="委托人档案"
+              hint="USER.md 偏好档案"
               icon={UserRound}
               to="/principals"
             />
@@ -299,14 +306,11 @@ export function HomePage() {
         apiOnline={apiOnline}
         apiError={error}
         transportPhase={discordTransport.phase}
-        transportLoading={discordTransport.status === null && !transportUnavailable}
         transportPid={discordTransport.status?.pid}
-        transportReadyAt={discordTransport.status?.ready_at}
         transportUnavailable={transportUnavailable}
         discordBots={discordBots}
         serverRuntime={runtime?.server}
         discordRuntime={runtime?.discord_transport}
-        onTransportRefresh={handleTransportRefresh}
       />
 
       <section className="space-y-4">

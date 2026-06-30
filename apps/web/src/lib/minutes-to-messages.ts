@@ -204,6 +204,22 @@ function sortedRoundPaths(files: Record<string, string>): string[] {
     })
 }
 
+/** Return the highest round number covered by a MINUTES.md string (0 = none). */
+function maxRoundInMinutes(minutesMd: string): number {
+  let max = 0
+  for (const m of minutesMd.matchAll(/^## Round (\d+)/gm)) {
+    const n = parseInt(m[1]!, 10)
+    if (n > max) max = n
+  }
+  return max
+}
+
+function roundNumberFromPath(path: string): number {
+  if (path === 'pre-meeting/perspectives.md') return 0
+  const m = path.match(/round-(\d+)/)
+  return m ? parseInt(m[1]!, 10) : -1
+}
+
 export function parseMinutesMarkdown(
   minutesMd: string,
   options: { meetingId: string; startedAt?: string },
@@ -219,20 +235,61 @@ export function parseMinutesMarkdown(
   return ctx.messages
 }
 
-/** Build replay messages from workspace files (MINUTES.md preferred). */
+/**
+ * Build replay messages from workspace files.
+ *
+ * Priority:
+ * 1. MINUTES.md (root) – preferred; contains moderator summaries + all rounds.
+ * 2. artifacts/minutes.md – alternate path for the same document.
+ * 3. round files fallback when neither MINUTES.md variant exists.
+ *
+ * When a MINUTES.md is found, we also check whether newer round files exist
+ * (higher round number than the last ## Round N in the minutes) and append
+ * them so that an in-progress meeting shows the most recent rounds.
+ */
 export function workspaceTranscriptMessages(
   files: Record<string, string>,
   meetingId: string,
   startedAt?: string,
 ): ChatMessage[] {
-  const minutes = files['MINUTES.md']?.trim()
-  if (minutes) {
-    return parseMinutesMarkdown(minutes, { meetingId, startedAt })
+  const minutesContent =
+    files['MINUTES.md']?.trim() || files['artifacts/minutes.md']?.trim()
+
+  const baseTime = startedAt ? Date.parse(startedAt) || Date.now() : Date.now()
+
+  if (minutesContent) {
+    const messages = parseMinutesMarkdown(minutesContent, { meetingId, startedAt })
+
+    // Supplement with round files that represent rounds newer than MINUTES.md
+    const coveredMax = maxRoundInMinutes(minutesContent)
+    const extraPaths = sortedRoundPaths(files).filter(
+      (p) => roundNumberFromPath(p) > coveredMax,
+    )
+    if (extraPaths.length > 0) {
+      const ctx: ParseContext = {
+        meetingId,
+        baseTime,
+        messages,
+        nextTurn: messages.length > 0
+          ? Math.max(...messages.map((m) => (m.turn ?? 0))) + 1
+          : 1,
+        msgIndex: messages.length,
+      }
+      for (const path of extraPaths) {
+        const content = files[path]
+        if (content?.trim()) {
+          parseRoundFileContent(ctx, content)
+        }
+      }
+    }
+
+    return messages
   }
 
+  // Fallback: parse all available round files
   const ctx: ParseContext = {
     meetingId,
-    baseTime: startedAt ? Date.parse(startedAt) || Date.now() : Date.now(),
+    baseTime,
     messages: [],
     nextTurn: 1,
     msgIndex: 0,
@@ -248,5 +305,6 @@ export function workspaceTranscriptMessages(
 
 export function hasWorkspaceTranscript(files: Record<string, string>): boolean {
   if (files['MINUTES.md']?.trim()) return true
+  if (files['artifacts/minutes.md']?.trim()) return true
   return sortedRoundPaths(files).some((p) => files[p]?.trim())
 }

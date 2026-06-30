@@ -1,6 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom'
 
 import { AppShell } from '@/components/layout/app-shell'
+import { BriefTemplateDetailPage } from '@/pages/brief-template-detail-page'
+import { BriefTemplatesPage } from '@/pages/brief-templates-page'
 import { ChatPage } from '@/pages/chat-page'
 import { HomePage } from '@/pages/home-page'
 import { MeetingDetailPage } from '@/pages/meeting-detail-page'
@@ -23,6 +25,8 @@ export const router = createBrowserRouter([
       { path: 'meetings/:id', element: <MeetingDetailPage /> },
       { path: 'principals', element: <PrincipalsPage /> },
       { path: 'principals/:id', element: <PrincipalDetailPage /> },
+      { path: 'brief-templates', element: <BriefTemplatesPage /> },
+      { path: 'brief-templates/:id', element: <BriefTemplateDetailPage /> },
       { path: 'participants', element: <ParticipantsPage /> },
       { path: 'participants/:id', element: <ParticipantDetailPage /> },
       { path: 'settings', element: <SettingsPage /> },

@@ -19,6 +19,9 @@ export function profileFileHasTitle(filename: string): boolean {
 /** ADR-0010 规定的 Participant 标准档案三件套 */
 export const PARTICIPANT_STANDARD_FILES = ['SOUL.md', 'AGENTS.md', 'TOOLS.md'] as const
 
+/** ADR-0010 规定的 Principal 标准档案 */
+export const PRINCIPAL_STANDARD_FILES = ['USER.md'] as const
+
 export const PARTICIPANT_FILE_HINTS: Record<string, string> = {
   'SOUL.md': '人格、语气与边界（ADR-0010 标准档案）',
   'AGENTS.md': 'Meeting 内行为规则与发言方式',
@@ -26,8 +29,6 @@ export const PARTICIPANT_FILE_HINTS: Record<string, string> = {
 }
 
 export const PRINCIPAL_FILE_HINTS: Record<string, string> = {
-  'USER.md': 'Principal 偏好与背景（ADR-0010 标准档案）',
-  'SOUL.md': '可选：人格与语气',
-  'AGENTS.md': '可选：Meeting 内行为规则',
-  'TOOLS.md': '可选：工具与环境约定',
+  'USER.md':
+    'Principal 偏好与背景（语言、Confirmation 审阅习惯、行业约束）。Moderator 服务你的长期设定，不是单次会议议题。',
 }

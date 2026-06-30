@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, LayoutList, Users, Wifi, WifiOff } from 'lucide-react'
 
 import { ChatComposer } from '@/components/chat/chat-composer'
@@ -14,9 +14,10 @@ import { useChatViewMode } from '@/hooks/use-chat-view-mode'
 import { useMeetingTranscript } from '@/hooks/use-meeting-transcript'
 import { useNarrowScreen, useMediaQuery } from '@/hooks/use-media-query'
 import { useRosterSeats } from '@/hooks/use-roster-seats'
+import type { TypingStates } from '@/types/chat'
 import { speakerId } from '@/lib/chat-display'
 import { phaseLabel } from '@/lib/chat-meeting-phase'
-import { maxTurnNumber } from '@/lib/meeting-transcript-projection'
+import { maxTurnNumber, scrubTurnForMessage, activeMessageAtScrubTurn } from '@/lib/meeting-transcript-projection'
 import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
 import { hePanelShell, heSubsectionTitleNeutral, chatSideRailLeftClass, chatSideRailRightClass } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
@@ -128,6 +129,7 @@ interface ChatWindowProps {
   messages: ChatMessage[]
   sessionId: string | null
   lastError: string | null
+  typingStates?: TypingStates
   onSend: (content: string) => boolean
   onReconnect: () => void
 }
@@ -138,11 +140,13 @@ export function ChatWindow({
   messages,
   sessionId,
   lastError,
+  typingStates,
   onSend,
   onReconnect,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('')
-  const [drawerMessage, setDrawerMessage] = useState<ChatMessage | null>(null)
+  /** null = 自动跟踪 activeMessage；非 null = 用户手动固定的消息 */
+  const [pinnedMessage, setPinnedMessage] = useState<ChatMessage | null>(null)
   const [scrubTurn, setScrubTurn] = useState<number | null>(null)
   const canSend = connectionState === 'open'
   const narrow = useNarrowScreen()
@@ -151,7 +155,7 @@ export function ChatWindow({
   const { mode, phase, setMode } = useChatViewMode(messages)
   const layout = resolveLayout(narrow, phase, mode)
   const roundtableSidePanel = layout === 'roundtable' && wideSidePanel
-  const { turns, activeSpeakerId, latestBySeat, activeMessage, isScrubbing } =
+  const { turns, latestBySeat, activeMessage, isScrubbing } =
     useMeetingTranscript(messages, scrubTurn)
   const { seats, participants, loading, rosterFromApi, rosterTotal } = useRosterSeats(messages, phase)
   const { meetingId, topic: meetingTopic, loading: meetingMetaLoading } =
@@ -159,9 +163,35 @@ export function ChatWindow({
   const maxTurn = maxTurnNumber(turns)
   const activeMessageId = activeMessage?.id ?? null
   const sequenceMap = useMemo(() => buildMessageSequenceMap(messages), [messages])
-  const selectedSequence = drawerMessage
-    ? messageSequenceNumber(drawerMessage, sequenceMap)
+
+  // 右侧详情面板：手动固定 > 自动跟踪最新发言
+  const displayedMessage = pinnedMessage ?? activeMessage ?? null
+  const selectedSequence = displayedMessage
+    ? messageSequenceNumber(displayedMessage, sequenceMap)
     : null
+
+  const selectMessage = useCallback((msg: ChatMessage) => {
+    setPinnedMessage(msg)
+  }, [])
+
+  const handleScrubTurnChange = useCallback(
+    (turn: number | null) => {
+      setScrubTurn(turn)
+      setPinnedMessage(activeMessageAtScrubTurn(turns, turn))
+    },
+    [turns],
+  )
+
+  const selectHistoryMessage = useCallback(
+    (msg: ChatMessage) => {
+      setScrubTurn(scrubTurnForMessage(msg, maxTurn))
+      setPinnedMessage(msg)
+    },
+    [maxTurn],
+  )
+
+  const highlightMessageId = pinnedMessage?.id ?? activeMessageId
+  const referenceTurn = pinnedMessage?.turn ?? activeMessage?.turn ?? null
 
   useEffect(() => {
     if (phase !== 'running' && phase !== 'post') {
@@ -182,9 +212,10 @@ export function ChatWindow({
     return undefined
   }, [isScrubbing, scrubTurn, meetingTopic, turns.length, meetingMetaLoading, meetingId])
 
+  // focusedSeatId 只在手动选中时标记席位
   const focusedSeatId = useMemo(
-    () => (drawerMessage ? speakerId(drawerMessage) : null),
-    [drawerMessage],
+    () => (pinnedMessage ? speakerId(pinnedMessage) : null),
+    [pinnedMessage],
   )
 
   const submitDraft = (text?: string) => {
@@ -243,21 +274,23 @@ export function ChatWindow({
             seats={seats}
             messages={messages}
             latestBySeat={latestBySeat}
-            activeSpeakerId={activeSpeakerId}
             focusedSeatId={focusedSeatId}
+            typingStates={typingStates}
             turnCount={scrubTurn ?? turns.length}
             maxTurn={maxTurn}
             scrubTurn={scrubTurn}
-            onScrubTurnChange={setScrubTurn}
+            onScrubTurnChange={handleScrubTurnChange}
             activeMessageId={activeMessageId}
-            selectedMessageId={drawerMessage?.id ?? null}
+            selectedMessageId={displayedMessage?.id ?? null}
+            highlightMessageId={highlightMessageId}
+            referenceTurn={referenceTurn}
             rosterLoading={loading}
             rosterFromApi={rosterFromApi}
             rosterTotal={rosterTotal}
             seatedExpertCount={participants.length}
             centerTitle={centerTitle}
             centerSubtitle={centerSubtitle}
-            onSelectMessage={setDrawerMessage}
+            onSelectMessage={selectMessage}
             showTranscriptStrip={!roundtableSidePanel}
           />
         )}
@@ -269,10 +302,10 @@ export function ChatWindow({
             messages={messages}
             maxTurn={maxTurn}
             scrubTurn={scrubTurn}
-            onScrubTurnChange={setScrubTurn}
+            onScrubTurnChange={handleScrubTurnChange}
             activeMessageId={activeMessageId}
-            selectedMessageId={drawerMessage?.id ?? null}
-            onSelectMessage={setDrawerMessage}
+            selectedMessageId={displayedMessage?.id ?? null}
+            onSelectMessage={selectMessage}
           />
         )}
 
@@ -296,14 +329,14 @@ export function ChatWindow({
             <TranscriptHistoryPanel
               messages={messages}
               activeMessageId={activeMessageId}
-              selectedId={drawerMessage?.id ?? null}
-              onSelect={setDrawerMessage}
+              selectedId={highlightMessageId}
+              onSelect={selectHistoryMessage}
               className={chatSideRailLeftClass}
             />
             <TranscriptDetailPanel
-              message={drawerMessage}
+              message={displayedMessage}
               sequence={selectedSequence}
-              onClear={() => setDrawerMessage(null)}
+              onClear={() => setPinnedMessage(null)}
               className={chatSideRailRightClass}
             />
           </>
@@ -312,9 +345,9 @@ export function ChatWindow({
 
       {!roundtableSidePanel && (
         <TranscriptDrawer
-          message={drawerMessage}
+          message={displayedMessage}
           sequence={selectedSequence}
-          onClose={() => setDrawerMessage(null)}
+          onClose={() => setPinnedMessage(null)}
         />
       )}
     </>

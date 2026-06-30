@@ -29,3 +29,12 @@ export interface ChatMessage {
 }
 
 export type ChatConnectionState = 'connecting' | 'open' | 'closed' | 'error'
+
+/** Per-seat typing indicator state. Key = seat id (speakerId). */
+export interface TypingState {
+  role: ChatRole
+  authorId?: string
+  authorName?: string
+}
+
+export type TypingStates = Map<string, TypingState>

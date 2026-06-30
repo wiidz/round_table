@@ -2,20 +2,22 @@ import { RoundTableStage } from '@/components/round-table/round-table-stage'
 import { TranscriptScrubBar } from '@/components/round-table/transcript-scrub-bar'
 import { TranscriptStrip } from '@/components/round-table/transcript-strip'
 import type { SeatLayout } from '@/lib/round-table-layout'
-import type { ChatMessage } from '@/types/chat'
+import type { ChatMessage, TypingStates } from '@/types/chat'
 
 interface RoundTableViewProps {
   seats: SeatLayout[]
   messages: ChatMessage[]
   latestBySeat: Map<string, ChatMessage>
-  activeSpeakerId: string | null
   focusedSeatId: string | null
+  typingStates?: TypingStates
   turnCount: number
   maxTurn: number
   scrubTurn: number | null
   onScrubTurnChange: (turn: number | null) => void
   activeMessageId: string | null
   selectedMessageId: string | null
+  highlightMessageId: string | null
+  referenceTurn: number | null
   rosterLoading: boolean
   rosterFromApi: boolean
   rosterTotal: number
@@ -31,14 +33,16 @@ export function RoundTableView({
   seats,
   messages,
   latestBySeat,
-  activeSpeakerId,
   focusedSeatId,
+  typingStates,
   turnCount,
   maxTurn,
   scrubTurn,
   onScrubTurnChange,
   activeMessageId,
   selectedMessageId,
+  highlightMessageId,
+  referenceTurn,
   rosterLoading,
   rosterFromApi,
   rosterTotal,
@@ -53,8 +57,10 @@ export function RoundTableView({
       <RoundTableStage
         seats={seats}
         latestBySeat={latestBySeat}
-        activeSpeakerId={activeSpeakerId}
+        highlightMessageId={highlightMessageId}
+        referenceTurn={referenceTurn}
         focusedSeatId={focusedSeatId}
+        typingStates={typingStates}
         turnCount={turnCount}
         rosterLoading={rosterLoading}
         rosterFromApi={rosterFromApi}

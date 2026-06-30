@@ -124,6 +124,59 @@
   }
 }
 
+/* ── Round-Table Live 动画 ─────────────────────────────────── */
+
+/** 气泡入场：上移 + 淡入 + 轻微 scale */
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/** 席位入场：淡入 + scale */
+@keyframes seat-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/** 打字动点弹跳 */
+@keyframes typing-dot {
+  0%, 80%, 100% {
+    transform: translateY(0) scale(0.65);
+    opacity: 0.35;
+  }
+  40% {
+    transform: translateY(-5px) scale(1);
+    opacity: 1;
+  }
+}
+
+/** 当前发言者高亮圆环脉冲 */
+@keyframes speaker-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ai-color) 40%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--ai-color) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ai-color) 0%, transparent);
+  }
+}
+
+/* ── md-heading-target-flash ───────────────────────────────── */
+
 @keyframes md-heading-target-flash {
   0% {
     background-color: transparent;
@@ -194,13 +247,14 @@
     content: '';
     position: absolute;
     left: -6px;
-    top: 14px;
+    top: 50%;
     width: 0;
     height: 0;
     border-style: solid;
     border-width: 6px 7px 6px 0;
     border-color: transparent;
     border-right-color: var(--chat-bubble-bg);
+    transform: translateY(-50%);
   }
 
   .chat-bubble--tail-right {
@@ -212,13 +266,14 @@
     content: '';
     position: absolute;
     right: -6px;
-    top: 14px;
+    top: 50%;
     width: 0;
     height: 0;
     border-style: solid;
     border-width: 6px 0 6px 7px;
     border-color: transparent;
     border-left-color: var(--chat-bubble-bg);
+    transform: translateY(-50%);
   }
 
   .chat-bubble--tail-top {
@@ -257,6 +312,14 @@
     border-width: 7px 6px 0 6px;
     border-color: transparent;
     border-top-color: var(--chat-bubble-bg);
+  }
+
+  /* Round-table live bubbles: keep tail triangles, use uniform corner radius. */
+  .chat-bubble--live.chat-bubble--tail-left,
+  .chat-bubble--live.chat-bubble--tail-right,
+  .chat-bubble--live.chat-bubble--tail-top,
+  .chat-bubble--live.chat-bubble--tail-bottom {
+    border-radius: 1rem;
   }
 
   .chat-bubble--user {
@@ -299,7 +362,52 @@
       0 4px 16px color-mix(in srgb, var(--ai-color) 18%, transparent);
   }
 
+  .chat-bubble--interactive {
+    transition: box-shadow 0.2s ease;
+  }
+
+  .group:hover .chat-bubble--interactive:not(.chat-bubble--live-highlight) {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 14%, transparent),
+      0 2px 10px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  }
+
+  .group:hover .chat-bubble--interactive.chat-bubble--user:not(.chat-bubble--live-highlight) {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, #fff 22%, transparent),
+      0 2px 12px color-mix(in srgb, var(--brand-color) 22%, transparent);
+  }
+
+  .group:hover .chat-bubble--interactive.chat-bubble--moderator:not(.chat-bubble--live-highlight) {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--ai-color) 18%, transparent),
+      0 2px 10px color-mix(in srgb, var(--ai-color) 10%, transparent);
+  }
+
   .chat-bubble--live-dimmed {
     filter: saturate(0.55);
+  }
+
+  /* 气泡入场动画 */
+  .animate-bubble-in {
+    animation: bubble-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* 席位入场动画 */
+  .animate-seat-in {
+    animation: seat-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* 打字气泡容器 */
+  .chat-bubble--typing {
+    --chat-bubble-bg: var(--surface);
+    background-color: var(--surface);
+    color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+
+  /* 高亮席位脉冲动画 */
+  .animate-speaker-pulse {
+    animation: speaker-pulse 1.8s ease-out infinite;
   }
 }

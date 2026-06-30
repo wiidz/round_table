@@ -1,7 +1,7 @@
+import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { ArrowRight, ChevronRight, MessagesSquare, Server, Settings2 } from 'lucide-react'
 
-import { DiscordTransportControl } from '@/components/settings/discord-transport-control'
-import { DiscordTransportStatusBadge } from '@/components/settings/discord-transport-status-badge'
 import { SettingsNavLink } from '@/components/settings/settings-nav-link'
 import {
   heFileBadge,
@@ -10,7 +10,7 @@ import {
   heSpring,
   heSubsectionTitleNeutral,
 } from '@/lib/highend-styles'
-import { formatProcessRuntime } from '@/lib/format-runtime'
+import { buildProcessRuntimeMetrics, type ProcessRuntimeMetric } from '@/lib/format-runtime'
 import { SETTINGS_IM_DISCORD, settingsNavForDiscordBot } from '@/lib/settings-nav'
 import { cn } from '@/lib/utils'
 
@@ -83,6 +83,125 @@ function isGatewayHost(bot: DiscordBotState): boolean {
   return bot.primary
 }
 
+function ServiceRoleTag({ variant, label }: { variant: 'main' | 'im'; label: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset',
+        variant === 'main' && 'bg-brand-soft text-brand ring-brand/25',
+        variant === 'im' && 'bg-ai-soft text-ai ring-ai/20',
+      )}
+    >
+      {label}
+    </span>
+  )
+}
+
+function RuntimeMetricGrid({ metrics }: { metrics: ProcessRuntimeMetric[] }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {metrics.map((metric) => (
+        <div
+          key={metric.key}
+          className="inline-flex min-w-[3.75rem] flex-col gap-0.5 rounded-lg bg-black/[0.025] px-2.5 py-1.5 ring-1 ring-inset ring-black/[0.05]"
+        >
+          <span className="text-[10px] font-medium tracking-wide text-text-tertiary">{metric.label}</span>
+          <span className="font-mono text-[12px] font-semibold tabular-nums leading-none text-text-primary">
+            {metric.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function RuntimeMetricSkeleton() {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {Array.from({ length: 3 }, (_, i) => (
+        <div
+          key={i}
+          className="h-[42px] w-[4.5rem] animate-pulse rounded-lg bg-black/[0.04]"
+        />
+      ))}
+    </div>
+  )
+}
+
+function ServiceProcessCard({
+  variant,
+  icon: Icon,
+  title,
+  roleLabel,
+  description,
+  metrics,
+  loading,
+  status,
+  footer,
+}: {
+  variant: 'main' | 'im'
+  icon: LucideIcon
+  title: string
+  roleLabel: string
+  description: string
+  metrics: ProcessRuntimeMetric[]
+  loading: boolean
+  status: ReactNode
+  footer?: ReactNode
+}) {
+  return (
+    <article
+      className={cn(
+        hePanelShell,
+        'relative overflow-hidden',
+        'before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-r-full',
+        variant === 'main' && 'before:bg-primary/45',
+        variant === 'im' && 'before:bg-ai/45',
+      )}
+    >
+      <div
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b to-transparent',
+          variant === 'main' && 'from-brand-soft/70',
+          variant === 'im' && 'from-ai-soft/60',
+        )}
+      />
+      <div className="relative space-y-3 px-4 py-3.5 pl-5">
+        <div className="flex items-start gap-3">
+          <span
+            className={cn(
+              'inline-flex size-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
+              variant === 'main' && 'bg-brand-soft text-brand ring-brand/20',
+              variant === 'im' && 'bg-ai-soft text-ai ring-ai/15',
+            )}
+          >
+            <Icon className="size-4" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-[13px] font-semibold tracking-[-0.01em] text-text-primary">
+                  {title}
+                </span>
+                <ServiceRoleTag variant={variant} label={roleLabel} />
+              </p>
+              <div className="shrink-0">{status}</div>
+            </div>
+          </div>
+        </div>
+
+        {loading ? <RuntimeMetricSkeleton /> : metrics.length > 0 ? <RuntimeMetricGrid metrics={metrics} /> : null}
+
+        <div className="border-t border-black/[0.05] pt-3">
+          <p className="text-[12px] leading-relaxed text-text-tertiary">{description}</p>
+          {footer}
+        </div>
+      </div>
+    </article>
+  )
+}
+
 function botConnectionState(
   bot: DiscordBotState,
   phase: DiscordTransportPhase,
@@ -143,19 +262,29 @@ function botLabel(bot: DiscordBotState): string {
   )
 }
 
+function transportServiceStatus(phase: DiscordTransportPhase): {
+  tone: 'success' | 'warning' | 'neutral'
+  label: string
+} {
+  if (phase === 'ready') {
+    return { tone: 'success', label: '运行正常' }
+  }
+  if (phase === 'starting') {
+    return { tone: 'warning', label: '启动中' }
+  }
+  return { tone: 'neutral', label: '未启动' }
+}
+
 interface HomeOperationsPanelProps {
   loading: boolean
   apiOnline: boolean
   apiError?: string | null
   transportPhase: DiscordTransportPhase
-  transportLoading: boolean
   transportPid?: number
-  transportReadyAt?: string
   transportUnavailable?: boolean
   discordBots: DiscordBotState[]
   serverRuntime?: ProcessSnapshot
   discordRuntime?: ProcessSnapshot
-  onTransportRefresh: () => void
 }
 
 export function HomeOperationsPanel({
@@ -163,21 +292,18 @@ export function HomeOperationsPanel({
   apiOnline,
   apiError,
   transportPhase,
-  transportLoading,
   transportPid,
-  transportReadyAt,
   transportUnavailable,
   discordBots,
   serverRuntime,
   discordRuntime,
-  onTransportRefresh,
 }: HomeOperationsPanelProps) {
   const configuredBots = discordBots.filter((b) => b.configured)
-  const participantBots = configuredBots.filter((b) => !isGatewayHost(b))
-  const gatewayOnline = transportPhase === 'ready' && configuredBots.some(isGatewayHost)
-  const sendOnlyReady = transportPhase === 'ready' ? participantBots.length : 0
-  const serverRuntimeLabel = formatProcessRuntime(serverRuntime)
-  const discordRuntimeLabel = formatProcessRuntime(discordRuntime)
+  const serverMetrics = buildProcessRuntimeMetrics(serverRuntime)
+  const discordMetrics = buildProcessRuntimeMetrics(
+    discordRuntime ?? (transportPid != null && transportPid > 0 ? { pid: transportPid } : undefined),
+  )
+  const transportStatus = transportServiceStatus(transportPhase)
 
   return (
     <section className="space-y-4">
@@ -186,97 +312,66 @@ export function HomeOperationsPanel({
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
         {/* 左列：API + Transport 控制 */}
         <div className="space-y-3">
-          <article
-            className={cn(
-              hePanelShell,
-              'flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5',
-            )}
-          >
-            <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.04] text-text-secondary">
-              <Server className="size-3.5" strokeWidth={1.75} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-text-primary">RoundTable API</p>
-              {serverRuntimeLabel && !loading && (
-                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-text-tertiary">
-                  {serverRuntimeLabel}
+          <ServiceProcessCard
+            variant="main"
+            icon={Server}
+            title="RoundTable API"
+            roleLabel="主进程"
+            description="Web 界面与会议引擎 REST / WebSocket 服务"
+            metrics={serverMetrics}
+            loading={loading}
+            status={
+              loading ? (
+                <div className="h-6 w-16 animate-pulse rounded-full bg-black/[0.04]" />
+              ) : apiOnline ? (
+                <ServiceStatusPill tone="success" label="运行正常" />
+              ) : (
+                <ServiceStatusPill tone="danger" label="连接异常" />
+              )
+            }
+            footer={
+              !loading && apiError ? (
+                <p className="mt-2 text-[12px] text-text-tertiary">{apiError}</p>
+              ) : undefined
+            }
+          />
+
+          <ServiceProcessCard
+            variant="im"
+            icon={MessagesSquare}
+            title="Discord Transport"
+            roleLabel="IM 接入"
+            description="Discord 频道指令接收与 Bot 发话服务"
+            metrics={discordMetrics}
+            loading={loading}
+            status={
+              loading ? (
+                <div className="h-6 w-16 animate-pulse rounded-full bg-black/[0.04]" />
+              ) : transportUnavailable ? (
+                <ServiceStatusPill tone="neutral" label="监管不可用" />
+              ) : (
+                <SettingsNavLink
+                  to="/settings"
+                  nav={SETTINGS_IM_DISCORD}
+                  aria-label={`Discord Transport：${transportStatus.label}，前往设置管理`}
+                  className={cn(
+                    hePressable,
+                    heSpring,
+                    'inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ai/30',
+                  )}
+                >
+                  <ServiceStatusPill tone={transportStatus.tone} label={transportStatus.label} />
+                </SettingsNavLink>
+              )
+            }
+            footer={
+              transportUnavailable ? (
+                <p className="mt-2 text-[12px] text-text-tertiary">
+                  当前环境未启用 Transport 监管，请直接在终端运行 Discord 服务。
                 </p>
-              )}
-            </div>
-            {loading ? (
-              <div className="h-6 w-16 animate-pulse rounded-full bg-black/[0.04]" />
-            ) : apiOnline ? (
-              <ServiceStatusPill tone="success" label="运行正常" />
-            ) : (
-              <ServiceStatusPill tone="danger" label="连接异常" />
-            )}
-            {!loading && apiError && (
-              <p className="w-full text-[12px] text-text-tertiary">{apiError}</p>
-            )}
-          </article>
-
-          <article className={cn(hePanelShell, 'space-y-4 p-5')}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.04] text-text-secondary">
-                    <MessagesSquare className="size-3.5" strokeWidth={1.75} aria-hidden />
-                  </span>
-                  <div>
-                    <p className="text-[13px] font-semibold text-text-primary">Discord Transport</p>
-                    <p className="text-[12px] text-text-tertiary">IM 接入 · 启停与日志</p>
-                  </div>
-                </div>
-                {loading ? (
-                  <div className="h-6 w-24 animate-pulse rounded-full bg-black/[0.04]" />
-                ) : transportUnavailable ? (
-                  <ServiceStatusPill tone="neutral" label="监管不可用" />
-                ) : (
-                  <DiscordTransportStatusBadge
-                    phase={transportPhase}
-                    pid={transportPid}
-                    readyAt={transportReadyAt}
-                  />
-                )}
-              </div>
-              {!transportUnavailable && (
-                <DiscordTransportControl
-                  phase={transportPhase}
-                  loading={transportLoading}
-                  onRefresh={onTransportRefresh}
-                />
-              )}
-            </div>
-
-            {!loading && !transportUnavailable && (
-              <p className="text-[12px] leading-relaxed text-text-tertiary">
-                {transportPhase === 'ready'
-                  ? gatewayOnline
-                    ? sendOnlyReady > 0
-                      ? `司仪 Gateway 已连接 · ${sendOnlyReady} 个参与 Bot REST 发话可用`
-                      : '司仪 Gateway 已连接'
-                    : 'Transport 已就绪'
-                  : transportPhase === 'starting'
-                    ? '正在拉起进程并连接 Gateway…'
-                    : 'Transport 未启动时无法在 Discord 频道收发消息'}
-              </p>
-            )}
-
-            {!loading && discordRuntimeLabel && (
-              <p className="font-mono text-[11px] tabular-nums text-text-tertiary">
-                {discordRuntimeLabel}
-                {discordRuntime?.pid != null && discordRuntime.pid > 0 && (
-                  <span className="text-text-tertiary/60">{` · PID ${discordRuntime.pid}`}</span>
-                )}
-              </p>
-            )}
-
-            {transportUnavailable && (
-              <p className="text-[12px] text-text-tertiary">
-                当前环境未启用 Transport 监管，请直接在终端运行 Discord 服务。
-              </p>
-            )}
-          </article>
+              ) : undefined
+            }
+          />
         </div>
 
         {/* 右列：Bot 列表 → 设置 */}

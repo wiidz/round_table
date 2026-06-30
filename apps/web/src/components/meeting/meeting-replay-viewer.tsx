@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { RoundTableView } from '@/components/round-table/round-table-view'
 import { StripOnlyView } from '@/components/round-table/strip-only-view'
@@ -16,7 +16,7 @@ import {
   hePanelShell,
   heSubsectionTitleNeutral,
 } from '@/lib/highend-styles'
-import { maxTurnNumber } from '@/lib/meeting-transcript-projection'
+import { maxTurnNumber, scrubTurnForMessage, activeMessageAtScrubTurn } from '@/lib/meeting-transcript-projection'
 import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/types/chat'
@@ -40,7 +40,7 @@ export function MeetingReplayViewer({
   const wideSidePanel = useMediaQuery('(min-width: 96rem)')
   const roundtableSidePanel = !narrow && wideSidePanel
 
-  const { turns, activeSpeakerId, latestBySeat, activeMessage, isScrubbing } =
+  const { turns, latestBySeat, activeMessage, isScrubbing } =
     useMeetingTranscript(messages, scrubTurn)
   const { seats, participants, loading, rosterFromApi, rosterTotal } =
     useMeetingReplaySeats(meetingMd, messages)
@@ -48,6 +48,29 @@ export function MeetingReplayViewer({
   const maxTurn = maxTurnNumber(turns)
   const activeMessageId = activeMessage?.id ?? null
   const sequenceMap = useMemo(() => buildMessageSequenceMap(messages), [messages])
+
+  const selectMessage = useCallback((msg: ChatMessage) => {
+    setDrawerMessage(msg)
+  }, [])
+
+  const handleScrubTurnChange = useCallback(
+    (turn: number | null) => {
+      setScrubTurn(turn)
+      setDrawerMessage(activeMessageAtScrubTurn(turns, turn))
+    },
+    [turns],
+  )
+
+  const selectHistoryMessage = useCallback(
+    (msg: ChatMessage) => {
+      setScrubTurn(scrubTurnForMessage(msg, maxTurn))
+      setDrawerMessage(msg)
+    },
+    [maxTurn],
+  )
+
+  const highlightMessageId = drawerMessage?.id ?? activeMessageId
+  const referenceTurn = drawerMessage?.turn ?? activeMessage?.turn ?? null
   const selectedSequence = drawerMessage
     ? messageSequenceNumber(drawerMessage, sequenceMap)
     : null
@@ -99,21 +122,22 @@ export function MeetingReplayViewer({
                 seats={seats}
                 messages={messages}
                 latestBySeat={latestBySeat}
-                activeSpeakerId={activeSpeakerId}
                 focusedSeatId={focusedSeatId}
                 turnCount={scrubTurn ?? turns.length}
                 maxTurn={maxTurn}
                 scrubTurn={scrubTurn}
-                onScrubTurnChange={setScrubTurn}
+                onScrubTurnChange={handleScrubTurnChange}
                 activeMessageId={activeMessageId}
                 selectedMessageId={drawerMessage?.id ?? null}
+                highlightMessageId={highlightMessageId}
+                referenceTurn={referenceTurn}
                 rosterLoading={loading}
                 rosterFromApi={rosterFromApi}
                 rosterTotal={rosterTotal}
                 seatedExpertCount={participants.length}
                 centerTitle={topic}
                 centerSubtitle={centerSubtitle}
-                onSelectMessage={setDrawerMessage}
+                onSelectMessage={selectMessage}
                 showTranscriptStrip={!roundtableSidePanel}
               />
             ) : (
@@ -121,10 +145,10 @@ export function MeetingReplayViewer({
                 messages={messages}
                 maxTurn={maxTurn}
                 scrubTurn={scrubTurn}
-                onScrubTurnChange={setScrubTurn}
+                onScrubTurnChange={handleScrubTurnChange}
                 activeMessageId={activeMessageId}
                 selectedMessageId={drawerMessage?.id ?? null}
-                onSelectMessage={setDrawerMessage}
+                onSelectMessage={selectMessage}
               />
             )}
           </div>
@@ -135,8 +159,8 @@ export function MeetingReplayViewer({
             <TranscriptHistoryPanel
               messages={messages}
               activeMessageId={activeMessageId}
-              selectedId={drawerMessage?.id ?? null}
-              onSelect={setDrawerMessage}
+              selectedId={highlightMessageId}
+              onSelect={selectHistoryMessage}
               className={chatSideRailLeftClass}
             />
             <TranscriptDetailPanel

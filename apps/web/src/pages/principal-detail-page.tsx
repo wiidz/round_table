@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 
 import { fetchPrincipal, savePrincipalFile } from '@/api/principals'
 import { ProfileFilesEditor } from '@/components/profile-files-editor'
-import { PRINCIPAL_FILE_HINTS } from '@/lib/profile-labels'
+import { PRINCIPAL_FILE_HINTS, PRINCIPAL_STANDARD_FILES } from '@/lib/profile-labels'
 import { domainNavLabel, domainPageEyebrow } from '@/lib/ui-labels'
 
 export function PrincipalDetailPage() {
@@ -34,12 +34,13 @@ export function PrincipalDetailPage() {
     <ProfileFilesEditor
       role="principal"
       eyebrow={domainPageEyebrow('principal')}
-      pageTitle={`${domainNavLabel('principal')}档案 · ${id}`}
-      pageDescription="编辑 USER.md 等档案，定义委托人（Principal）偏好与背景；保存后立即写入 data/profiles。"
+      pageTitle={`${domainNavLabel('principal')} · ${id}`}
+      pageDescription="编辑 USER.md：定义你的语言偏好、Confirmation 审阅习惯与背景约束。会议议题请使用「简报模板」。"
       backTo="/principals"
       backLabel={`返回${domainNavLabel('principal')}列表`}
+      standardFiles={PRINCIPAL_STANDARD_FILES}
       fileHints={PRINCIPAL_FILE_HINTS}
-      emptyHint={`在 data/profiles/principals/${id}/ 下添加 USER.md 或 SOUL.md。`}
+      emptyHint="保存 USER.md 后将写入 data/profiles/principals/ 目录。"
       load={load}
       save={save}
     />

@@ -6,7 +6,7 @@ import {
 import { useChatSocket } from '@/hooks/use-chat-socket'
 
 export function ChatPage() {
-  const { connectionState, sessionId, messages, lastError, sendMessage, reconnect } =
+  const { connectionState, sessionId, messages, lastError, typingStates, sendMessage, reconnect } =
     useChatSocket()
 
   return (
@@ -35,6 +35,7 @@ export function ChatPage() {
           messages={messages}
           sessionId={sessionId}
           lastError={lastError}
+          typingStates={typingStates}
           onSend={sendMessage}
           onReconnect={reconnect}
         />

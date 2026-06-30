@@ -38,14 +38,14 @@ function spreadAngles(count: number, startDeg: number, endDeg: number): number[]
   return Array.from({ length: count }, (_, i) => startDeg + ((endDeg - startDeg) * i) / (count - 1))
 }
 
-/** Distribute expert seats on left (150°–210°) and right (-30°–30°) arcs. */
+/** Distribute expert seats on left (140°–220°) and right (-40°–40°) arcs. */
 export function participantAngles(count: number): number[] {
   if (count <= 0) return []
 
   const leftCount = Math.ceil(count / 2)
   const rightCount = count - leftCount
-  const left = spreadAngles(leftCount, 150, 210)
-  const right = spreadAngles(rightCount, -30, 30)
+  const left = spreadAngles(leftCount, 140, 220)
+  const right = spreadAngles(rightCount, -40, 40)
 
   const out: number[] = []
   for (let i = 0; i < count; i++) {
@@ -63,8 +63,8 @@ export function computeRoundTableSeats(
   participants: RosterSeatInput[],
   options?: ComputeSeatsOptions,
 ): SeatLayout[] {
-  const radiusX = options?.radiusX ?? 32
-  const radiusY = options?.radiusY ?? 30
+  const radiusX = options?.radiusX ?? 41
+  const radiusY = options?.radiusY ?? 38
 
   const seats: SeatLayout[] = []
 
@@ -106,11 +106,14 @@ export function computeRoundTableSeats(
 export type BubbleTail = 'left' | 'right' | 'top' | 'bottom'
 
 export function seatBubbleTailClass(seat: SeatLayout): BubbleTail {
-  if (seat.kind === 'moderator' || seat.kind === 'principal') return 'right'
+  // Moderator at 12h: avatar above bubble → tail at top of bubble (↑ toward avatar)
+  if (seat.kind === 'moderator') return 'top'
+  // Principal at 6h: avatar below bubble → tail at bottom of bubble (↓ toward avatar)
+  if (seat.kind === 'principal') return 'bottom'
   return seat.x < 50 ? 'left' : 'right'
 }
 
-/** Top/bottom seats: Live bubble sits beside avatar (not above/below). */
+/** Top/bottom seats: Live bubble is vertical (avatar + bubble stacked). */
 export function isPoleSeat(seat: SeatLayout): boolean {
   return seat.kind === 'moderator' || seat.kind === 'principal'
 }
@@ -120,17 +123,30 @@ export function isVerticalLiveSeat(seat: SeatLayout): boolean {
   return isPoleSeat(seat)
 }
 
-/** Position anchor so Live bubbles grow inward, not off-screen. */
-export function seatAnchorTransform(seat: SeatLayout, hasLive: boolean): string {
-  if (!hasLive || isPoleSeat(seat)) return 'translate(-50%, -50%)'
-  if (seat.x < 50) return 'translate(0, -50%)'
-  return 'translate(-100%, -50%)'
+/** Avatar center is pinned to the seat coordinate. */
+export function seatAnchorTransform(_seat: SeatLayout, _hasLive?: boolean): string {
+  return 'translate(-50%, -50%)'
 }
 
-/** Flex direction: pole seats use horizontal bubble beside avatar. */
-export function seatContentLayoutClass(seat: SeatLayout, hasLive: boolean): string {
-  if (!hasLive) return 'flex-col items-center gap-1'
-  if (isPoleSeat(seat)) return 'flex-row-reverse items-start gap-2'
-  if (seat.x < 50) return 'flex-row items-start gap-2'
-  return 'flex-row-reverse items-start gap-2'
+export type SeatSide = 'left' | 'right' | 'pole'
+
+export function seatSide(seat: SeatLayout): SeatSide {
+  if (isPoleSeat(seat)) return 'pole'
+  return seat.x < 50 ? 'left' : 'right'
+}
+
+/** Absolute slot for a live bubble beside a fixed avatar. */
+export function liveBubbleSlotClass(seat: SeatLayout, expanded: boolean): string {
+  const width = expanded ? 'w-[min(38vw,26rem)]' : 'w-[10.5rem]'
+
+  if (seat.kind === 'moderator') {
+    return `absolute left-1/2 top-[calc(100%+0.375rem)] z-20 -translate-x-1/2 ${width}`
+  }
+  if (seat.kind === 'principal') {
+    return `absolute bottom-[calc(100%+0.375rem)] left-1/2 z-20 -translate-x-1/2 ${width}`
+  }
+  if (seat.x < 50) {
+    return `absolute left-[calc(100%+0.5rem)] top-1/2 z-20 -translate-y-1/2 ${width}`
+  }
+  return `absolute right-[calc(100%+0.5rem)] top-1/2 z-20 -translate-y-1/2 ${width}`
 }

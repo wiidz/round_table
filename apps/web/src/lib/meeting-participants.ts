@@ -114,12 +114,18 @@ export function resolveMeetingLineup(
 ): RosterSeatInput[] {
   const { roster, meetingMdParticipants, messageParticipants, spokenParticipants } = options
 
-  if (phase === 'running' || phase === 'post') {
-    if (meetingMdParticipants.length > 0) return meetingMdParticipants
+  if (phase === 'idle') return []
+
+  // setup 阶段：阵容确认后提前入座（不等到 running）
+  if (phase === 'setup') {
     if (messageParticipants.length > 0) return messageParticipants
-    if (spokenParticipants.length > 0) return spokenParticipants
-    return roster
+    return []
   }
 
-  return []
+  // running / post：优先精确阵容，fallback 全量 roster（避免"随发言一个个进来"）
+  if (meetingMdParticipants.length > 0) return meetingMdParticipants
+  if (messageParticipants.length > 0) return messageParticipants
+  if (roster.length > 0) return roster
+  // 最终 fallback：仅已发言者（roster API 为空时）
+  return spokenParticipants
 }

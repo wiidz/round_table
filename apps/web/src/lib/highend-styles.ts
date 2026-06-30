@@ -36,8 +36,8 @@ export const hePressable = `${heSpring} active:scale-[0.98] motion-reduce:active
 
 /** Chat side rails beside max-w-6xl main (50vw - 50% = gutter to viewport edge). */
 export const chatSideRailLeftClass = [
-  'absolute right-full top-0 z-20 mr-4 flex h-full',
-  'w-[clamp(20rem,calc(50vw-50%-1rem),26rem)]',
+  'absolute right-full top-0 z-20 mr-4 flex h-full min-w-[20rem]',
+  'w-[calc(50vw-50%-1rem)]',
 ].join(' ')
 
 export const chatSideRailRightClass = [

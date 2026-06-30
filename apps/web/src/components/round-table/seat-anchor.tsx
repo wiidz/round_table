@@ -1,20 +1,21 @@
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
-import { LiveBubble } from '@/components/round-table/live-bubble'
+import { LiveBubble, TypingBubble, type LiveBubbleVariant } from '@/components/round-table/live-bubble'
 import {
-  isPoleSeat,
+  liveBubbleSlotClass,
   seatAnchorTransform,
   seatBubbleTailClass,
-  seatContentLayoutClass,
   type SeatLayout,
 } from '@/lib/round-table-layout'
+import { transcriptSpeakerLabelClass } from '@/lib/transcript-speaker-label'
 import { cn } from '@/lib/utils'
-import type { ChatMessage } from '@/types/chat'
+import type { ChatMessage, TypingState } from '@/types/chat'
 
 interface SeatAnchorProps {
   seat: SeatLayout
   liveMessage?: ChatMessage | null
+  bubbleVariant?: LiveBubbleVariant
+  typing?: TypingState | null
   highlighted?: boolean
-  dimmed?: boolean
   focused?: boolean
   hasSpoken?: boolean
   onLiveClick?: (message: ChatMessage) => void
@@ -24,39 +25,42 @@ interface SeatAnchorProps {
 export function SeatAnchor({
   seat,
   liveMessage,
+  bubbleVariant = 'before',
+  typing = null,
   highlighted = false,
-  dimmed = false,
   focused = false,
   hasSpoken = false,
   onLiveClick,
   className,
 }: SeatAnchorProps) {
   const hasLive = liveMessage != null
+  const isTyping = typing != null && !hasLive
+  const showBubble = hasLive || isTyping
   const tail = seatBubbleTailClass(seat)
-  const poleSeat = isPoleSeat(seat)
+  const expanded = bubbleVariant === 'active'
+  const labelClass = transcriptSpeakerLabelClass({
+    highlighted,
+    focused,
+    muted: bubbleVariant === 'after' && !highlighted,
+  })
 
   return (
     <div
-      className={cn(
-        'absolute',
-        hasLive && !poleSeat && 'max-w-[min(100%,18rem)]',
-        hasLive && poleSeat && 'max-w-[min(calc(100%-2rem),20rem)]',
-        className,
-      )}
+      className={cn('absolute', className)}
       style={{
         left: `${seat.x}%`,
         top: `${seat.y}%`,
-        transform: seatAnchorTransform(seat, hasLive),
+        transform: seatAnchorTransform(seat, showBubble),
       }}
     >
-      <div className={cn('flex', seatContentLayoutClass(seat, hasLive))}>
+      <div className="animate-seat-in relative">
         <div
           className={cn(
-            'relative shrink-0 rounded-xl transition-all duration-200',
-            highlighted && 'ring-2 ring-ai ring-offset-2 ring-offset-surface',
+            'relative z-10 shrink-0 rounded-xl transition-[box-shadow] duration-300',
+            highlighted && 'ring-2 ring-ai ring-offset-2 ring-offset-surface animate-speaker-pulse',
             focused && !highlighted && 'ring-2 ring-brand ring-offset-2 ring-offset-surface',
-            !highlighted && !focused && !hasLive && hasSpoken && 'opacity-90',
-            !highlighted && !focused && !hasLive && !hasSpoken && 'opacity-75',
+            !highlighted && !focused && !showBubble && hasSpoken && 'opacity-90',
+            !highlighted && !focused && !showBubble && !hasSpoken && 'opacity-75',
           )}
         >
           <ProfileAvatar
@@ -68,7 +72,7 @@ export function SeatAnchor({
               focused && !highlighted && 'shadow-[0_0_0_3px_var(--brand-soft)]',
             )}
           />
-          {hasSpoken && !hasLive && (
+          {hasSpoken && !showBubble && (
             <span
               className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full bg-ai ring-2 ring-surface"
               aria-hidden
@@ -76,28 +80,59 @@ export function SeatAnchor({
           )}
         </div>
 
-        {hasLive && (
-          <LiveBubble
-            message={liveMessage}
-            tail={tail}
-            highlighted={highlighted}
-            dimmed={dimmed}
-            compact={poleSeat}
-            onClick={() => onLiveClick?.(liveMessage)}
-            className="min-w-0 flex-1"
-          />
+        {hasLive && seat.kind === 'moderator' ? (
+          <div
+            className={cn(
+              liveBubbleSlotClass(seat, expanded),
+              'flex flex-col items-center gap-1.5',
+            )}
+          >
+            <LiveBubble
+              message={liveMessage}
+              tail={tail}
+              variant={bubbleVariant}
+              highlighted={highlighted}
+              onClick={() => onLiveClick?.(liveMessage)}
+              className="!max-w-none w-full"
+            />
+            <p className={labelClass}>{seat.label}</p>
+          </div>
+        ) : null}
+
+        {hasLive && seat.kind !== 'moderator' && (
+          <div className={liveBubbleSlotClass(seat, expanded)}>
+            <LiveBubble
+              message={liveMessage}
+              tail={tail}
+              variant={bubbleVariant}
+              highlighted={highlighted}
+              onClick={() => onLiveClick?.(liveMessage)}
+              className="!max-w-none w-full"
+            />
+          </div>
+        )}
+
+        {isTyping && (
+          <div className={liveBubbleSlotClass(seat, false)}>
+            <TypingBubble
+              tail={tail}
+              role={typing.role === 'user' ? 'user' : typing.role === 'moderator' ? 'moderator' : 'participant'}
+              className="!max-w-none w-full"
+            />
+          </div>
+        )}
+
+        {!(seat.kind === 'moderator' && hasLive) && (
+          <p
+            className={cn(
+              labelClass,
+              'absolute left-1/2 top-[calc(100%+0.375rem)] z-10 -translate-x-1/2',
+            )}
+          >
+            {seat.label}
+          </p>
         )}
       </div>
-
-      <p
-        className={cn(
-          'mx-auto mt-1 max-w-full truncate text-center text-[10px] font-medium',
-          highlighted ? 'text-ai' : focused ? 'text-brand' : 'text-text-secondary',
-          dimmed && 'text-text-tertiary',
-        )}
-      >
-        {seat.label}
-      </p>
     </div>
   )
 }

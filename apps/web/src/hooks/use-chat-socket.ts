@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { assignTurnForRole } from '@/lib/assign-turn'
-import type { ChatConnectionState, ChatFrame, ChatMessage, ChatRole } from '@/types/chat'
+import { speakerId } from '@/lib/chat-display'
+import type { ChatConnectionState, ChatFrame, ChatMessage, ChatRole, TypingStates } from '@/types/chat'
 
 function chatWsUrl(): string {
   const wsDev = import.meta.env.VITE_CHAT_WS_DEV as string | undefined
@@ -46,33 +47,49 @@ function parseFrameTime(at: string | undefined): number {
   return Date.now()
 }
 
+/** Auto-clear a typing indicator after this many ms if no message arrives. */
+const TYPING_TIMEOUT_MS = 30_000
+
 export function useChatSocket() {
   const [connectionState, setConnectionState] = useState<ChatConnectionState>('connecting')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [lastError, setLastError] = useState<string | null>(null)
+  const [typingStates, setTypingStates] = useState<TypingStates>(new Map())
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimer = useRef<number | null>(null)
   const connectGenRef = useRef(0)
   const disposedRef = useRef(false)
   const nextTurnRef = useRef(1)
+  const typingTimers = useRef<Map<string, number>>(new Map())
+
+  const clearTyping = useCallback((key: string) => {
+    const existing = typingTimers.current.get(key)
+    if (existing != null) window.clearTimeout(existing)
+    typingTimers.current.delete(key)
+    setTypingStates((prev) => {
+      if (!prev.has(key)) return prev
+      const next = new Map(prev)
+      next.delete(key)
+      return next
+    })
+  }, [])
 
   const pushMessage = useCallback(
-    (
-      msg: Omit<ChatMessage, 'turn'> & { turn?: number },
-      options?: { skipTurnAssign?: boolean },
-    ) => {
+    (msg: Omit<ChatMessage, 'turn'> & { turn?: number }) => {
       let withTurn: ChatMessage
       if (msg.turn != null) {
         withTurn = msg as ChatMessage
         nextTurnRef.current = Math.max(nextTurnRef.current, msg.turn + 1)
-      } else if (options?.skipTurnAssign) {
-        withTurn = { ...msg }
       } else {
         const assigned = assignTurnForRole(msg.role, nextTurnRef.current)
         nextTurnRef.current = assigned.nextTurn
         withTurn = assigned.turn != null ? { ...msg, turn: assigned.turn } : { ...msg }
       }
+
+      // Clear typing indicator for this speaker when message arrives
+      const typingKey = speakerId(withTurn)
+      clearTyping(typingKey)
 
       setMessages((prev) => {
         const index = prev.findIndex((item) => item.id === withTurn.id)
@@ -84,7 +101,7 @@ export function useChatSocket() {
         return [...prev, withTurn]
       })
     },
-    [],
+    [clearTyping],
   )
 
   const connect = useCallback(() => {
@@ -138,6 +155,22 @@ export function useChatSocket() {
           content: errText,
           createdAt: Date.now(),
           error: true,
+        })
+        return
+      }
+
+      if (frame.type === 'typing') {
+        const role = parseFrameRole(frame.role)
+        const key = frame.author_id?.trim() || role
+        // Auto-clear after timeout in case the message never arrives
+        const existing = typingTimers.current.get(key)
+        if (existing != null) window.clearTimeout(existing)
+        const timer = window.setTimeout(() => clearTyping(key), TYPING_TIMEOUT_MS)
+        typingTimers.current.set(key, timer)
+        setTypingStates((prev) => {
+          const next = new Map(prev)
+          next.set(key, { role, authorId: frame.author_id, authorName: frame.author_name })
+          return next
         })
         return
       }
@@ -201,7 +234,7 @@ export function useChatSocket() {
       }
 
       const id = nextMessageId()
-      pushMessage({ id, role: 'user', content: text, createdAt: Date.now() }, { skipTurnAssign: true })
+      pushMessage({ id, role: 'user', content: text, createdAt: Date.now() })
       ws.send(JSON.stringify({ type: 'message', id, content: text }))
       return true
     },
@@ -213,6 +246,7 @@ export function useChatSocket() {
     sessionId,
     messages,
     lastError,
+    typingStates,
     sendMessage,
     reconnect: connect,
   }

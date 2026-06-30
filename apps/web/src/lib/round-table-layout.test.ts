@@ -5,7 +5,7 @@ import {
   participantAngles,
   seatAnchorTransform,
   seatBubbleTailClass,
-  seatContentLayoutClass,
+  liveBubbleSlotClass,
 } from '@/lib/round-table-layout'
 
 describe('participantAngles', () => {
@@ -43,30 +43,41 @@ describe('computeRoundTableSeats', () => {
 })
 
 describe('seatBubbleTailClass', () => {
-  it('uses horizontal tail for pole seats', () => {
+  it('uses vertical tail for pole seats', () => {
     const principal = computeRoundTableSeats([]).find((s) => s.kind === 'principal')!
     const moderator = computeRoundTableSeats([]).find((s) => s.kind === 'moderator')!
-    expect(seatBubbleTailClass(moderator)).toBe('right')
-    expect(seatBubbleTailClass(principal)).toBe('right')
+    expect(seatBubbleTailClass(moderator)).toBe('top')
+    expect(seatBubbleTailClass(principal)).toBe('bottom')
   })
 })
 
 describe('seatAnchorTransform', () => {
-  it('anchors side seats at outer edge when live', () => {
+  it('pins avatar center to seat coordinate', () => {
     const seats = computeRoundTableSeats([{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }])
     const left = seats.find((s) => s.kind === 'participant' && s.x < 50)!
     const right = seats.find((s) => s.kind === 'participant' && s.x >= 50)!
-    expect(seatAnchorTransform(left, true)).toBe('translate(0, -50%)')
-    expect(seatAnchorTransform(right, true)).toBe('translate(-100%, -50%)')
+    expect(seatAnchorTransform(left, true)).toBe('translate(-50%, -50%)')
+    expect(seatAnchorTransform(right, true)).toBe('translate(-50%, -50%)')
     expect(seatAnchorTransform(left, false)).toBe('translate(-50%, -50%)')
   })
 })
 
-describe('seatContentLayoutClass', () => {
-  it('places bubble inward on left arc', () => {
+describe('liveBubbleSlotClass', () => {
+  it('places side bubbles inward with explicit width', () => {
     const seats = computeRoundTableSeats([{ id: 'a', label: 'A' }])
     const left = seats.find((s) => s.kind === 'participant')!
-    expect(seatContentLayoutClass(left, true)).toContain('flex-row')
-    expect(seatContentLayoutClass(left, true)).not.toContain('reverse')
+    expect(liveBubbleSlotClass(left, true)).toContain('left-[calc(100%+0.5rem)]')
+    expect(liveBubbleSlotClass(left, true)).toContain('w-[min(38vw,26rem)]')
+    expect(liveBubbleSlotClass(left, false)).toContain('w-[10.5rem]')
+  })
+
+  it('mirrors placement on the right arc', () => {
+    const seats = computeRoundTableSeats([
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B' },
+    ])
+    const right = seats.find((s) => s.kind === 'participant' && s.x >= 50)!
+    expect(liveBubbleSlotClass(right, true)).toContain('right-[calc(100%+0.5rem)]')
+    expect(liveBubbleSlotClass(right, true)).toContain('w-[min(38vw,26rem)]')
   })
 })
