@@ -58,6 +58,23 @@ func main() {
 	}
 	h.Register(mux)
 
+	if result, err := bootstrap.ReconcileMeetings(context.Background(), cfg, store, ""); err != nil {
+		log.Printf("startup reconcile: %v", err)
+	} else {
+		aborted, synced := 0, 0
+		for _, item := range result.Items {
+			switch item.Action {
+			case "aborted":
+				aborted++
+			case "synced":
+				synced++
+			}
+		}
+		if aborted > 0 || synced > 0 {
+			log.Printf("startup reconcile: scanned=%d aborted=%d synced=%d", result.Scanned, aborted, synced)
+		}
+	}
+
 	if root := strings.TrimSpace(os.Getenv("ROUND_TABLE_WEB_ROOT")); root != "" {
 		if err := httptransport.RegisterWebUI(mux, root); err != nil {
 			log.Fatalf("server: web ui: %v", err)

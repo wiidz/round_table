@@ -715,9 +715,9 @@ func applyMeetingFinished(s State, env event.Envelope) (State, error) {
 	switch s.Status {
 	case StatusConsensus, StatusConfirmation:
 		// expected path
-	case StatusRunning:
+	case StatusRunning, StatusPaused, StatusPreparing:
 		if p.Outcome != OutcomeAborted {
-			return s, fmt.Errorf("meeting %s: MeetingFinished from Running requires outcome aborted", s.ID)
+			return s, fmt.Errorf("meeting %s: MeetingFinished from %s requires outcome aborted", s.ID, s.Status)
 		}
 	default:
 		return s, fmt.Errorf("meeting %s: MeetingFinished not allowed in status %s", s.ID, s.Status)

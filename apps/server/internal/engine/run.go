@@ -239,6 +239,9 @@ func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelop
 		}
 	case event.TypeRoundStarted:
 		return e.writeMeetingDoc(s)
+	case event.TypeMeetingPaused, event.TypeMeetingResumed, event.TypeConsensusReached,
+		event.TypeConfirmationPresented:
+		return e.writeMeetingDoc(s)
 	case event.TypeRoundCompleted:
 		p, _ := decodePayload[event.RoundCompletedPayload](env)
 		if e.Workspace != nil {
@@ -330,6 +333,7 @@ func (e *Engine) project(ctx context.Context, s meeting.State, env event.Envelop
 				return err
 			}
 		}
+		return e.writeMeetingDoc(s)
 	}
 	return nil
 }

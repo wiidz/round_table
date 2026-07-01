@@ -509,3 +509,30 @@ func TestApply_moderatorSummarized_currentRound(t *testing.T) {
 		t.Fatalf("got %q", s.ModeratorSummaries[1])
 	}
 }
+
+func TestApply_meetingFinished_abortedFromPausedAndPreparing(t *testing.T) {
+	t.Parallel()
+
+	for _, start := range []Status{StatusPaused, StatusPreparing} {
+		start := start
+		t.Run(string(start), func(t *testing.T) {
+			t.Parallel()
+			s := State{ID: "mtg-1", Status: start}
+			if start == StatusPaused {
+				s.PausedFrom = StatusRunning
+			}
+			next, err := Apply(s, env(1, event.TypeMeetingFinished, mustPayload(t, event.MeetingFinishedPayload{
+				Outcome: OutcomeAborted,
+			}), event.ActorModerator))
+			if err != nil {
+				t.Fatalf("Apply: %v", err)
+			}
+			if next.Status != StatusCompleted {
+				t.Fatalf("status = %s", next.Status)
+			}
+			if next.Outcome != OutcomeAborted {
+				t.Fatalf("outcome = %q", next.Outcome)
+			}
+		})
+	}
+}

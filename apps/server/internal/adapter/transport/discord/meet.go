@@ -379,6 +379,11 @@ func (r *MeetRunner) runMeeting(channelID, meetingID string, binding principalbi
 
 	final, err := eng.Run(ctx, meetingID)
 	if err != nil {
+		if _, abortErr := eng.AbortMeeting(context.Background(), meetingID, fmt.Sprintf("会议运行失败：%v", err)); abortErr != nil {
+			log.Printf("discord meet abort after failure id=%s: %v", meetingID, abortErr)
+		} else {
+			log.Printf("discord meet aborted after failure id=%s", meetingID)
+		}
 		_ = r.Bots.Default.Send(ctx, channelID, meetRunFailedText(loc, meetingID, err))
 		return
 	}

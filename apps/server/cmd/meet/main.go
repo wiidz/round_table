@@ -113,6 +113,9 @@ func main() {
 		cfg.Model.DefaultModel, *meetingMode, rounds, minRounds, len(agendaItems), freeQuestions)
 	final, err := eng.Run(ctx, id)
 	if err != nil {
+		if _, abortErr := eng.AbortMeeting(context.Background(), id, fmt.Sprintf("Run failed: %v", err)); abortErr != nil {
+			log.Printf("abort after run failure: %v", abortErr)
+		}
 		log.Fatalf("Run: %v", err)
 	}
 

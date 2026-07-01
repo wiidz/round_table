@@ -77,7 +77,7 @@ func renderMeetingDoc(s meeting.State) string {
 			local.Format("MST"),
 		))
 	}
-	b.WriteString(fmt.Sprintf("| 会议状态 | %s |\n", meetingStatusLabel(s.Status)))
+	b.WriteString(fmt.Sprintf("| 会议状态 | %s |\n", renderMeetingStatusLabel(s)))
 	b.WriteString(fmt.Sprintf("| 会议模式 | %s |\n", meetingModeLabel(s.MeetingMode)))
 	if !s.IsDeliberation() {
 		b.WriteString(fmt.Sprintf("| 共识策略 | %s |\n", s.ConsensusStrategy))
@@ -218,4 +218,11 @@ func meetingStatusLabel(st meeting.Status) string {
 	default:
 		return string(st)
 	}
+}
+
+func renderMeetingStatusLabel(s meeting.State) string {
+	if s.Status == meeting.StatusCompleted && s.Outcome == meeting.OutcomeAborted {
+		return RenderAbortedMeetingDocStatus()
+	}
+	return meetingStatusLabel(s.Status)
 }
