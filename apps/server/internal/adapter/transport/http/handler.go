@@ -8,6 +8,7 @@ import (
 
 	"round_table/apps/server/internal/adapter/profile"
 	profFS "round_table/apps/server/internal/adapter/profile/fs"
+	brieffs "round_table/apps/server/internal/adapter/brief/fs"
 	"round_table/apps/server/internal/adapter/storage"
 	"round_table/apps/server/internal/adapter/workspace"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
@@ -23,6 +24,7 @@ import (
 type Handler struct {
 	workspace  *wsfs.Store
 	profile    *profFS.Store
+	briefs     *brieffs.Store
 	bindings   *principalbind.Registry
 	meetings   storage.MeetingCatalog
 	events     storage.Store
@@ -39,6 +41,7 @@ func NewHandler(cfg config.Config, catalog storage.MeetingCatalog, events storag
 	return &Handler{
 		workspace:  wsfs.NewStore(cfg.Workspace.Root),
 		profile:    profFS.NewStore(cfg.Profile.Root, cfg.Profile.Templates),
+		briefs:     brieffs.NewStore(cfg.Brief.Root, cfg.Brief.Templates),
 		bindings:   reg,
 		meetings:   catalog,
 		events:     events,
@@ -54,9 +57,16 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/chat/ws", h.handleChatWebSocket)
 	mux.HandleFunc("GET /api/meetings", h.handleListMeetings)
 	mux.HandleFunc("GET /api/meetings/{id}", h.handleGetMeeting)
+	mux.HandleFunc("POST /api/meetings/{id}/abort", h.handlePostMeetingAbort)
 	mux.HandleFunc("GET /api/principals", h.handleListPrincipals)
 	mux.HandleFunc("GET /api/principals/{id}", h.handleGetPrincipal)
+	mux.HandleFunc("PUT /api/principals/{id}/user-profile", h.handlePutPrincipalUserProfile)
 	mux.HandleFunc("PUT /api/principals/{id}/files/{filename}", h.handlePutPrincipalFile)
+	mux.HandleFunc("GET /api/brief-templates", h.handleListBriefTemplates)
+	mux.HandleFunc("POST /api/brief-templates", h.handlePostBriefTemplate)
+	mux.HandleFunc("GET /api/brief-templates/{id}", h.handleGetBriefTemplate)
+	mux.HandleFunc("PUT /api/brief-templates/{id}", h.handlePutBriefTemplate)
+	mux.HandleFunc("POST /api/meetings/clone-brief", h.handlePostCloneBrief)
 	mux.HandleFunc("GET /api/participants", h.handleListParticipants)
 	mux.HandleFunc("POST /api/participants", h.handleCreateParticipant)
 	mux.HandleFunc("GET /api/participants/{id}", h.handleGetParticipant)
@@ -174,6 +184,10 @@ func (h *Handler) handleListPrincipals(w http.ResponseWriter, _ *http.Request) {
 
 func (h *Handler) handleGetPrincipal(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if err := h.profile.EnsurePrincipal(id); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
 	detail, err := h.profile.ReadPrincipalDetail(id)
 	if err != nil {
 		status := http.StatusInternalServerError
@@ -186,12 +200,24 @@ func (h *Handler) handleGetPrincipal(w http.ResponseWriter, r *http.Request) {
 	if names := h.bindingDisplayNames(); names != nil {
 		detail.DisplayName = names[detail.ID]
 	}
+	content := ""
+	if detail.Files != nil {
+		content = detail.Files[profile.FileUser]
+	}
+	detail.UserProfile = profile.ParseUserMD(content)
+	detail.Files = nil
 	writeJSON(w, http.StatusOK, detail)
 }
 
 func (h *Handler) handlePutPrincipalFile(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	filename := r.PathValue("filename")
+	if filename == profile.FileUser {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "use PUT /api/principals/{id}/user-profile with JSON body",
+		})
+		return
+	}
 	content, err := readFileContent(r)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})

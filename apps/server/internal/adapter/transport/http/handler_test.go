@@ -10,7 +10,11 @@ import (
 	"testing"
 
 	"round_table/apps/server/internal/adapter/storage"
+	"round_table/apps/server/internal/adapter/storage/memory"
 	"round_table/apps/server/internal/adapter/workspace"
+	"round_table/apps/server/internal/domain/consensus"
+	"round_table/apps/server/internal/domain/meeting"
+	"round_table/apps/server/internal/engine"
 	"round_table/apps/server/internal/platform/config"
 	wsfs "round_table/apps/server/internal/adapter/workspace/fs"
 )
@@ -167,5 +171,52 @@ func TestHandleListPrincipals(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "discord:test") {
 		t.Fatalf("body=%s", rec.Body.String())
+	}
+}
+
+func TestHandlePostMeetingAbort(t *testing.T) {
+	dir := t.TempDir()
+	store := memory.New()
+	ws := wsfs.NewStore(dir)
+	ctx := context.Background()
+
+	eng := engine.New(store, consensus.NoObjection{}, nil, nil, ws, nil, nil)
+	freeQ := 0
+	meetingID := "mtg-abort-api"
+	if _, err := eng.CreateMeeting(ctx, engine.CreateMeetingInput{
+		MeetingID:                meetingID,
+		Topic:                    "abort api",
+		ConfirmationMode:         meeting.ConfirmationModeSkip,
+		MaxRoundsPerSegment:      1,
+		FreeDialogueMaxQuestions: &freeQ,
+		Participants: []engine.ParticipantInput{
+			{ID: "a", Role: "Architect"},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	h, err := NewHandler(config.Config{Workspace: config.Workspace{Root: dir}}, nil, store, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/meetings/"+meetingID+"/abort", strings.NewReader(`{"reason":"手动清理"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("abort status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"outcome":"aborted"`) {
+		t.Fatalf("body=%s", rec.Body.String())
+	}
+
+	req2 := httptest.NewRequest(http.MethodPost, "/api/meetings/"+meetingID+"/abort", nil)
+	rec2 := httptest.NewRecorder()
+	mux.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusConflict {
+		t.Fatalf("second abort status=%d body=%s", rec2.Code, rec2.Body.String())
 	}
 }
