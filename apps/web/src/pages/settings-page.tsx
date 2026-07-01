@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { fetchSettings, saveSettings } from '@/api/settings'
 import { ApiError } from '@/api/client'
 import { BrandIcon, hasBrandIcon } from '@/components/brand-icon'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import { ProfilePageHeader, ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { DiscordBotsPanel } from '@/components/settings/discord-bots-panel'
 import { MeetCastsPanel } from '@/components/settings/meet-casts-panel'
@@ -634,14 +635,17 @@ export function SettingsPage() {
     : activeTab
 
   return (
+    <PageLayout
+      header={
+        <ProfilePageHeader
+          role="principal"
+          eyebrow="Configuration"
+          title="设置"
+          description="在此调整 RoundTable 运行参数；保存后对新发起的会议立即生效。API 密钥等敏感项请在 deploy/.env 中配置。"
+        />
+      }
+    >
     <div className="space-y-8">
-      <ProfilePageHeader
-        role="principal"
-        eyebrow="Configuration"
-        title="设置"
-        description="在此调整 RoundTable 运行参数；保存后对新发起的会议立即生效。API 密钥等敏感项请在 deploy/.env 中配置。"
-      />
-
       {loading && (
         <ProfileStatePanel
           className="!rounded-xs"
@@ -984,5 +988,6 @@ export function SettingsPage() {
         </form>
       )}
     </div>
+    </PageLayout>
   )
 }

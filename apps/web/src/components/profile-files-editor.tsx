@@ -8,6 +8,7 @@ import {
   ProfileStatePanel,
   type ProfileRole,
 } from '@/components/profile/profile-page-header'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
 import { MarkdownReader } from '@/components/markdown/markdown-reader'
 import {
@@ -173,8 +174,8 @@ export function ProfileFilesEditor({
 
   const dirty = activeFile !== '' && draft !== (files[activeFile] ?? '')
 
-  return (
-    <div className="space-y-8">
+  const pageHeader = (
+    <>
       <Link
         to={backTo}
         className={cn(
@@ -231,7 +232,12 @@ export function ProfileFilesEditor({
           }
         />
       )}
+    </>
+  )
 
+  return (
+    <PageLayout header={<div className="space-y-8">{pageHeader}</div>}>
+    <div className="space-y-8">
       {loading && (
         <ProfileStatePanel title="加载中" description="正在读取 Markdown 档案…" />
       )}
@@ -345,5 +351,6 @@ export function ProfileFilesEditor({
         </div>
       )}
     </div>
+    </PageLayout>
   )
 }

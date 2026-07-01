@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, LayoutList, Users, Wifi, WifiOff } from 'lucide-react'
 
 import { ChatComposer } from '@/components/chat/chat-composer'
 import { ImTranscriptView } from '@/components/chat/im-transcript-view'
+import { PageThreeColumnLayout } from '@/components/layout/page-three-column-layout'
 import { RoundTableView } from '@/components/round-table/round-table-view'
 import { StripOnlyView } from '@/components/round-table/strip-only-view'
 import { TranscriptDetailPanel } from '@/components/round-table/transcript-detail-panel'
@@ -19,7 +21,7 @@ import { speakerId } from '@/lib/chat-display'
 import { phaseLabel } from '@/lib/chat-meeting-phase'
 import { maxTurnNumber, scrubTurnForMessage, activeMessageAtScrubTurn } from '@/lib/meeting-transcript-projection'
 import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
-import { hePanelShell, heSubsectionTitleNeutral, chatSideRailLeftClass, chatSideRailRightClass } from '@/lib/highend-styles'
+import { hePanelShell, heSubsectionTitleNeutral } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
 import type { ChatConnectionState, ChatMessage } from '@/types/chat'
@@ -132,6 +134,12 @@ interface ChatWindowProps {
   typingStates?: TypingStates
   onSend: (content: string) => boolean
   onReconnect: () => void
+  pageShell?: (slots: {
+    main: ReactNode
+    left?: ReactNode
+    right?: ReactNode
+    drawer?: ReactNode
+  }) => ReactNode
 }
 
 export function ChatWindow({
@@ -143,6 +151,7 @@ export function ChatWindow({
   typingStates,
   onSend,
   onReconnect,
+  pageShell,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState('')
   /** null = 自动跟踪 activeMessage；非 null = 用户手动固定的消息 */
@@ -224,51 +233,51 @@ export function ChatWindow({
     if (onSend(content)) setDraft('')
   }
 
-  return (
-    <>
-      <div className="relative h-full min-h-0">
-        <div
-          className={cn(
-            hePanelShell,
-            'relative flex h-full min-h-0 flex-col overflow-hidden',
-            className,
-          )}
-        >
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
-          <div>
-            <h2 className={heSubsectionTitleNeutral}>与司仪对话</h2>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-text-tertiary">
-              <span>浏览器 Transport · 无需 Principal</span>
-              <span className="text-black/20">·</span>
-              <span>{phaseLabel(phase)}</span>
-              {narrow && (
-                <>
-                  <span className="text-black/20">·</span>
-                  <span>{layout === 'strip-only' ? '窄屏记录' : '窄屏列表'}</span>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="hidden md:block">
-              <ViewModeToggle mode={mode} onChange={setMode} />
-            </div>
-            <ConnectionBadge state={connectionState} />
-            {connectionState !== 'open' && (
-              <Button type="button" variant="outline" size="sm" onClick={onReconnect}>
-                重连
-              </Button>
+  const chatShell = (
+    <div
+      className={cn(
+        hePanelShell,
+        'relative flex h-full min-h-0 flex-col overflow-hidden',
+        roundtableSidePanel
+          ? 'h-full min-h-[28rem] lg:min-h-[calc(100vh-14rem)]'
+          : undefined,
+      )}
+    >
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
+        <div>
+          <h2 className={heSubsectionTitleNeutral}>与司仪对话</h2>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-text-tertiary">
+            <span>浏览器 Transport · 无需 Principal</span>
+            <span className="text-black/20">·</span>
+            <span>{phaseLabel(phase)}</span>
+            {narrow && (
+              <>
+                <span className="text-black/20">·</span>
+                <span>{layout === 'strip-only' ? '窄屏记录' : '窄屏列表'}</span>
+              </>
             )}
-          </div>
-        </div>
-
-        {sessionId && connectionState === 'open' && (
-          <p className="shrink-0 border-b border-black/[0.04] px-5 py-2 font-mono text-[11px] text-text-tertiary">
-            会话 {sessionId.slice(0, 8)}…
           </p>
-        )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden md:block">
+            <ViewModeToggle mode={mode} onChange={setMode} />
+          </div>
+          <ConnectionBadge state={connectionState} />
+          {connectionState !== 'open' && (
+            <Button type="button" variant="outline" size="sm" onClick={onReconnect}>
+              重连
+            </Button>
+          )}
+        </div>
+      </div>
 
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pb-[6.5rem]">
+      {sessionId && connectionState === 'open' && (
+        <p className="shrink-0 border-b border-black/[0.04] px-5 py-2 font-mono text-[11px] text-text-tertiary">
+          会话 {sessionId.slice(0, 8)}…
+        </p>
+      )}
+
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pb-[6.5rem]">
         {layout === 'roundtable' && (
           <RoundTableView
             seats={seats}
@@ -314,42 +323,64 @@ export function ChatWindow({
             {lastError}
           </p>
         )}
-        </div>
-
-        <ChatComposer
-          draft={draft}
-          onDraftChange={setDraft}
-          onSend={submitDraft}
-          disabled={!canSend}
-        />
-        </div>
-
-        {roundtableSidePanel && (
-          <>
-            <TranscriptHistoryPanel
-              messages={messages}
-              activeMessageId={activeMessageId}
-              selectedId={highlightMessageId}
-              onSelect={selectHistoryMessage}
-              className={chatSideRailLeftClass}
-            />
-            <TranscriptDetailPanel
-              message={displayedMessage}
-              sequence={selectedSequence}
-              onClear={() => setPinnedMessage(null)}
-              className={chatSideRailRightClass}
-            />
-          </>
-        )}
       </div>
 
-      {!roundtableSidePanel && (
-        <TranscriptDrawer
-          message={displayedMessage}
-          sequence={selectedSequence}
-          onClose={() => setPinnedMessage(null)}
-        />
-      )}
+      <ChatComposer
+        draft={draft}
+        onDraftChange={setDraft}
+        onSend={submitDraft}
+        disabled={!canSend}
+      />
+    </div>
+  )
+
+  const leftPanel = roundtableSidePanel ? (
+    <TranscriptHistoryPanel
+      messages={messages}
+      activeMessageId={activeMessageId}
+      selectedId={highlightMessageId}
+      onSelect={selectHistoryMessage}
+    />
+  ) : undefined
+
+  const rightPanel = roundtableSidePanel ? (
+    <TranscriptDetailPanel
+      message={displayedMessage}
+      sequence={selectedSequence}
+      onClear={() => setPinnedMessage(null)}
+    />
+  ) : undefined
+
+  const drawer = !roundtableSidePanel ? (
+    <TranscriptDrawer
+      message={displayedMessage}
+      sequence={selectedSequence}
+      onClose={() => setPinnedMessage(null)}
+    />
+  ) : undefined
+
+  if (pageShell) {
+    return pageShell({ main: chatShell, left: leftPanel, right: rightPanel, drawer })
+  }
+
+  if (roundtableSidePanel) {
+    return (
+      <PageThreeColumnLayout
+        sidebarFrom="96rem"
+        left={leftPanel}
+        right={rightPanel}
+      >
+        {chatShell}
+      </PageThreeColumnLayout>
+    )
+  }
+
+  return (
+    <>
+      <div className={cn('mx-auto h-full w-full max-w-6xl', className)}>
+        {chatShell}
+      </div>
+      {drawer}
     </>
   )
 }

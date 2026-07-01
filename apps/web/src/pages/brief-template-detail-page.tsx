@@ -8,6 +8,7 @@ import { ApiError } from '@/api/client'
 import { BriefTemplateFormFields } from '@/components/brief/brief-template-form-fields'
 import { BriefTemplatePageHeader } from '@/components/brief/brief-template-meta-fields'
 import { BriefTemplatePreview } from '@/components/brief/brief-template-preview'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { Button } from '@/components/ui/button'
 import {
@@ -122,7 +123,7 @@ export function BriefTemplateDetailPage() {
 
   if (!id) return null
 
-  return (
+  const pageHeader = (
     <div className="space-y-8">
       <Link
         to="/brief-templates"
@@ -136,6 +137,41 @@ export function BriefTemplateDetailPage() {
         返回简报模板列表
       </Link>
 
+      {!loading && !error && detail && (
+        <header className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={heEyebrowBrand}>Meeting Brief · 简报模板</span>
+              <span className="rounded-full bg-black/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
+                {detail.source === 'builtin' ? '内置' : '自定义'}
+              </span>
+              {!isBuiltin && (
+                <span className="font-mono text-[11px] text-text-tertiary/80">{id}</span>
+              )}
+            </div>
+
+            {mode === 'view' && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleStartEdit}
+                className={cn(hePressable, 'shrink-0 gap-2 !rounded-xs px-4')}
+              >
+                <Pencil className="size-4" />
+                编辑
+              </Button>
+            )}
+          </div>
+
+          <BriefTemplatePageHeader document={headerDocument} />
+        </header>
+      )}
+    </div>
+  )
+
+  return (
+    <PageLayout header={pageHeader}>
+    <div className="space-y-8">
       {loading && (
         <ProfileStatePanel title="加载中" description="正在读取模板…" />
       )}
@@ -146,34 +182,6 @@ export function BriefTemplateDetailPage() {
 
       {!loading && !error && detail && (
         <>
-          <header className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={heEyebrowBrand}>Meeting Brief · 简报模板</span>
-                <span className="rounded-full bg-black/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
-                  {detail.source === 'builtin' ? '内置' : '自定义'}
-                </span>
-                {!isBuiltin && (
-                  <span className="font-mono text-[11px] text-text-tertiary/80">{id}</span>
-                )}
-              </div>
-
-              {mode === 'view' && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleStartEdit}
-                  className={cn(hePressable, 'shrink-0 gap-2 !rounded-xs px-4')}
-                >
-                  <Pencil className="size-4" />
-                  编辑
-                </Button>
-              )}
-            </div>
-
-            <BriefTemplatePageHeader document={headerDocument} />
-          </header>
-
           <div className={cn(hePanelShell, 'overflow-visible')}>
             {mode === 'view' ? (
               <div className="p-5 sm:p-7">
@@ -221,5 +229,6 @@ export function BriefTemplateDetailPage() {
         </>
       )}
     </div>
+    </PageLayout>
   )
 }

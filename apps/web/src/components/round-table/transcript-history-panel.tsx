@@ -24,7 +24,7 @@ export function TranscriptHistoryPanel({
 
   return (
     <aside
-      className={cn(hePanelShell, 'flex min-h-0 flex-col overflow-hidden', className)}
+      className={cn(hePanelShell, 'flex h-full min-h-0 flex-col overflow-hidden', className)}
       aria-label="发言记录"
     >
       {isEmpty ? (

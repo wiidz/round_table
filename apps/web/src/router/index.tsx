@@ -25,7 +25,6 @@ export const router = createBrowserRouter([
         element: <PageMainLayout />,
         children: [
           { index: true, element: <HomePage /> },
-          { path: 'chat', element: <ChatPage /> },
           { path: 'meetings', element: <MeetingsPage /> },
           { path: 'principals', element: <PrincipalsPage /> },
           { path: 'principals/:id', element: <PrincipalDetailPage /> },
@@ -34,11 +33,12 @@ export const router = createBrowserRouter([
           { path: 'participants', element: <ParticipantsPage /> },
           { path: 'participants/:id', element: <ParticipantDetailPage /> },
           { path: 'settings', element: <SettingsPage /> },
+          { path: 'chat', element: <ChatPage /> },
+          { path: 'meetings/:id', element: <MeetingDetailPage /> },
+          { path: 'meetings/:id/replay', element: <MeetingReplayPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },
-      { path: 'meetings/:id', element: <MeetingDetailPage /> },
-      { path: 'meetings/:id/replay', element: <MeetingReplayPage /> },
     ],
   },
 ])

@@ -6,6 +6,7 @@ import {
   ProfileListCard,
   ProfileListSkeleton,
 } from '@/components/profile/profile-list-card'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import {
   ProfilePageHeader,
   ProfileStatePanel,
@@ -48,21 +49,24 @@ export function PrincipalsPage() {
   }, [])
 
   return (
+    <PageLayout
+      header={
+        <ProfilePageHeader
+          role="principal"
+          eyebrow={domainPageEyebrow('principal')}
+          title={domainPageTitle('principal')}
+          description={
+            <>
+              管理委托人（Principal）身份与{' '}
+              <strong className="font-medium text-text-primary">USER.md</strong>{' '}
+              偏好档案（ADR-0010）。每人仅一份 USER.md，描述语言、验收习惯与背景；单次会议意图请用{' '}
+              <strong className="font-medium text-text-primary">简报模板</strong>。
+            </>
+          }
+        />
+      }
+    >
     <div className="space-y-8">
-      <ProfilePageHeader
-        role="principal"
-        eyebrow={domainPageEyebrow('principal')}
-        title={domainPageTitle('principal')}
-        description={
-          <>
-            管理委托人（Principal）身份与{' '}
-            <strong className="font-medium text-text-primary">USER.md</strong>{' '}
-            偏好档案（ADR-0010）。每人仅一份 USER.md，描述语言、验收习惯与背景；单次会议意图请用{' '}
-            <strong className="font-medium text-text-primary">简报模板</strong>。
-          </>
-        }
-      />
-
       {loading && <ProfileListSkeleton />}
 
       {!loading && error && (
@@ -102,5 +106,6 @@ export function PrincipalsPage() {
         </ul>
       )}
     </div>
+    </PageLayout>
   )
 }

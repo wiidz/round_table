@@ -10,6 +10,7 @@ import {
   MeetingGridCard,
   MeetingGridSkeleton,
 } from '@/components/meeting/meeting-list-card'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import {
   ProfilePageHeader,
   ProfileStatePanel,
@@ -83,22 +84,25 @@ export function MeetingsPage() {
   }, [page, pageSize])
 
   return (
+    <PageLayout
+      header={
+        <ProfilePageHeader
+          role="principal"
+          eyebrow="Meeting Browse"
+          title="会议"
+          description={
+            <>
+              浏览{' '}
+              <code className="rounded-md bg-black/[0.04] px-1.5 py-0.5 font-mono text-[12px] ring-1 ring-inset ring-black/[0.05]">
+                data/workspaces/
+              </code>{' '}
+              下的历史 Meeting。**天平**（明亮橙底）为裁决型、**云朵**为研讨型；卡片含人数、轮次、自由对话与 LLM 用量。
+            </>
+          }
+        />
+      }
+    >
     <div className="space-y-8">
-      <ProfilePageHeader
-        role="principal"
-        eyebrow="Meeting Browse"
-        title="会议"
-        description={
-          <>
-            浏览{' '}
-            <code className="rounded-md bg-black/[0.04] px-1.5 py-0.5 font-mono text-[12px] ring-1 ring-inset ring-black/[0.05]">
-              data/workspaces/
-            </code>{' '}
-            下的历史 Meeting。**天平**（明亮橙底）为裁决型、**云朵**为研讨型；卡片含人数、轮次、自由对话与 LLM 用量。
-          </>
-        }
-      />
-
       {loading && <MeetingGridSkeleton count={pageSize} />}
 
       {!loading && error && (
@@ -136,5 +140,6 @@ export function MeetingsPage() {
         </>
       )}
     </div>
+    </PageLayout>
   )
 }

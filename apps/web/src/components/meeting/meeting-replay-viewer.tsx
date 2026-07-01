@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import { useCallback, useMemo, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-main-layout'
 import { RoundTableView } from '@/components/round-table/round-table-view'
 import { StripOnlyView } from '@/components/round-table/strip-only-view'
 import { TranscriptDetailPanel } from '@/components/round-table/transcript-detail-panel'
@@ -10,12 +12,7 @@ import { useMeetingReplaySeats } from '@/hooks/use-meeting-replay-seats'
 import { useMeetingTranscript } from '@/hooks/use-meeting-transcript'
 import { useMediaQuery, useNarrowScreen } from '@/hooks/use-media-query'
 import { speakerId } from '@/lib/chat-display'
-import {
-  chatSideRailLeftClass,
-  chatSideRailRightClass,
-  hePanelShell,
-  heSubsectionTitleNeutral,
-} from '@/lib/highend-styles'
+import { hePanelShell, heSubsectionTitleNeutral } from '@/lib/highend-styles'
 import { maxTurnNumber, scrubTurnForMessage, activeMessageAtScrubTurn } from '@/lib/meeting-transcript-projection'
 import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
 import { cn } from '@/lib/utils'
@@ -25,14 +22,26 @@ interface MeetingReplayViewerProps {
   topic: string
   meetingMd: string
   messages: ChatMessage[]
-  className?: string
+  header?: ReactNode
+  pageShell?: (slots: {
+    main: ReactNode
+    left?: ReactNode
+    right?: ReactNode
+    drawer?: ReactNode
+  }) => ReactNode
 }
+
+const replayMainPanelClass = cn(
+  hePanelShell,
+  'flex h-full min-h-[36rem] flex-col overflow-hidden lg:min-h-[calc(100vh-14rem)]',
+)
 
 export function MeetingReplayViewer({
   topic,
   meetingMd,
   messages,
-  className,
+  header,
+  pageShell,
 }: MeetingReplayViewerProps) {
   const [drawerMessage, setDrawerMessage] = useState<ChatMessage | null>(null)
   const [scrubTurn, setScrubTurn] = useState<number | null>(null)
@@ -97,89 +106,99 @@ export function MeetingReplayViewer({
     )
   }
 
-  return (
-    <>
-      <div className={cn('relative min-h-0', className)}>
-        <div
-          className={cn(
-            hePanelShell,
-            'relative flex h-full min-h-0 flex-col overflow-hidden',
-          )}
-        >
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
-            <div>
-              <h2 className={heSubsectionTitleNeutral}>会议回放</h2>
-              <p className="mt-1 text-[12px] text-text-tertiary">
-                圆桌 Live · 发言进度 · 侧栏详情
-                {narrow && ' · 窄屏记录列表'}
-              </p>
-            </div>
-          </div>
-
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            {!narrow ? (
-              <RoundTableView
-                seats={seats}
-                messages={messages}
-                latestBySeat={latestBySeat}
-                focusedSeatId={focusedSeatId}
-                turnCount={scrubTurn ?? turns.length}
-                maxTurn={maxTurn}
-                scrubTurn={scrubTurn}
-                onScrubTurnChange={handleScrubTurnChange}
-                activeMessageId={activeMessageId}
-                selectedMessageId={drawerMessage?.id ?? null}
-                highlightMessageId={highlightMessageId}
-                referenceTurn={referenceTurn}
-                rosterLoading={loading}
-                rosterFromApi={rosterFromApi}
-                rosterTotal={rosterTotal}
-                seatedExpertCount={participants.length}
-                centerTitle={topic}
-                centerSubtitle={centerSubtitle}
-                onSelectMessage={selectMessage}
-                showTranscriptStrip={!roundtableSidePanel}
-              />
-            ) : (
-              <StripOnlyView
-                messages={messages}
-                maxTurn={maxTurn}
-                scrubTurn={scrubTurn}
-                onScrubTurnChange={handleScrubTurnChange}
-                activeMessageId={activeMessageId}
-                selectedMessageId={drawerMessage?.id ?? null}
-                onSelectMessage={selectMessage}
-              />
-            )}
-          </div>
+  const mainPanel = (
+    <div className={replayMainPanelClass}>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
+        <div>
+          <h2 className={heSubsectionTitleNeutral}>会议回放</h2>
+          <p className="mt-1 text-[12px] text-text-tertiary">
+            圆桌 Live · 发言进度 · 侧栏详情
+            {narrow && ' · 窄屏记录列表'}
+          </p>
         </div>
-
-        {roundtableSidePanel && (
-          <>
-            <TranscriptHistoryPanel
-              messages={messages}
-              activeMessageId={activeMessageId}
-              selectedId={highlightMessageId}
-              onSelect={selectHistoryMessage}
-              className={chatSideRailLeftClass}
-            />
-            <TranscriptDetailPanel
-              message={drawerMessage}
-              sequence={selectedSequence}
-              onClear={() => setDrawerMessage(null)}
-              className={chatSideRailRightClass}
-            />
-          </>
-        )}
       </div>
 
-      {!roundtableSidePanel && (
-        <TranscriptDrawer
-          message={drawerMessage}
-          sequence={selectedSequence}
-          onClose={() => setDrawerMessage(null)}
-        />
-      )}
+      <div className="relative flex min-h-[28rem] flex-1 flex-col overflow-hidden">
+        {!narrow ? (
+          <RoundTableView
+            seats={seats}
+            messages={messages}
+            latestBySeat={latestBySeat}
+            focusedSeatId={focusedSeatId}
+            turnCount={scrubTurn ?? turns.length}
+            maxTurn={maxTurn}
+            scrubTurn={scrubTurn}
+            onScrubTurnChange={handleScrubTurnChange}
+            activeMessageId={activeMessageId}
+            selectedMessageId={drawerMessage?.id ?? null}
+            highlightMessageId={highlightMessageId}
+            referenceTurn={referenceTurn}
+            rosterLoading={loading}
+            rosterFromApi={rosterFromApi}
+            rosterTotal={rosterTotal}
+            seatedExpertCount={participants.length}
+            centerTitle={topic}
+            centerSubtitle={centerSubtitle}
+            onSelectMessage={selectMessage}
+            showTranscriptStrip={!roundtableSidePanel}
+          />
+        ) : (
+          <StripOnlyView
+            messages={messages}
+            maxTurn={maxTurn}
+            scrubTurn={scrubTurn}
+            onScrubTurnChange={handleScrubTurnChange}
+            activeMessageId={activeMessageId}
+            selectedMessageId={drawerMessage?.id ?? null}
+            onSelectMessage={selectMessage}
+          />
+        )}
+      </div>
+    </div>
+  )
+
+  const leftPanel = roundtableSidePanel ? (
+    <TranscriptHistoryPanel
+      messages={messages}
+      activeMessageId={activeMessageId}
+      selectedId={highlightMessageId}
+      onSelect={selectHistoryMessage}
+    />
+  ) : undefined
+
+  const rightPanel = roundtableSidePanel ? (
+    <TranscriptDetailPanel
+      message={drawerMessage}
+      sequence={selectedSequence}
+      onClear={() => setDrawerMessage(null)}
+    />
+  ) : undefined
+
+  const drawer = !roundtableSidePanel ? (
+    <TranscriptDrawer
+      message={drawerMessage}
+      sequence={selectedSequence}
+      onClose={() => setDrawerMessage(null)}
+    />
+  ) : undefined
+
+  if (pageShell) {
+    return pageShell({ main: mainPanel, left: leftPanel, right: rightPanel, drawer })
+  }
+
+  return (
+    <>
+      <PageLayout
+        header={header}
+        sidebarFrom="96rem"
+        sideColumnWidth="gutter"
+        left={leftPanel}
+        right={rightPanel}
+        bodyClassName="min-[96rem]:h-full"
+      >
+        <div className="h-full min-h-0">{mainPanel}</div>
+      </PageLayout>
+      {drawer}
     </>
   )
 }

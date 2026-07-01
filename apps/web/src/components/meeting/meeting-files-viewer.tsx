@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { downloadMeetingArchive, deleteMeeting } from '@/api/meetings'
 
-import { PageThreeColumnLayout } from '@/components/layout/page-three-column-layout'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import { MarkdownTocAside } from '@/components/markdown/markdown-toc'
 import { MeetingDeleteDialog } from '@/components/meeting/meeting-delete-dialog'
 import { MeetingDetailOverview } from '@/components/meeting/meeting-detail-overview'
@@ -227,14 +227,46 @@ export function MeetingFilesViewer({
 
   if (loading) {
     return (
-      <div className={cn(hePanelShell, 'px-8 py-10 text-sm text-text-secondary')}>
-        加载会议 workspace…
-      </div>
+      <PageLayout
+        header={
+          <Link
+            to={backTo}
+            className={cn(
+              'inline-flex items-center gap-2 text-sm text-text-secondary transition-colors hover:text-brand',
+              heSpring,
+            )}
+          >
+            <ArrowLeft className="size-4" />
+            {backLabel}
+          </Link>
+        }
+      >
+        <div className={cn(hePanelShell, 'px-8 py-10 text-sm text-text-secondary')}>
+          加载会议 workspace…
+        </div>
+      </PageLayout>
     )
   }
 
   if (error) {
-    return <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+    return (
+      <PageLayout
+        header={
+          <Link
+            to={backTo}
+            className={cn(
+              'inline-flex items-center gap-2 text-sm text-text-secondary transition-colors hover:text-brand',
+              heSpring,
+            )}
+          >
+            <ArrowLeft className="size-4" />
+            {backLabel}
+          </Link>
+        }
+      >
+        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+      </PageLayout>
+    )
   }
 
   if (!detail || !brief || !sidebarProps) {
@@ -243,7 +275,7 @@ export function MeetingFilesViewer({
 
   return (
     <>
-    <PageThreeColumnLayout
+    <PageLayout
       header={
         <div className="flex flex-col items-start gap-3">
           <Link
@@ -318,7 +350,7 @@ export function MeetingFilesViewer({
           onViewModeChange={setViewMode}
         />
       )}
-    </PageThreeColumnLayout>
+    </PageLayout>
 
     <MeetingDeleteDialog
       open={deleteDialogOpen}

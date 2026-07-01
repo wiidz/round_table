@@ -6,6 +6,7 @@ import {
   BriefTemplateGridCard,
   BriefTemplateGridSkeleton,
 } from '@/components/brief/brief-template-grid-card'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import {
   ProfilePageHeader,
   ProfileStatePanel,
@@ -85,14 +86,17 @@ export function BriefTemplatesPage() {
   }, [templates])
 
   return (
+    <PageLayout
+      header={
+        <ProfilePageHeader
+          role="principal"
+          eyebrow="Meeting Brief"
+          title="简报模板 · Brief Template"
+          description="可复用的会议意图：主题、目标、议程与范围。内置模板可另存为自定义副本后再改。"
+        />
+      }
+    >
     <div className="space-y-8">
-      <ProfilePageHeader
-        role="principal"
-        eyebrow="Meeting Brief"
-        title="简报模板 · Brief Template"
-        description="可复用的会议意图：主题、目标、议程与范围。内置模板可另存为自定义副本后再改。"
-      />
-
       {loading && <BriefTemplateGridSkeleton />}
 
       {!loading && error && (
@@ -121,5 +125,6 @@ export function BriefTemplatesPage() {
         </div>
       )}
     </div>
+    </PageLayout>
   )
 }

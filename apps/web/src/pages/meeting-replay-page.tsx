@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
 import { fetchMeeting } from '@/api/meetings'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import { MeetingReplayViewer } from '@/components/meeting/meeting-replay-viewer'
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { ApiError } from '@/api/client'
@@ -64,41 +65,60 @@ export function MeetingReplayPage() {
     [id],
   )
 
+  const backLink = (
+    <Link
+      to={detailPath}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-2 text-sm text-text-secondary transition-colors hover:text-brand',
+        heSpring,
+      )}
+    >
+      <ArrowLeft className="size-4" />
+      返回会议详情
+    </Link>
+  )
+
   if (!id) {
     return null
   }
 
-  return (
-    <div className="flex h-[calc(100vh-4rem)] min-h-[32rem] flex-col gap-4">
-      <Link
-        to={detailPath}
-        className={cn(
-          'inline-flex shrink-0 items-center gap-2 text-sm text-text-secondary transition-colors hover:text-brand',
-          heSpring,
-        )}
-      >
-        <ArrowLeft className="size-4" />
-        返回会议详情
-      </Link>
-
-      {loading && (
+  if (loading) {
+    return (
+      <PageLayout header={backLink}>
         <div className={cn(hePanelShell, 'px-8 py-10 text-sm text-text-secondary')}>
           加载回放…
         </div>
-      )}
+      </PageLayout>
+    )
+  }
 
-      {!loading && error && (
+  if (error) {
+    return (
+      <PageLayout header={backLink}>
         <ProfileStatePanel variant="danger" title="无法回放" description={error} />
-      )}
+      </PageLayout>
+    )
+  }
 
-      {!loading && !error && (
-        <MeetingReplayViewer
-          topic={topic}
-          meetingMd={meetingMd}
-          messages={messages}
-          className="min-h-0 flex-1"
-        />
+  return (
+    <MeetingReplayViewer
+      topic={topic}
+      meetingMd={meetingMd}
+      messages={messages}
+      pageShell={({ main, left, right, drawer }) => (
+        <PageLayout
+          header={backLink}
+          left={left}
+          right={right}
+          sidebarFrom="96rem"
+          sideColumnWidth="gutter"
+          className="min-[96rem]:min-h-[calc(100vh-7.5rem)]"
+          bodyClassName="min-[96rem]:h-full"
+        >
+          <div className="h-full min-h-0">{main}</div>
+          {drawer}
+        </PageLayout>
       )}
-    </div>
+    />
   )
 }

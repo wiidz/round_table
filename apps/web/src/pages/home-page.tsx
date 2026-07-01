@@ -11,6 +11,7 @@ import { fetchSettings, fetchDiscordTransportStatus } from '@/api/settings'
 import { fetchRuntime } from '@/api/runtime'
 import { ApiError } from '@/api/client'
 import { HomeOperationsPanel } from '@/components/home/home-operations-panel'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import {
   MeetingGridCard,
   MeetingGridSkeleton,
@@ -225,14 +226,17 @@ export function HomePage() {
   }, [allMeetings])
 
   return (
+    <PageLayout
+      header={
+        <ProfilePageHeader
+          role="principal"
+          eyebrow="Overview"
+          title="概览"
+          description="仪表盘汇总会议与档案；运行与 IM 区可直接启停 Discord、查看日志并跳转 Bot 设置；下方进入最近 Meeting 复盘。"
+        />
+      }
+    >
     <div className="space-y-10">
-      <ProfilePageHeader
-        role="principal"
-        eyebrow="Overview"
-        title="概览"
-        description="仪表盘汇总会议与档案；运行与 IM 区可直接启停 Discord、查看日志并跳转 Bot 设置；下方进入最近 Meeting 复盘。"
-      />
-
       {error && (
         <ProfileStatePanel variant="danger" title="加载失败" description={error} />
       )}
@@ -357,5 +361,6 @@ export function HomePage() {
         )}
       </section>
     </div>
+    </PageLayout>
   )
 }

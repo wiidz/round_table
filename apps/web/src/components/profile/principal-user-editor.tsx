@@ -9,6 +9,7 @@ import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import { SettingsFieldRow } from '@/components/settings/field-hint-popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -96,33 +97,38 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
   }
 
   return (
-    <div className="space-y-8">
-      <Link
-        to="/principals"
-        className={cn(
-          'inline-flex items-center gap-1.5 text-sm text-text-secondary',
-          'hover:text-brand',
-          heSpring,
-        )}
-      >
-        <ArrowLeft className="size-4" />
-        返回{domainNavLabel('principal')}列表
-      </Link>
-
-      <ProfilePageHeader
-        role="principal"
-        eyebrow={domainPageEyebrow('principal')}
-        title={displayName || id}
-        description={
-          <>
-            {displayName && (
-              <span className="mb-1 block font-mono text-xs text-text-tertiary">{id}</span>
+    <PageLayout
+      header={
+        <div className="space-y-8">
+          <Link
+            to="/principals"
+            className={cn(
+              'inline-flex items-center gap-1.5 text-sm text-text-secondary',
+              'hover:text-brand',
+              heSpring,
             )}
-            填写偏好字段后由服务端生成 USER.md。会议议题请使用「简报模板」。
-          </>
-        }
-      />
+          >
+            <ArrowLeft className="size-4" />
+            返回{domainNavLabel('principal')}列表
+          </Link>
 
+          <ProfilePageHeader
+            role="principal"
+            eyebrow={domainPageEyebrow('principal')}
+            title={displayName || id}
+            description={
+              <>
+                {displayName && (
+                  <span className="mb-1 block font-mono text-xs text-text-tertiary">{id}</span>
+                )}
+                填写偏好字段后由服务端生成 USER.md。会议议题请使用「简报模板」。
+              </>
+            }
+          />
+        </div>
+      }
+    >
+    <div className="space-y-8">
       {loading && (
         <ProfileStatePanel title="加载中" description="正在读取偏好档案…" />
       )}
@@ -193,5 +199,6 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
         </div>
       )}
     </div>
+    </PageLayout>
   )
 }

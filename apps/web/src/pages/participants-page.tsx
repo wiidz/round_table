@@ -11,6 +11,7 @@ import {
 import { fetchSettings } from '@/api/settings'
 import { ApiError } from '@/api/client'
 import { ParticipantFormDialog } from '@/components/profile/participant-form-dialog'
+import { PageLayout } from '@/components/layout/page-main-layout'
 import {
   ParticipantGridCard,
   ParticipantGridSkeleton,
@@ -133,28 +134,31 @@ export function ParticipantsPage() {
   }
 
   return (
+    <PageLayout
+      header={
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <ProfilePageHeader
+            role="participant"
+            eyebrow={domainPageEyebrow('participant')}
+            title={domainPageTitle('participant')}
+            description={
+              <>
+                管理会议专家（Participant）：代号、名称与 SOUL / AGENTS / TOOLS 档案。代号与名称均不可重复；修改代号会同步重命名档案目录。
+              </>
+            }
+          />
+          <Button
+            type="button"
+            onClick={openCreate}
+            className={cn(hePressable, 'shrink-0 gap-2 rounded-xl px-4')}
+          >
+            <Plus className="size-4" />
+            添加专家
+          </Button>
+        </div>
+      }
+    >
     <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <ProfilePageHeader
-          role="participant"
-          eyebrow={domainPageEyebrow('participant')}
-          title={domainPageTitle('participant')}
-          description={
-            <>
-              管理会议专家（Participant）：代号、名称与 SOUL / AGENTS / TOOLS 档案。代号与名称均不可重复；修改代号会同步重命名档案目录。
-            </>
-          }
-        />
-        <Button
-          type="button"
-          onClick={openCreate}
-          className={cn(hePressable, 'shrink-0 gap-2 rounded-xl px-4')}
-        >
-          <Plus className="size-4" />
-          添加专家
-        </Button>
-      </div>
-
       {loading && <ParticipantGridSkeleton />}
 
       {!loading && error && (
@@ -198,5 +202,6 @@ export function ParticipantsPage() {
         onSubmit={handleSubmit}
       />
     </div>
+    </PageLayout>
   )
 }
