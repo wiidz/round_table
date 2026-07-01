@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { MarkdownDocument } from '@/components/markdown/markdown-document'
 import {
@@ -17,6 +17,11 @@ interface MarkdownReaderProps {
   constrained?: boolean
   /** Remount collector when switching documents */
   documentKey?: string
+  /**
+   * Wide meeting documents: parent renders gutter TOC; reader only collects headings.
+   */
+  tocInGutter?: boolean
+  onHeadingsCollected?: (headings: MarkdownHeading[]) => void
 }
 
 export function MarkdownReader({
@@ -24,17 +29,24 @@ export function MarkdownReader({
   className,
   constrained = true,
   documentKey,
+  tocInGutter = false,
+  onHeadingsCollected,
 }: MarkdownReaderProps) {
   const [headings, setHeadings] = useState<MarkdownHeading[]>([])
   const handleHeadingsChange = useCallback((next: MarkdownHeading[]) => {
     setHeadings((prev) => (headingsEqual(prev, next) ? prev : next))
   }, [])
 
+  useEffect(() => {
+    onHeadingsCollected?.(headings)
+  }, [headings, onHeadingsCollected])
+
   const showToc = headings.length >= 2
 
   return (
     <div
       className={cn(
+        'relative',
         constrained && 'max-w-[760px]',
         className,
       )}
@@ -45,8 +57,11 @@ export function MarkdownReader({
         constrained={false}
         onHeadingsChange={handleHeadingsChange}
       />
-      {showToc && <MarkdownTocFloating headings={headings} />}
-      {showToc && <MarkdownTocMobile headings={headings} />}
+      {showToc && !tocInGutter && <MarkdownTocFloating headings={headings} />}
+      {showToc && !tocInGutter && <MarkdownTocMobile headings={headings} />}
+      {showToc && tocInGutter && (
+        <MarkdownTocMobile headings={headings} hideFrom="96rem" />
+      )}
     </div>
   )
 }

@@ -77,8 +77,8 @@ export function MeetingDetailHeader({ detail, canReplay }: MeetingDetailHeaderPr
 
       <p className={hePageDesc}>
         {canReplay
-          ? '在「文档」中浏览 Workspace 产出；在「回放」中以圆桌 Live、发言进度与侧栏详情复盘本场讨论。'
-          : '左侧按概览、交付物、过程文档浏览本场 Workspace 产出；选中文件后可在右侧预览 Markdown 或查看源码。'}
+          ? '在「文档」中浏览 Workspace 产出；在「回放」中以圆桌复盘讨论；在「流程」中查看会前准备到结案的 Engine 路径。'
+          : '在「文档」中浏览 Workspace 产出；在「流程」中查看会前准备到结案的 Engine 路径。'}
       </p>
 
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 text-[13px]">

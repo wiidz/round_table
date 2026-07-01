@@ -106,6 +106,32 @@ interface MarkdownTocProps {
   headings: MarkdownHeading[]
 }
 
+/** Article heading TOC — right column in meeting documents three-col layout. */
+export function MarkdownTocAside({ headings }: MarkdownTocProps) {
+  const { activeId, navigateTo } = useActiveHeadingId(headings)
+
+  if (headings.length < TOC_MIN_HEADINGS) return null
+
+  return (
+    <nav
+      aria-label="文档目录"
+      className={cn(
+        'sticky top-20 flex max-h-[calc(100vh-7rem)] w-full flex-col rounded-xl p-3.5',
+        'bg-surface/92 backdrop-blur-sm',
+        'shadow-[var(--panel-shell-shadow)] ring-1 ring-inset ring-black/[0.06]',
+      )}
+    >
+      <p className="mb-2 shrink-0 text-[10px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
+        目录
+      </p>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <TocList headings={headings} activeId={activeId} navigateTo={navigateTo} />
+      </div>
+      <TocBackToTop className="mt-2" />
+    </nav>
+  )
+}
+
 export function MarkdownTocFloating({ headings }: MarkdownTocProps) {
   const { activeId, navigateTo } = useActiveHeadingId(headings)
 
@@ -133,14 +159,28 @@ export function MarkdownTocFloating({ headings }: MarkdownTocProps) {
   )
 }
 
-export function MarkdownTocMobile({ headings }: MarkdownTocProps) {
+export function MarkdownTocMobile({
+  headings,
+  className,
+  hideFrom = 'xl',
+}: MarkdownTocProps & {
+  className?: string
+  /** Hide floating TOC from this breakpoint up (gutter layout uses 96rem). */
+  hideFrom?: 'xl' | '96rem'
+}) {
   const [open, setOpen] = useState(false)
   const { activeId, navigateTo } = useActiveHeadingId(headings)
 
   if (headings.length < TOC_MIN_HEADINGS) return null
 
   return (
-    <div className="fixed bottom-6 right-[4.25rem] z-30 xl:hidden">
+    <div
+      className={cn(
+        'fixed bottom-6 right-[4.25rem] z-30',
+        hideFrom === '96rem' ? 'min-[96rem]:hidden' : 'xl:hidden',
+        className,
+      )}
+    >
       {open && (
         <div
           className={cn(

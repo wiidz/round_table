@@ -5,11 +5,12 @@ type ProfileAvatarProps = {
   id: string
   name: string
   avatarUrl?: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
 }
 
 const sizeClass = {
+  xs: 'size-6 text-xs',
   sm: 'size-10 text-sm',
   md: 'size-12 text-base',
   lg: 'size-14 text-lg',
