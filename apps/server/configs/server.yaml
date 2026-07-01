@@ -33,6 +33,10 @@ profile:
   root: ./data/profiles
   templates: ./data/_templates/profiles
 
+brief:
+  root: ./data/briefs
+  templates: ./data/_templates/briefs
+
 knowledge:
   root: ./data/knowledge
   templates: ./data/_templates/knowledge

@@ -47,6 +47,8 @@ func resolveDataPaths(cfg *Config) {
 	cfg.Workspace.Root = resolveRepoDataPath(repo, server, cfg.Workspace.Root)
 	cfg.Profile.Root = resolveRepoDataPath(repo, server, cfg.Profile.Root)
 	cfg.Profile.Templates = resolveRepoDataPath(repo, server, cfg.Profile.Templates)
+	cfg.Brief.Root = resolveRepoDataPath(repo, server, cfg.Brief.Root)
+	cfg.Brief.Templates = resolveRepoDataPath(repo, server, cfg.Brief.Templates)
 	cfg.Knowledge.Root = resolveRepoDataPath(repo, server, cfg.Knowledge.Root)
 	cfg.Knowledge.Templates = resolveRepoDataPath(repo, server, cfg.Knowledge.Templates)
 	cfg.Transport.Discord.BindingsFile = resolveRepoDataPath(repo, server, cfg.Transport.Discord.BindingsFile)

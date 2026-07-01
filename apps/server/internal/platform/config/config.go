@@ -17,6 +17,7 @@ type Config struct {
 	Storage   Storage   `yaml:"storage"`
 	Workspace Workspace `yaml:"workspace"`
 	Profile   Profile   `yaml:"profile"`
+	Brief     Brief     `yaml:"brief"`
 	Knowledge Knowledge `yaml:"knowledge"`
 	Transport Transport `yaml:"transport"`
 	Secrets   Secrets
@@ -59,6 +60,11 @@ type Workspace struct {
 }
 
 type Profile struct {
+	Root      string `yaml:"root"`
+	Templates string `yaml:"templates"`
+}
+
+type Brief struct {
 	Root      string `yaml:"root"`
 	Templates string `yaml:"templates"`
 }
@@ -179,6 +185,10 @@ func defaults() Config {
 			Root:      "./data/profiles",
 			Templates: "./data/_templates/profiles",
 		},
+		Brief: Brief{
+			Root:      "./data/briefs",
+			Templates: "./data/_templates/briefs",
+		},
 		Knowledge: Knowledge{
 			Root:          "./data/knowledge",
 			Templates:     "./data/_templates/knowledge",
@@ -239,6 +249,9 @@ func applyEnv(cfg *Config) {
 
 	overrideString(&cfg.Profile.Root, "ROUND_TABLE_PROFILE_ROOT")
 	overrideString(&cfg.Profile.Templates, "ROUND_TABLE_PROFILE_TEMPLATES")
+
+	overrideString(&cfg.Brief.Root, "ROUND_TABLE_BRIEF_ROOT")
+	overrideString(&cfg.Brief.Templates, "ROUND_TABLE_BRIEF_TEMPLATES")
 
 	overrideString(&cfg.Knowledge.Root, "ROUND_TABLE_KNOWLEDGE_ROOT")
 	overrideString(&cfg.Knowledge.Templates, "ROUND_TABLE_KNOWLEDGE_TEMPLATES")

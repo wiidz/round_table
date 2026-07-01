@@ -1,0 +1,20 @@
+meta:
+  title: 裁决型评审
+  description: 围绕 Topic 形成可执行共识；适合是否上线、是否批准类议题
+brief:
+  goal: 围绕指定 Topic 形成可执行共识，并明确后续行动项
+  agenda:
+    - 核心结论是否成立
+    - 主要风险与缓解措施
+    - 后续行动项
+  out_of_scope: 实施排期与人力分配
+  done_criteria: 每议题至少 1 条可执行结论
+meeting:
+  mode: decision
+  max_rounds: 3
+  min_rounds_before_synthesis: 2
+  confirmation_mode: required
+  free_dialogue_max_questions: 1
+  participant_ids:
+    - designer
+    - dev
