@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+
+import { downloadMeetingArchive, deleteMeeting } from '@/api/meetings'
 
 import { PageThreeColumnLayout } from '@/components/layout/page-three-column-layout'
 import { MarkdownTocAside } from '@/components/markdown/markdown-toc'
+import { MeetingDeleteDialog } from '@/components/meeting/meeting-delete-dialog'
 import { MeetingDetailOverview } from '@/components/meeting/meeting-detail-overview'
 import { MeetingDetailSidebar } from '@/components/meeting/meeting-detail-sidebar'
 import {
@@ -54,6 +57,7 @@ export function MeetingFilesViewer({
   backLabel,
   load,
 }: MeetingFilesViewerProps) {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [detail, setDetail] = useState<MeetingDetail | null>(null)
   const [activeFile, setActiveFile] = useState('')
@@ -61,6 +65,10 @@ export function MeetingFilesViewer({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [articleHeadings, setArticleHeadings] = useState<MarkdownHeading[]>([])
+  const [downloading, setDownloading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const view = parseMeetingDetailView(searchParams.get('view'))
   const documentsWideLayout = useMediaQuery('(min-width: 96rem)')
@@ -164,6 +172,48 @@ export function MeetingFilesViewer({
     setView('documents')
   }
 
+  const handleDownload = useCallback(async () => {
+    if (!detail) return
+    setActionError(null)
+    setDownloading(true)
+    try {
+      await downloadMeetingArchive(detail.id)
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setActionError(`下载失败 (${err.status})：${err.message}`)
+      } else if (err instanceof Error) {
+        setActionError(err.message)
+      } else {
+        setActionError('下载失败')
+      }
+    } finally {
+      setDownloading(false)
+    }
+  }, [detail])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!detail) return
+    setActionError(null)
+    setDeleting(true)
+    try {
+      await deleteMeeting(detail.id)
+      setDeleteDialogOpen(false)
+      navigate(backTo)
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setActionError(`删除失败 (${err.status})：${err.message}`)
+      } else if (err instanceof Error) {
+        setActionError(err.message)
+      } else {
+        setActionError('删除失败')
+      }
+    } finally {
+      setDeleting(false)
+    }
+  }, [backTo, detail, navigate])
+
+  const deleteTopic = brief?.topic?.trim() || detail?.topic?.trim() || detail?.id || ''
+
   const sidebarProps = detail
     ? {
         detail,
@@ -192,6 +242,7 @@ export function MeetingFilesViewer({
   }
 
   return (
+    <>
     <PageThreeColumnLayout
       header={
         <div className="flex flex-col items-start gap-3">
@@ -230,6 +281,15 @@ export function MeetingFilesViewer({
         </div>
       )}
 
+      {actionError && (
+        <ProfileStatePanel
+          variant="danger"
+          title="操作失败"
+          description={actionError}
+          className="mb-5"
+        />
+      )}
+
       {view === 'overview' ? (
         <MeetingDetailOverview
           detail={detail}
@@ -238,6 +298,10 @@ export function MeetingFilesViewer({
           canReplay={canReplay}
           onOpenDocuments={() => openDocuments()}
           onOpenConclusion={brief.conclusion ? openConclusion : undefined}
+          onDownload={handleDownload}
+          onDelete={() => setDeleteDialogOpen(true)}
+          downloading={downloading}
+          deleting={deleting}
         />
       ) : (
         <MeetingDocumentsPanel
@@ -255,5 +319,18 @@ export function MeetingFilesViewer({
         />
       )}
     </PageThreeColumnLayout>
+
+    <MeetingDeleteDialog
+      open={deleteDialogOpen}
+      onOpenChange={(open) => {
+        if (deleting) return
+        setDeleteDialogOpen(open)
+      }}
+      topic={deleteTopic}
+      meetingId={detail.id}
+      deleting={deleting}
+      onConfirm={() => void handleConfirmDelete()}
+    />
+  </>
   )
 }

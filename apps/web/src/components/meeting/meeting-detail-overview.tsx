@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, ExternalLink, FileText, Users } from 'lucide-react'
+import { ChevronRight, Download, ExternalLink, FileText, Trash2, Users } from 'lucide-react'
 
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import { BriefTemplateScopePreview } from '@/components/brief/brief-template-scope-fields'
@@ -27,6 +27,10 @@ interface MeetingDetailOverviewProps {
   canReplay: boolean
   onOpenDocuments: () => void
   onOpenConclusion?: () => void
+  onDownload?: () => void
+  onDelete?: () => void
+  downloading?: boolean
+  deleting?: boolean
 }
 
 export function MeetingDetailOverview({
@@ -36,6 +40,10 @@ export function MeetingDetailOverview({
   canReplay,
   onOpenDocuments,
   onOpenConclusion,
+  onDownload,
+  onDelete,
+  downloading = false,
+  deleting = false,
 }: MeetingDetailOverviewProps) {
   const primaryPath = primaryDeliverablePath(modeKind)
   const primaryTitle = meetingFileLabel(primaryPath, modeKind)
@@ -180,6 +188,38 @@ export function MeetingDetailOverview({
               圆桌回放
               <ExternalLink className="size-3.5 text-text-tertiary" aria-hidden />
             </Link>
+          )}
+          {onDownload && (
+            <button
+              type="button"
+              disabled={downloading}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-xl bg-surface px-4 py-2.5 text-[13px] font-medium text-text-primary ring-1 ring-inset ring-black/[0.08]',
+                hePressable,
+                heSpring,
+                'hover:bg-black/[0.02] disabled:cursor-not-allowed disabled:opacity-60',
+              )}
+              onClick={onDownload}
+            >
+              <Download className="size-4 text-brand" aria-hidden />
+              {downloading ? '打包中…' : '下载会议'}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              disabled={deleting}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-xl bg-surface px-4 py-2.5 text-[13px] font-medium text-danger ring-1 ring-inset ring-danger/20',
+                hePressable,
+                heSpring,
+                'hover:bg-danger/5 disabled:cursor-not-allowed disabled:opacity-60',
+              )}
+              onClick={onDelete}
+            >
+              <Trash2 className="size-4" aria-hidden />
+              {deleting ? '删除中…' : '删除会议'}
+            </button>
           )}
           <span
             className="ml-auto max-w-[min(100%,14rem)] truncate font-mono text-[11px] text-text-tertiary"
