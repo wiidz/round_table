@@ -9,8 +9,20 @@ export interface PrincipalsResponse {
   principals: PrincipalIndex[]
 }
 
+export interface PrincipalUserProfile {
+  language: string
+  confirmation?: string
+  context?: string
+}
+
 export interface PrincipalDetail {
   id: string
   display_name?: string
-  files: Record<string, string>
+  user_profile: PrincipalUserProfile
+}
+
+export const EMPTY_PRINCIPAL_USER_PROFILE: PrincipalUserProfile = {
+  language: 'zh-CN',
+  confirmation: '',
+  context: '',
 }

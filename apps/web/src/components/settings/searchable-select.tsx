@@ -19,6 +19,8 @@ type SearchableSelectProps = {
   searchPlaceholder?: string
   emptyOption?: SearchableSelectOption
   disabled?: boolean
+  /** 多选时不在输入框上方展示标签 chips（由外部自定义已选展示） */
+  hideSelectedChips?: boolean
 } & (
   | {
       multiple?: false
@@ -194,7 +196,7 @@ export function SearchableSelect(props: SearchableSelectProps) {
 
   return (
     <div ref={rootRef} className="relative space-y-2">
-      {props.multiple && selectedOptions.length > 0 && (
+      {props.multiple && !props.hideSelectedChips && selectedOptions.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {selectedOptions.map((opt) => (
             <li key={opt.value}>

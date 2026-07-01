@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
+import { heFieldSurface, heSpring } from '@/lib/highend-styles'
 
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
@@ -9,9 +10,12 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => (
     <textarea
       className={cn(
-        'flex min-h-[280px] w-full rounded-md border border-input bg-canvas px-3 py-2 font-mono text-sm leading-relaxed text-text-primary',
-        'placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        heFieldSurface,
+        'min-h-[6rem] w-full resize-y bg-surface px-3 py-2 text-sm leading-relaxed text-text-primary',
+        'placeholder:text-text-tertiary',
+        'focus-visible:outline-none',
         'disabled:cursor-not-allowed disabled:opacity-50',
+        heSpring,
         className,
       )}
       ref={ref}

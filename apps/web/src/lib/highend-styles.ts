@@ -142,7 +142,7 @@ export const heSubsectionTitleNeutral = [
 ].join(' ')
 
 export const heFieldSurface = [
-  'rounded-xl border-0 bg-surface box-border',
+  'rounded-xs border-0 bg-surface box-border',
   'shadow-[var(--field-inset-shadow)]',
   'ring-1 ring-inset ring-[var(--field-ring)]',
   heSpring,
@@ -153,7 +153,7 @@ export const heFieldSurface = [
 
 /** Settings — non-editable field value (readOnly / disabled) */
 export const heFieldReadonly = [
-  '!rounded-xl !bg-black/[0.05] !text-text-tertiary',
+  '!rounded-xs !bg-black/[0.05] !text-text-tertiary',
   '!shadow-none !ring-black/[0.02]',
 ].join(' ')
 

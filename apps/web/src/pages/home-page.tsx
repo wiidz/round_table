@@ -200,14 +200,16 @@ export function HomePage() {
   const recentStats = useMemo(() => {
     let completed = 0
     let running = 0
+    let aborted = 0
 
     for (const meeting of meetings) {
       const status = meetingStatusLabel(meeting.status)
       if (status === '已结束' || status === '已归档') completed += 1
       if (status === '进行中') running += 1
+      if (status === '已中断') aborted += 1
     }
 
-    return { completed, running }
+    return { completed, running, aborted }
   }, [meetings])
 
   const usageStats = useMemo(() => {
@@ -257,7 +259,9 @@ export function HomePage() {
               hint={
                 recentStats.running > 0
                   ? `其中 ${recentStats.running} 场进行中（近 ${meetings.length} 场）`
-                  : `近 ${meetings.length} 场 · ${recentStats.completed} 场已结束`
+                  : recentStats.aborted > 0
+                    ? `近 ${meetings.length} 场 · ${recentStats.completed} 场已结束 · ${recentStats.aborted} 场已中断`
+                    : `近 ${meetings.length} 场 · ${recentStats.completed} 场已结束`
               }
               icon={LayoutList}
               accent="brand"

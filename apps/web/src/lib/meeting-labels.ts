@@ -7,6 +7,9 @@ export const MEETING_STATUS_LABELS: Record<string, string> = {
   Confirmation: 'Principal 确认中',
   Completed: '已结束',
   Archived: '已归档',
+  aborted: '已中断',
+  Aborted: '已中断',
+  已中断: '已中断',
 }
 
 export type MeetingStatusTone = 'neutral' | 'running' | 'warning' | 'success' | 'danger'
@@ -24,6 +27,9 @@ const STATUS_TONES: Record<string, MeetingStatusTone> = {
   Confirmation: 'warning',
   已结束: 'success',
   Completed: 'success',
+  已中断: 'danger',
+  aborted: 'danger',
+  Aborted: 'danger',
   已归档: 'neutral',
   Archived: 'neutral',
 }
