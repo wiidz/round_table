@@ -109,6 +109,9 @@ clean:
 docker-build:
 	docker compose build server
 
+docker-rebuild:
+	docker-compose up -d --build --force-recreate server
+
 ## docker-up: start Web UI + API + Discord (Supervisor, host network)
 docker-up:
 	docker compose up -d --build

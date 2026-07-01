@@ -112,6 +112,27 @@ func (h *Hub) SendOutbound(_ context.Context, sessionID string, msg Outbound) er
 	return nil
 }
 
+// SendTyping broadcasts a typing indicator to a browser session.
+// It is a best-effort fire-and-forget; slow clients drop the frame silently.
+func (h *Hub) SendTyping(_ context.Context, sessionID, role, authorID, authorName string) {
+	h.mu.RLock()
+	c, ok := h.clients[sessionID]
+	h.mu.RUnlock()
+	if !ok {
+		return
+	}
+	frame := Frame{
+		Type:       FrameTyping,
+		Role:       role,
+		AuthorID:   authorID,
+		AuthorName: authorName,
+	}
+	select {
+	case c.send <- frame:
+	default:
+	}
+}
+
 func stringsTrimOr(value, fallback string) string {
 	if value != "" {
 		return value

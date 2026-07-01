@@ -34,6 +34,7 @@ func (s *ChannelSender) Send(ctx context.Context, channelID, content string) err
 	if role == "" {
 		role = RoleModerator
 	}
+	s.Hub.SendTyping(ctx, channelID, role, s.AuthorID, s.AuthorName)
 	return s.Hub.SendOutbound(ctx, channelID, Outbound{
 		Role:       role,
 		Content:    content,
@@ -58,6 +59,7 @@ func (s *ParticipantSender) Send(ctx context.Context, channelID, content string)
 	if name == "" {
 		name = s.ParticipantID
 	}
+	s.Hub.SendTyping(ctx, channelID, RoleParticipant, s.ParticipantID, name)
 	return s.Hub.SendOutbound(ctx, channelID, Outbound{
 		Role:       RoleParticipant,
 		Content:    content,

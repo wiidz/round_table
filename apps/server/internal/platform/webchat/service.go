@@ -171,6 +171,7 @@ func (s *Service) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		s.hub.SendTyping(r.Context(), sessionID, webtransport.RoleModerator, "moderator", "司仪")
 		reply, handleErr := s.handler.Handle(r.Context(), msg)
 		if handleErr != nil {
 			_ = writeFrame(webtransport.Frame{
