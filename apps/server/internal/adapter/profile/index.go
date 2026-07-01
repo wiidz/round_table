@@ -18,7 +18,8 @@ type PrincipalIndex struct {
 type PrincipalDetail struct {
 	ID          string            `json:"id"`
 	DisplayName string            `json:"display_name,omitempty"`
-	Files       map[string]string `json:"files"`
+	UserProfile UserProfile       `json:"user_profile"`
+	Files       map[string]string `json:"files,omitempty"`
 }
 
 // ParticipantIndex summarizes one Participant profile directory.

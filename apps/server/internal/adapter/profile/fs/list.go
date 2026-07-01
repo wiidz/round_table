@@ -99,6 +99,9 @@ func (s *Store) WritePrincipalFile(id, filename string, data []byte) error {
 	if err := validatePrincipalFilename(filename); err != nil {
 		return err
 	}
+	if err := s.EnsurePrincipal(id); err != nil {
+		return err
+	}
 	return s.WritePrincipal(id, filename, data)
 }
 
