@@ -58,6 +58,7 @@ func (s *Store) Close() error {
 
 var _ storage.Store = (*Store)(nil)
 var _ storage.MeetingCatalog = (*Store)(nil)
+var _ storage.MeetingDeleter = (*Store)(nil)
 
 // Append implements storage.Store.
 func (s *Store) Append(ctx context.Context, env event.Envelope) error {
@@ -133,6 +134,26 @@ FROM events WHERE meeting_id = ? ORDER BY sequence ASC`, meetingID)
 		out = append(out, env)
 	}
 	return out, rows.Err()
+}
+
+// DeleteMeeting implements storage.MeetingDeleter.
+func (s *Store) DeleteMeeting(ctx context.Context, meetingID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM events WHERE meeting_id = ?`, meetingID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM meeting_index WHERE meeting_id = ?`, meetingID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // ListMeetingsPage implements storage.MeetingCatalog.

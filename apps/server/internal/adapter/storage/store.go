@@ -17,3 +17,8 @@ type Store interface {
 type MeetingCatalog interface {
 	ListMeetingsPage(ctx context.Context, page, pageSize int) (workspace.PaginatedMeetings, error)
 }
+
+// MeetingDeleter removes persisted meeting events and catalog rows.
+type MeetingDeleter interface {
+	DeleteMeeting(ctx context.Context, meetingID string) error
+}

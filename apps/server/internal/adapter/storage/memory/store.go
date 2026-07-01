@@ -21,6 +21,7 @@ func New() *Store {
 }
 
 var _ storage.Store = (*Store)(nil)
+var _ storage.MeetingDeleter = (*Store)(nil)
 
 // Append implements storage.Store.
 func (s *Store) Append(ctx context.Context, env event.Envelope) error {
@@ -49,4 +50,15 @@ func (s *Store) List(ctx context.Context, meetingID string) ([]event.Envelope, e
 	defer s.mu.Unlock()
 	out := append([]event.Envelope(nil), s.events[meetingID]...)
 	return out, nil
+}
+
+// DeleteMeeting implements storage.MeetingDeleter.
+func (s *Store) DeleteMeeting(ctx context.Context, meetingID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.events, meetingID)
+	return nil
 }

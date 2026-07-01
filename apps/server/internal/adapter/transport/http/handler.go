@@ -57,6 +57,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/chat/ws", h.handleChatWebSocket)
 	mux.HandleFunc("GET /api/meetings", h.handleListMeetings)
 	mux.HandleFunc("GET /api/meetings/{id}", h.handleGetMeeting)
+	mux.HandleFunc("GET /api/meetings/{id}/archive", h.handleGetMeetingArchive)
+	mux.HandleFunc("DELETE /api/meetings/{id}", h.handleDeleteMeeting)
 	mux.HandleFunc("POST /api/meetings/{id}/abort", h.handlePostMeetingAbort)
 	mux.HandleFunc("GET /api/principals", h.handleListPrincipals)
 	mux.HandleFunc("GET /api/principals/{id}", h.handleGetPrincipal)
