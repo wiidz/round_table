@@ -8,6 +8,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/use-i18n'
 import { hePressable } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
@@ -28,23 +29,25 @@ export function MeetingDeleteDialog({
   deleting = false,
   onConfirm,
 }: MeetingDeleteDialogProps) {
+  const { t } = useI18n()
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>删除会议</AlertDialogTitle>
+          <AlertDialogTitle>{t('meetingUi.delete.title')}</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2">
               <p>
-                确定删除会议「<span className="font-medium text-text-primary">{topic}</span>」？
+                {t('meetingUi.delete.confirm', { topic })}
               </p>
-              <p>将永久删除 workspace 文件与事件记录，此操作不可恢复。</p>
+              <p>{t('meetingUi.delete.warning')}</p>
               <p className="font-mono text-[11px] text-text-tertiary">{meetingId}</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
           <Button
             type="button"
             variant="destructive"
@@ -52,7 +55,7 @@ export function MeetingDeleteDialog({
             className={cn(hePressable, 'rounded-xl px-5')}
             onClick={onConfirm}
           >
-            {deleting ? '删除中…' : '确认删除'}
+            {deleting ? t('meetingUi.delete.deleting') : t('meetingUi.delete.confirmButton')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

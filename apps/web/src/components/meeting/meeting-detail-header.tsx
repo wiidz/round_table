@@ -12,6 +12,7 @@ import {
   meetingModeFreeDialogueClass,
 } from '@/components/meeting/meeting-mode-badge'
 import { MeetingStatusBadge } from '@/components/meeting/meeting-status-badge'
+import { useI18n } from '@/hooks/use-i18n'
 import { hePageDesc, hePageTitle } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
@@ -26,7 +27,7 @@ function MetaDot() {
   return <span className="hidden text-text-tertiary/35 sm:inline" aria-hidden>·</span>
 }
 
-function formatTokenCount(value: number): string {
+function formatTokenCount(value: number, intlTag: string): string {
   if (value >= 1_000_000) {
     const compact = value / 1_000_000
     return `${compact >= 10 ? Math.round(compact) : compact.toFixed(1)}M`
@@ -35,7 +36,7 @@ function formatTokenCount(value: number): string {
     const compact = value / 1_000
     return `${compact >= 100 ? Math.round(compact) : compact.toFixed(1)}k`
   }
-  return value.toLocaleString('zh-CN')
+  return value.toLocaleString(intlTag)
 }
 
 function MetaItem({
@@ -61,7 +62,8 @@ function MetaItem({
 }
 
 export function MeetingDetailHeader({ detail, canReplay }: MeetingDetailHeaderProps) {
-  const topic = detail.topic?.trim() || '（无主题）'
+  const { t, intlTag } = useI18n()
+  const topic = detail.topic?.trim() || t('meeting.topicEmpty')
   const startedAt = detail.started_at?.trim()
   const participants = detail.participant_count ?? 0
   const rounds = detail.max_rounds ?? 0
@@ -70,15 +72,15 @@ export function MeetingDetailHeader({ detail, canReplay }: MeetingDetailHeaderPr
   return (
     <header className="space-y-4">
       <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
-        会议复盘
+        {t('meeting.reviewEyebrow')}
       </p>
 
       <h1 className={cn(hePageTitle, 'text-balance')}>{topic}</h1>
 
       <p className={hePageDesc}>
         {canReplay
-          ? '在「文档」中浏览 Workspace 产出；在「回放」中以圆桌复盘讨论；在「流程」中查看会前准备到结案的 Engine 路径。'
-          : '在「文档」中浏览 Workspace 产出；在「流程」中查看会前准备到结案的 Engine 路径。'}
+          ? t('meetingUi.header.descriptionWithReplay')
+          : t('meetingUi.header.descriptionNoReplay')}
       </p>
 
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 text-[13px]">
@@ -91,11 +93,13 @@ export function MeetingDetailHeader({ detail, canReplay }: MeetingDetailHeaderPr
         )}
         <MetaDot />
         <MetaItem icon={Users}>
-          {participants > 0 ? `${participants} 人` : '— 人'}
+          {participants > 0
+            ? t('meeting.meta.participants', { n: participants })
+            : t('meeting.meta.participantsEmpty')}
         </MetaItem>
         <MetaDot />
         <MetaItem icon={Layers}>
-          {rounds > 0 ? `${rounds} 轮` : '— 轮'}
+          {rounds > 0 ? t('meeting.meta.rounds', { n: rounds }) : t('meeting.meta.roundsEmpty')}
         </MetaItem>
         <MetaDot />
         <MetaItem
@@ -105,14 +109,16 @@ export function MeetingDetailHeader({ detail, canReplay }: MeetingDetailHeaderPr
               meetingModeFreeDialogueClass(detail.mode_kind, detail.mode),
           )}
         >
-          {detail.free_dialogue ? '自由对话' : '无自由'}
+          {detail.free_dialogue
+            ? t('meeting.meta.freeDialogueOn')
+            : t('meeting.meta.freeDialogueOff')}
         </MetaItem>
         <MetaDot />
         <span className="inline-flex items-center gap-1 tabular-nums text-text-tertiary">
           <Bot className="size-3 shrink-0 text-ai/55" aria-hidden />
           <span className="font-mono text-[12px]">
             <span className="text-ai/75">
-              {totalTokens > 0 ? formatTokenCount(totalTokens) : '—'}
+              {totalTokens > 0 ? formatTokenCount(totalTokens, intlTag) : '—'}
             </span>
             <span className="text-text-tertiary/45"> tok</span>
           </span>

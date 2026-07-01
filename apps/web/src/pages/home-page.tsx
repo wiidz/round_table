@@ -21,6 +21,7 @@ import {
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
 import { useDiscordTransportStatus } from '@/hooks/use-discord-transport-status'
+import { useI18n } from '@/hooks/use-i18n'
 import {
   hePanelShell,
   hePanelShellHover,
@@ -28,8 +29,6 @@ import {
   heSpring,
   heSubsectionTitleNeutral,
 } from '@/lib/highend-styles'
-import { meetingStatusLabel } from '@/lib/meeting-labels'
-import { domainNavLabel } from '@/lib/ui-labels'
 import { cn } from '@/lib/utils'
 
 import type { MeetingIndex } from '@/types/meeting'
@@ -38,7 +37,19 @@ import type { RuntimeResponse } from '@/types/runtime'
 
 const RECENT_MEETINGS = 6
 
-function formatTokenCount(value: number): string {
+function isRunningStatus(status: string) {
+  return status === '进行中' || status === 'Running'
+}
+
+function isCompletedStatus(status: string) {
+  return status === '已结束' || status === 'Completed' || status === '已归档' || status === 'Archived'
+}
+
+function isAbortedStatus(status: string) {
+  return status === '已中断' || status === 'aborted' || status === 'Aborted'
+}
+
+function formatTokenCount(value: number, formatNumber: (n: number) => string): string {
   if (value >= 1_000_000) {
     const compact = value / 1_000_000
     return `${compact >= 10 ? Math.round(compact) : compact.toFixed(1)}M`
@@ -47,7 +58,7 @@ function formatTokenCount(value: number): string {
     const compact = value / 1_000
     return `${compact >= 100 ? Math.round(compact) : compact.toFixed(1)}k`
   }
-  return value.toLocaleString('zh-CN')
+  return formatNumber(value)
 }
 
 interface DashboardStatProps {
@@ -57,6 +68,7 @@ interface DashboardStatProps {
   icon: LucideIcon
   accent?: 'brand' | 'ai' | 'neutral'
   to?: string
+  viewLabel: string
 }
 
 function DashboardStat({
@@ -66,6 +78,7 @@ function DashboardStat({
   icon: Icon,
   accent = 'neutral',
   to,
+  viewLabel,
 }: DashboardStatProps) {
   const inner = (
     <article
@@ -103,7 +116,7 @@ function DashboardStat({
       {hint && <p className="text-[12px] leading-relaxed text-text-tertiary">{hint}</p>}
       {to && (
         <span className="mt-auto inline-flex items-center gap-1 text-[12px] text-text-tertiary group-hover:text-brand">
-          查看
+          {viewLabel}
           <ArrowRight className="size-3 opacity-60" />
         </span>
       )}
@@ -120,6 +133,8 @@ function DashboardStat({
 }
 
 export function HomePage() {
+  const i18n = useI18n()
+  const { t, formatNumber } = i18n
   const [meetings, setMeetings] = useState<MeetingIndex[]>([])
   const [allMeetings, setAllMeetings] = useState<MeetingIndex[]>([])
   const [meetingTotal, setMeetingTotal] = useState(0)
@@ -166,11 +181,11 @@ export function HomePage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载概览数据')
+          setError(t('pages.home.loadFailed'))
         }
       })
       .finally(() => {
@@ -180,7 +195,7 @@ export function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     fetchDiscordTransportStatus().catch((err: unknown) => {
@@ -204,10 +219,10 @@ export function HomePage() {
     let aborted = 0
 
     for (const meeting of meetings) {
-      const status = meetingStatusLabel(meeting.status)
-      if (status === '已结束' || status === '已归档') completed += 1
-      if (status === '进行中') running += 1
-      if (status === '已中断') aborted += 1
+      const status = meeting.status
+      if (isCompletedStatus(status)) completed += 1
+      if (isRunningStatus(status)) running += 1
+      if (isAbortedStatus(status)) aborted += 1
     }
 
     return { completed, running, aborted }
@@ -225,25 +240,49 @@ export function HomePage() {
     return { tokenSum, llmCalls }
   }, [allMeetings])
 
+  const meetingHint = useMemo(() => {
+    if (recentStats.running > 0) {
+      return t('pages.home.statMeetingsHintRunning', {
+        running: recentStats.running,
+        recent: meetings.length,
+      })
+    }
+    if (recentStats.aborted > 0) {
+      return t('pages.home.statMeetingsHintWithAborted', {
+        recent: meetings.length,
+        completed: recentStats.completed,
+        aborted: recentStats.aborted,
+      })
+    }
+    return t('pages.home.statMeetingsHint', {
+      recent: meetings.length,
+      completed: recentStats.completed,
+    })
+  }, [recentStats, meetings.length, t])
+
   return (
     <PageLayout
       header={
         <ProfilePageHeader
           role="principal"
-          eyebrow="Overview"
-          title="概览"
-          description="仪表盘汇总会议与档案；运行与 IM 区可直接启停 Discord、查看日志并跳转 Bot 设置；下方进入最近 Meeting 复盘。"
+          eyebrow={t('nav.overview')}
+          title={t('pages.home.title')}
+          description={t('pages.home.description')}
         />
       }
     >
     <div className="space-y-10">
       {error && (
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       )}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className={heSubsectionTitleNeutral}>仪表盘</h2>
+          <h2 className={heSubsectionTitleNeutral}>{t('pages.home.dashboard')}</h2>
         </div>
 
         {loading ? (
@@ -258,52 +297,54 @@ export function HomePage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <DashboardStat
-              label="会议"
-              value={String(meetingTotal)}
-              hint={
-                recentStats.running > 0
-                  ? `其中 ${recentStats.running} 场进行中（近 ${meetings.length} 场）`
-                  : recentStats.aborted > 0
-                    ? `近 ${meetings.length} 场 · ${recentStats.completed} 场已结束 · ${recentStats.aborted} 场已中断`
-                    : `近 ${meetings.length} 场 · ${recentStats.completed} 场已结束`
-              }
+              label={t('pages.home.statMeetings')}
+              value={formatNumber(meetingTotal)}
+              hint={meetingHint}
               icon={LayoutList}
               accent="brand"
               to="/meetings"
+              viewLabel={t('common.view')}
             />
             <DashboardStat
-              label="简报模板"
-              value={String(briefTemplateCount)}
-              hint="可复用 Meeting Brief（ADR-0014）"
+              label={i18n.briefTemplatePageTitle()}
+              value={formatNumber(briefTemplateCount)}
+              hint={t('pages.home.statBriefHint')}
               icon={FileStack}
               accent="brand"
               to="/brief-templates"
+              viewLabel={t('common.view')}
             />
             <DashboardStat
-              label={domainNavLabel('principal')}
-              value={String(principalCount)}
-              hint="USER.md 偏好档案"
+              label={i18n.domainNavLabel('principal')}
+              value={formatNumber(principalCount)}
+              hint={t('pages.home.statPrincipalsHint')}
               icon={UserRound}
               to="/principals"
+              viewLabel={t('common.view')}
             />
             <DashboardStat
-              label={domainNavLabel('participant')}
-              value={String(participantCount)}
-              hint="专家档案"
+              label={i18n.domainNavLabel('participant')}
+              value={formatNumber(participantCount)}
+              hint={t('pages.home.statParticipantsHint')}
               icon={Users}
               to="/participants"
+              viewLabel={t('common.view')}
             />
             <DashboardStat
-              label="Token 用量"
-              value={usageStats.tokenSum > 0 ? formatTokenCount(usageStats.tokenSum) : '—'}
+              label={t('pages.home.statTokenUsage')}
+              value={usageStats.tokenSum > 0 ? formatTokenCount(usageStats.tokenSum, formatNumber) : '—'}
               hint={
                 usageStats.llmCalls > 0
-                  ? `${usageStats.llmCalls} 次 LLM 调用（共 ${meetingTotal} 场）`
-                  : '暂无用量记录'
+                  ? t('pages.home.statTokenHint', {
+                      calls: formatNumber(usageStats.llmCalls),
+                      total: formatNumber(meetingTotal),
+                    })
+                  : t('pages.home.statTokenEmpty')
               }
               icon={Bot}
               accent="ai"
               to="/meetings"
+              viewLabel={t('common.view')}
             />
           </div>
         )}
@@ -323,7 +364,7 @@ export function HomePage() {
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className={heSubsectionTitleNeutral}>最近会议</h2>
+          <h2 className={heSubsectionTitleNeutral}>{t('pages.home.recentMeetings')}</h2>
           <Link
             to="/meetings"
             className={cn(
@@ -332,7 +373,7 @@ export function HomePage() {
               'hover:text-brand',
             )}
           >
-            查看全部
+            {t('pages.home.viewAll')}
             <ArrowRight className="size-3.5 opacity-60" />
           </Link>
         </div>
@@ -341,14 +382,8 @@ export function HomePage() {
 
         {!loading && meetings.length === 0 && !error && (
           <ProfileStatePanel
-            title="暂无会议"
-            description={
-              <>
-                在{' '}
-                <code className="font-mono text-xs">data/workspaces/</code>{' '}
-                下尚未发现 Meeting；启动 Discord Transport 后可在频道发起会议。
-              </>
-            }
+            title={t('pages.home.emptyMeetingsTitle')}
+            description={t('pages.home.emptyMeetingsDescription')}
           />
         )}
 

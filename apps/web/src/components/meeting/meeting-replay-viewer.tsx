@@ -8,6 +8,7 @@ import { TranscriptDetailPanel } from '@/components/round-table/transcript-detai
 import { TranscriptDrawer } from '@/components/round-table/transcript-drawer'
 import { TranscriptHistoryPanel } from '@/components/round-table/transcript-history-panel'
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
+import { useI18n } from '@/hooks/use-i18n'
 import { useMeetingReplaySeats } from '@/hooks/use-meeting-replay-seats'
 import { useMeetingTranscript } from '@/hooks/use-meeting-transcript'
 import { useMediaQuery, useNarrowScreen } from '@/hooks/use-media-query'
@@ -43,6 +44,7 @@ export function MeetingReplayViewer({
   header,
   pageShell,
 }: MeetingReplayViewerProps) {
+  const { t } = useI18n()
   const [drawerMessage, setDrawerMessage] = useState<ChatMessage | null>(null)
   const [scrubTurn, setScrubTurn] = useState<number | null>(null)
   const narrow = useNarrowScreen()
@@ -86,11 +88,13 @@ export function MeetingReplayViewer({
 
   const centerSubtitle = useMemo(() => {
     if (isScrubbing && scrubTurn != null) {
-      return `回放 · 第 ${scrubTurn} 轮发言`
+      return t('roundTable.replay.scrubTurn', { turn: scrubTurn })
     }
-    if (turns.length > 0) return `共 ${turns.length} 条发言 · 拖动进度条回放`
+    if (turns.length > 0) {
+      return t('roundTable.replay.turnCount', { count: turns.length })
+    }
     return undefined
-  }, [isScrubbing, scrubTurn, turns.length])
+  }, [isScrubbing, scrubTurn, t, turns.length])
 
   const focusedSeatId = useMemo(
     () => (drawerMessage ? speakerId(drawerMessage) : null),
@@ -100,8 +104,8 @@ export function MeetingReplayViewer({
   if (messages.length === 0) {
     return (
       <ProfileStatePanel
-        title="暂无可回放发言"
-        description="本场 Workspace 尚未生成 MINUTES.md 或各轮研讨记录。"
+        title={t('roundTable.replay.emptyTitle')}
+        description={t('roundTable.replay.emptyDescription')}
       />
     )
   }
@@ -110,10 +114,10 @@ export function MeetingReplayViewer({
     <div className={replayMainPanelClass}>
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
         <div>
-          <h2 className={heSubsectionTitleNeutral}>会议回放</h2>
+          <h2 className={heSubsectionTitleNeutral}>{t('roundTable.replay.title')}</h2>
           <p className="mt-1 text-[12px] text-text-tertiary">
-            圆桌 Live · 发言进度 · 侧栏详情
-            {narrow && ' · 窄屏记录列表'}
+            {t('roundTable.replay.subtitle')}
+            {narrow && t('roundTable.replay.subtitleNarrow')}
           </p>
         </div>
       </div>

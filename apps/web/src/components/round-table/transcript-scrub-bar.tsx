@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import { cn } from '@/lib/utils'
 
 interface TranscriptScrubBarProps {
@@ -15,6 +16,8 @@ export function TranscriptScrubBar({
   onScrubTurnChange,
   className,
 }: TranscriptScrubBarProps) {
+  const { t } = useI18n()
+
   if (maxTurn < 2) return null
 
   const value = scrubTurn ?? maxTurn
@@ -42,11 +45,10 @@ export function TranscriptScrubBar({
         className,
       )}
     >
-      {/* Live toggle */}
       <button
         type="button"
         onClick={() => onScrubTurnChange(null)}
-        title="跳到最新（Live 模式）"
+        title={t('transcript.scrub.jumpLive')}
         className={cn(
           'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors',
           isLive
@@ -57,13 +59,12 @@ export function TranscriptScrubBar({
         Live
       </button>
 
-      {/* Step prev / next */}
       <button
         type="button"
         onClick={stepPrev}
         disabled={value <= 1}
-        title="上一步"
-        aria-label="上一步"
+        title={t('transcript.scrub.prev')}
+        aria-label={t('transcript.scrub.prev')}
         className={cn(
           'inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5',
           'bg-surface text-[12px] font-medium text-text-secondary',
@@ -74,10 +75,9 @@ export function TranscriptScrubBar({
         )}
       >
         <ChevronLeft className="size-4 shrink-0" strokeWidth={2} aria-hidden />
-        <span className="hidden sm:inline">上一步</span>
+        <span className="hidden sm:inline">{t('transcript.scrub.prev')}</span>
       </button>
 
-      {/* Slider */}
       <label className="flex min-w-0 flex-1 items-center gap-1.5">
         <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-tertiary">
           {value}
@@ -96,7 +96,7 @@ export function TranscriptScrubBar({
             }
           }}
           className="h-1.5 min-w-0 flex-1 cursor-pointer accent-brand"
-          aria-label="发言回放"
+          aria-label={t('transcript.scrub.ariaLabel')}
         />
         <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-tertiary">
           {maxTurn}
@@ -107,8 +107,8 @@ export function TranscriptScrubBar({
         type="button"
         onClick={stepNext}
         disabled={isLive}
-        title="下一步"
-        aria-label="下一步"
+        title={t('transcript.scrub.next')}
+        aria-label={t('transcript.scrub.next')}
         className={cn(
           'inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5',
           'bg-surface text-[12px] font-medium text-text-secondary',
@@ -118,7 +118,7 @@ export function TranscriptScrubBar({
           'disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-surface',
         )}
       >
-        <span className="hidden sm:inline">下一步</span>
+        <span className="hidden sm:inline">{t('transcript.scrub.next')}</span>
         <ChevronRight className="size-4 shrink-0" strokeWidth={2} aria-hidden />
       </button>
     </div>

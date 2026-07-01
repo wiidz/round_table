@@ -1,0 +1,297 @@
+export const pages = {
+  notFound: {
+    title: '页面不存在',
+    backHome: '返回首页',
+  },
+  home: {
+    title: '概览',
+    description:
+      '仪表盘汇总会议与档案；运行与 IM 区可直接启停 Discord、查看日志并跳转 Bot 设置；下方进入最近 Meeting 复盘。',
+    dashboard: '仪表盘',
+    recentMeetings: '最近会议',
+    statMeetings: '会议',
+    statMeetingsHintRunning: '其中 {running} 场进行中（近 {recent} 场）',
+    statMeetingsHintWithAborted: '近 {recent} 场 · {completed} 场已结束 · {aborted} 场已中断',
+    statMeetingsHint: '近 {recent} 场 · {completed} 场已结束',
+    statBriefHint: '可复用 Meeting Brief（ADR-0014）',
+    statPrincipalsHint: 'USER.md 偏好档案',
+    statParticipantsHint: '专家档案',
+    statTokenUsage: 'Token 用量',
+    statTokenHint: '{calls} 次 LLM 调用（共 {total} 场）',
+    statTokenEmpty: '暂无用量记录',
+    viewAll: '查看全部',
+    loadFailed: '无法加载概览数据',
+    emptyMeetingsTitle: '暂无会议',
+    emptyMeetingsDescription:
+      '在 data/workspaces/ 下尚未发现 Meeting；启动 Discord Transport 后可在频道发起会议。',
+  },
+  meetings: {
+    title: '会议',
+    eyebrow: 'Meeting Browse',
+    description:
+      '浏览 data/workspaces/ 下的历史 Meeting。**天平**（明亮橙底）为裁决型、**云朵**为研讨型；卡片含人数、轮次、自由对话与 LLM 用量。',
+    loadFailed: '无法加载会议列表',
+    emptyTitle: '暂无会议',
+    emptyDescription:
+      '还没有 workspace 目录。可通过 Discord !rt meet 或 make meet 创建一场会议。',
+  },
+  meetingDetail: {
+    back: '返回会议列表',
+  },
+  meetingReplay: {
+    back: '返回会议详情',
+    loading: '加载回放…',
+    cannotReplay: '无法回放',
+    noTranscript: '本场暂无可回放 transcript',
+    loadFailed: '无法加载会议回放',
+  },
+  participants: {
+    description:
+      '管理会议专家（Participant）：代号、名称与 SOUL / AGENTS / TOOLS 档案。代号与名称均不可重复；修改代号会同步重命名档案目录。',
+    add: '添加专家',
+    confirmDelete:
+      '确定删除专家「{name}」（{id}）？\n\n将移除专家配置与档案目录；不会影响已配置的 Discord Bot。',
+    loadFailed: '无法加载专家列表',
+    emptyTitle: '暂无专家档案',
+    emptyDescription:
+      '点击「添加专家」创建第一位专家（Participant），或在 data/profiles/participants/ 下手动新建目录。',
+    deleted: '已删除专家',
+    created: '已添加专家',
+    updated: '已更新专家',
+  },
+  principals: {
+    description:
+      '管理委托人（Principal）身份与 USER.md 偏好档案（ADR-0010）。每人仅一份 USER.md，描述语言、验收习惯与背景；单次会议意图请用简报模板。',
+    loadFailed: '无法加载委托人列表',
+    emptyTitle: '暂无委托人档案',
+    emptyDescription:
+      'Discord 绑定后会自动创建 discord:{user_id} 目录；进入详情页可编辑 USER.md。',
+  },
+  settings: {
+    title: '设置',
+    eyebrow: 'Configuration',
+    description:
+      '在此调整 RoundTable 运行参数；保存后对新发起的会议立即生效。API 密钥等敏感项请在 deploy/.env 中配置。',
+    tabs: {
+      service: '服务',
+      storage: '存储',
+      llm: 'LLM',
+      meeting: '会议',
+      im: 'IM',
+    },
+    rail: { models: '模型', platforms: '平台', category: '分类' },
+    comingSoonSuffix: '（即将推出）',
+    sections: {
+      runtimeParams: '运行参数',
+      apiKeys: 'API 密钥',
+      limits: '设定上限',
+      limitsDescription:
+        '单场会议的 Engine 硬约束（写入 MeetingCreated）。预设里的辩论轮次、确认关开关不得突破此处上限；「确认关轮次上限」指 Principal 最多审阅几次方案（含首次）。',
+    },
+    field: {
+      keyName: '键名：{key}',
+      restartRequired: '需重启',
+      secretConfigured: '已在 deploy/.env 中配置，修改后请重启服务。',
+      secretMissing: '请在 deploy/.env 中配置对应密钥。',
+    },
+    navAriaLabel: '设置分类',
+    navItemCount: '{count} 项',
+    loadingDescription: '正在读取运行时配置…',
+    loadFailed: '无法加载设置',
+    comingSoonTitle: '即将推出',
+    comingSoonLlm: '该 LLM Provider 尚未接入，敬请期待。',
+    comingSoonIm: '该 IM 平台尚未接入，敬请期待。',
+    emptyNoFieldsTitle: '暂无配置项',
+    emptyNoFieldsDescription: '当前分类下没有可展示的设置。',
+    emptyNoBotsTitle: '暂无 Bot 配置',
+    emptyNoBotsDescription: '无法加载 Discord Bot 列表。',
+    save: '保存配置',
+    saved: '已保存，新会议立即生效',
+    localeZh: '中文',
+    localeEn: 'English',
+  },
+} as const
+
+export const home = {
+  operationsTitle: '运行与 IM',
+  api: {
+    title: 'RoundTable API',
+    role: '主进程',
+    description: 'Web 界面与会议引擎 REST / WebSocket 服务',
+    running: '运行正常',
+    connectionError: '连接异常',
+  },
+  transport: {
+    title: 'Discord Transport',
+    role: 'IM 接入',
+    description: 'Discord 频道指令接收与 Bot 发话服务',
+    supervisionUnavailable: '监管不可用',
+    supervisionHint: '当前环境未启用 Transport 监管，请直接在终端运行 Discord 服务。',
+    goToSettings: 'Discord Transport：{status}，前往设置管理',
+    running: '运行正常',
+    starting: '启动中',
+    stopped: '未启动',
+  },
+  bots: {
+    title: 'Discord Bot',
+    subtitle: 'Token、绑定专家与 Gateway 角色',
+    manage: '管理 Bot',
+    empty: '尚未配置 Discord Bot',
+    goSettings: '前往设置添加',
+    hostTag: '司仪',
+    participantTag: '参与',
+    tokenMissing: 'Token 未配置',
+    restHint:
+      '参与 Bot 为 REST 发话，Discord 成员列表显示离线属正常；点击 Bot 可跳转设置编辑 Token 与绑定。',
+    unconfigured: '未配置',
+    unconfiguredHint: '尚未填写 Bot Token，无法在 Discord 中发话或接收指令。',
+    gatewayConnecting: 'Gateway 连接中',
+    gatewayConnectingHint:
+      '司仪 Bot 正在连接 Discord Gateway。连接成功后会在 Discord 成员列表显示在线，并负责接收频道指令。',
+    waitingTransport: '等待 Transport',
+    waitingTransportHint: 'Discord Transport 启动中，参与 Bot 需等待服务就绪后才可 REST 发话。',
+    unavailable: '不可用',
+    unavailableHostHint: 'Discord Transport 未运行，司仪 Bot 未连接 Gateway，Discord 中将显示离线。',
+    unavailableParticipantHint: 'Discord Transport 未运行，参与 Bot 暂时无法发话。',
+    gatewayOnline: 'Gateway 在线',
+    gatewayOnlineHint:
+      '司仪 Bot 已连接 Discord Gateway，在成员列表显示在线；负责接收指令、推进会议流程并协调发话。',
+    restSend: 'REST 发话',
+    restSendHint: '参与 Bot 仅通过 REST 发消息，不会在 Discord 成员列表显示在线，但会议中可正常发言。',
+  },
+} as const
+
+export const transcript = {
+  history: {
+    title: '发言记录',
+    emptyTitle: '暂无发言',
+    emptyDescription: '会议开始后，司仪、专家与你的消息会按顺序出现在这里。',
+  },
+  detail: {
+    title: '发言详情',
+    clearSelection: '清除选择',
+    emptyTitle: '选择一条发言',
+    emptyDescription: '点击左侧记录或圆桌气泡，在此查看完整 Markdown 内容。',
+  },
+  list: {
+    title: '发言记录',
+    all: '全部',
+    count: '共 {visible}/{total} 条',
+    countAll: '共 {total} 条',
+    filter: '筛选 · {visible}/{total} 条',
+    stripCount: '发言记录 · {count} 条',
+    noMessages: '暂无消息',
+    noSpeakerMessages: '该发言人暂无消息',
+    noExpertMessages: '该专家暂无消息',
+    emptyContent: '（空）',
+    detail: '详情',
+    newMessages: '↓ 新消息',
+  },
+  scrub: {
+    jumpLive: '跳到最新（Live 模式）',
+    prev: '上一步',
+    next: '下一步',
+    ariaLabel: '发言回放',
+  },
+  drawer: { close: '关闭详情', closeButton: '关闭' },
+} as const
+
+export const roundTable = {
+  stage: {
+    inProgress: '会议进行中',
+    waitingTopic: '等待议题',
+    turnCount: '第 {count} 轮发言',
+    seatHint: '发起会议后专家将入座',
+  },
+  empty: {
+    loading: '正在加载专家名录…',
+    noRoster: '暂无 roster 专家；会议中的发言者将临时入座。',
+    rosterEmpty: '专家名录为空，请先在设置中添加专家。',
+    goParticipants: '前往专家管理',
+    discordHint: '· 或发送「!rt 专家 列表」查看',
+  },
+  stripOnly: { hint: '窄屏模式：发言记录列表。宽屏可切换圆桌视图。' },
+  replay: {
+    title: '会议回放',
+    subtitle: '圆桌 Live · 发言进度 · 侧栏详情',
+    subtitleNarrow: '· 窄屏记录列表',
+    emptyTitle: '暂无可回放发言',
+    emptyDescription: '本场 Workspace 尚未生成 MINUTES.md 或各轮研讨记录。',
+    scrubTurn: '回放 · 第 {turn} 轮发言',
+    turnCount: '共 {count} 条发言 · 拖动进度条回放',
+  },
+} as const
+
+export const meetingUi = {
+  header: {
+    descriptionWithReplay:
+      '在「文档」中浏览 Workspace 产出；在「回放」中以圆桌复盘讨论；在「流程」中查看会前准备到结案的 Engine 路径。',
+    descriptionNoReplay:
+      '在「文档」中浏览 Workspace 产出；在「流程」中查看会前准备到结案的 Engine 路径。',
+  },
+  overview: {
+    goal: '会议目标',
+    goalEmpty: '未填写会议目标',
+    conclusion: '总结结论',
+    conclusionRunning: '会议进行中，结论尚未产出',
+    conclusionAborted: '会议已中断，未产出结论',
+    conclusionEmpty: '暂无总结结论',
+    viewFullDeliverable: '查看完整{title}',
+    browseDocuments: '浏览文档',
+    replay: '圆桌回放',
+    download: '下载会议',
+    downloading: '打包中…',
+    delete: '删除会议',
+    deleting: '删除中…',
+  },
+  stats: {
+    deliverable: '交付物',
+    deliverableChars: '{n} 字',
+    deliverableHint: '约 {minutes} 分钟 · {title}',
+    deliverableEmpty: '主交付物尚未产出',
+    experts: '专家',
+    expertsHint: '参会专家',
+    expertsEmpty: '尚未记录阵容',
+    expertsCount: '{n} 人',
+    rounds: '辩论轮次',
+    tokens: 'Token 用量',
+    llmCalls: '{n} 次 LLM 调用',
+    tokensEmpty: '暂无 Token 用量',
+    roundsNotConfigured: '尚未配置轮次',
+    roundsHintDebate: '{n} 轮辩论',
+    roundsHintWithFreeDialogue: '{n} 轮辩论 + {q} 问自由对话',
+  },
+  documents: {
+    title: 'Workspace 文档',
+    hint: '浏览本场 Workspace 产出的 Markdown 文件',
+    emptyTitle: '暂无 Markdown 文件',
+    emptyDescription: '在 data/workspaces/{id}/ 下尚未生成可读文档。',
+  },
+  files: {
+    loading: '加载会议 workspace…',
+    loadFailed: '无法加载会议详情',
+    downloadFailed: '下载失败',
+    downloadFailedWithStatus: '下载失败 ({status})：{message}',
+    deleteFailed: '删除失败',
+    deleteFailedWithStatus: '删除失败 ({status})：{message}',
+  },
+  delete: {
+    title: '删除会议',
+    confirm: '确定删除会议「{topic}」？',
+    warning: '将永久删除 workspace 文件与事件记录，此操作不可恢复。',
+    confirmButton: '确认删除',
+    deleting: '删除中…',
+  },
+  flow: {
+    title: '会议流程',
+    subtitle: '从会前准备到结案的 Engine 标准路径',
+    subtitleDeliberation: '（研讨型）',
+    subtitleDecision: '（裁决型）',
+    completed: '{done}/{total} 已完成',
+    progressAriaLabel: '流程进度',
+    currentStep: '当前：{title}',
+    clickToView: '· 点击查看',
+    view: '查看',
+  },
+  fileNav: { sectionCount: '共 {count} 份', primaryDeliverable: '主交付' },
+} as const

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { startDiscordTransport, stopDiscordTransport } from '@/api/settings'
 import { DiscordTransportLogsDialog } from '@/components/settings/discord-transport-logs'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/use-i18n'
 import { hePressable } from '@/lib/highend-styles'
 import { resolveDiscordTransportPhase } from '@/lib/discord-transport-phase'
 import { cn } from '@/lib/utils'
@@ -54,14 +55,6 @@ function ButtonIcon({
   return <Square className="size-3 fill-current stroke-none" aria-hidden />
 }
 
-function buttonLabel(phase: DiscordTransportPhase, togglingAction: ToggleAction | null): string {
-  if (togglingAction === 'start') return '启动中…'
-  if (togglingAction === 'stop') return '停止中…'
-  if (phase === 'starting') return '启动中…'
-  if (phase === 'ready') return '停止服务'
-  return '启动服务'
-}
-
 export function DiscordTransportControl({
   phase,
   loading,
@@ -71,12 +64,23 @@ export function DiscordTransportControl({
   loading: boolean
   onRefresh: () => void
 }) {
+  const { t } = useI18n()
   const [togglingAction, setTogglingAction] = useState<ToggleAction | null>(null)
   const resolvedPhase = phase ?? 'stopped'
   const running = resolvedPhase === 'starting' || resolvedPhase === 'ready'
   const style = resolveButtonStyle(resolvedPhase, togglingAction)
-  const label = buttonLabel(resolvedPhase, togglingAction)
   const busy = loading || togglingAction != null
+
+  const label =
+    togglingAction === 'start'
+      ? t('settings.discord.transportStarting')
+      : togglingAction === 'stop'
+        ? t('settings.discord.transportStopping')
+        : resolvedPhase === 'starting'
+          ? t('settings.discord.transportStarting')
+          : resolvedPhase === 'ready'
+            ? t('settings.discord.transportStop')
+            : t('settings.discord.transportStart')
 
   async function handleToggle() {
     const action: ToggleAction = running ? 'stop' : 'start'
@@ -85,15 +89,21 @@ export function DiscordTransportControl({
       const st = action === 'stop' ? await stopDiscordTransport() : await startDiscordTransport()
       const nextPhase = resolveDiscordTransportPhase(st)
       if (nextPhase === 'ready') {
-        toast.success('Discord 服务已就绪')
+        toast.success(t('settings.discord.transportReady'))
       } else if (nextPhase === 'starting') {
-        toast.success('Discord 服务启动中…')
+        toast.success(t('settings.discord.transportStartingToast'))
       } else {
-        toast.success('Discord 服务已停止')
+        toast.success(t('settings.discord.transportStopped'))
       }
       onRefresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : action === 'stop' ? '停止失败' : '启动失败')
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : action === 'stop'
+            ? t('settings.discord.transportStopFailed')
+            : t('settings.discord.transportStartFailed'),
+      )
     } finally {
       setTogglingAction(null)
     }

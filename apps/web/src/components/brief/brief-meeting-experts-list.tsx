@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
+import { useI18n } from '@/hooks/use-i18n'
 import { cn } from '@/lib/utils'
 
 export type MeetingExpertEntry = {
@@ -25,6 +26,8 @@ export function BriefMeetingExpertsList({
   onRemove,
   className,
 }: BriefMeetingExpertsListProps) {
+  const { t } = useI18n()
+
   if (experts.length === 0) {
     return (
       <p className={cn('text-[14px] leading-relaxed text-text-tertiary', className)}>
@@ -45,7 +48,7 @@ export function BriefMeetingExpertsList({
             <button
               type="button"
               className="shrink-0 rounded p-0.5 text-text-tertiary hover:bg-black/[0.06] hover:text-text-primary"
-              aria-label={`移除 ${expert.name}`}
+              aria-label={t('brief.participants.remove', { name: expert.name })}
               onClick={() => onRemove(expert.id)}
             >
               <X className="size-3.5" />

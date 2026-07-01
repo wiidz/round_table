@@ -3,6 +3,8 @@ import type { LucideIcon } from 'lucide-react'
 import { ArrowRight, ChevronRight, MessagesSquare, Server, Settings2 } from 'lucide-react'
 
 import { SettingsNavLink } from '@/components/settings/settings-nav-link'
+import { useI18n } from '@/hooks/use-i18n'
+import type { Translator } from '@/lib/i18n/translate'
 import {
   heFileBadge,
   hePanelShell,
@@ -205,51 +207,49 @@ function ServiceProcessCard({
 function botConnectionState(
   bot: DiscordBotState,
   phase: DiscordTransportPhase,
+  t: Translator,
 ): { tone: 'success' | 'warning' | 'neutral' | 'info'; label: string; tooltip?: string } {
   if (!bot.configured) {
     return {
       tone: 'neutral',
-      label: '未配置',
-      tooltip: '尚未填写 Bot Token，无法在 Discord 中发话或接收指令。',
+      label: t('home.bots.unconfigured'),
+      tooltip: t('home.bots.unconfiguredHint'),
     }
   }
   if (phase === 'starting') {
     if (isGatewayHost(bot)) {
       return {
         tone: 'warning',
-        label: 'Gateway 连接中',
-        tooltip:
-          '司仪 Bot 正在连接 Discord Gateway。连接成功后会在 Discord 成员列表显示在线，并负责接收频道指令。',
+        label: t('home.bots.gatewayConnecting'),
+        tooltip: t('home.bots.gatewayConnectingHint'),
       }
     }
     return {
       tone: 'warning',
-      label: '等待 Transport',
-      tooltip: 'Discord Transport 启动中，参与 Bot 需等待服务就绪后才可 REST 发话。',
+      label: t('home.bots.waitingTransport'),
+      tooltip: t('home.bots.waitingTransportHint'),
     }
   }
   if (phase !== 'ready') {
     return {
       tone: 'neutral',
-      label: '不可用',
+      label: t('home.bots.unavailable'),
       tooltip: isGatewayHost(bot)
-        ? 'Discord Transport 未运行，司仪 Bot 未连接 Gateway，Discord 中将显示离线。'
-        : 'Discord Transport 未运行，参与 Bot 暂时无法发话。',
+        ? t('home.bots.unavailableHostHint')
+        : t('home.bots.unavailableParticipantHint'),
     }
   }
   if (isGatewayHost(bot)) {
     return {
       tone: 'success',
-      label: 'Gateway 在线',
-      tooltip:
-        '司仪 Bot 已连接 Discord Gateway，在成员列表显示在线；负责接收指令、推进会议流程并协调发话。',
+      label: t('home.bots.gatewayOnline'),
+      tooltip: t('home.bots.gatewayOnlineHint'),
     }
   }
   return {
     tone: 'info',
-    label: 'REST 发话',
-    tooltip:
-      '参与 Bot 仅通过 REST 发消息，不会在 Discord 成员列表显示在线，但会议中可正常发言。',
+    label: t('home.bots.restSend'),
+    tooltip: t('home.bots.restSendHint'),
   }
 }
 
@@ -262,17 +262,20 @@ function botLabel(bot: DiscordBotState): string {
   )
 }
 
-function transportServiceStatus(phase: DiscordTransportPhase): {
+function transportServiceStatus(
+  phase: DiscordTransportPhase,
+  t: Translator,
+): {
   tone: 'success' | 'warning' | 'neutral'
   label: string
 } {
   if (phase === 'ready') {
-    return { tone: 'success', label: '运行正常' }
+    return { tone: 'success', label: t('home.transport.running') }
   }
   if (phase === 'starting') {
-    return { tone: 'warning', label: '启动中' }
+    return { tone: 'warning', label: t('home.transport.starting') }
   }
-  return { tone: 'neutral', label: '未启动' }
+  return { tone: 'neutral', label: t('home.transport.stopped') }
 }
 
 interface HomeOperationsPanelProps {
@@ -298,35 +301,35 @@ export function HomeOperationsPanel({
   serverRuntime,
   discordRuntime,
 }: HomeOperationsPanelProps) {
+  const { t } = useI18n()
   const configuredBots = discordBots.filter((b) => b.configured)
   const serverMetrics = buildProcessRuntimeMetrics(serverRuntime)
   const discordMetrics = buildProcessRuntimeMetrics(
     discordRuntime ?? (transportPid != null && transportPid > 0 ? { pid: transportPid } : undefined),
   )
-  const transportStatus = transportServiceStatus(transportPhase)
+  const transportStatus = transportServiceStatus(transportPhase, t)
 
   return (
     <section className="space-y-4">
-      <h2 className={heSubsectionTitleNeutral}>运行与 IM</h2>
+      <h2 className={heSubsectionTitleNeutral}>{t('home.operationsTitle')}</h2>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-        {/* 左列：API + Transport 控制 */}
         <div className="space-y-3">
           <ServiceProcessCard
             variant="main"
             icon={Server}
-            title="RoundTable API"
-            roleLabel="主进程"
-            description="Web 界面与会议引擎 REST / WebSocket 服务"
+            title={t('home.api.title')}
+            roleLabel={t('home.api.role')}
+            description={t('home.api.description')}
             metrics={serverMetrics}
             loading={loading}
             status={
               loading ? (
                 <div className="h-6 w-16 animate-pulse rounded-full bg-black/[0.04]" />
               ) : apiOnline ? (
-                <ServiceStatusPill tone="success" label="运行正常" />
+                <ServiceStatusPill tone="success" label={t('home.api.running')} />
               ) : (
-                <ServiceStatusPill tone="danger" label="连接异常" />
+                <ServiceStatusPill tone="danger" label={t('home.api.connectionError')} />
               )
             }
             footer={
@@ -339,21 +342,21 @@ export function HomeOperationsPanel({
           <ServiceProcessCard
             variant="im"
             icon={MessagesSquare}
-            title="Discord Transport"
-            roleLabel="IM 接入"
-            description="Discord 频道指令接收与 Bot 发话服务"
+            title={t('home.transport.title')}
+            roleLabel={t('home.transport.role')}
+            description={t('home.transport.description')}
             metrics={discordMetrics}
             loading={loading}
             status={
               loading ? (
                 <div className="h-6 w-16 animate-pulse rounded-full bg-black/[0.04]" />
               ) : transportUnavailable ? (
-                <ServiceStatusPill tone="neutral" label="监管不可用" />
+                <ServiceStatusPill tone="neutral" label={t('home.transport.supervisionUnavailable')} />
               ) : (
                 <SettingsNavLink
                   to="/settings"
                   nav={SETTINGS_IM_DISCORD}
-                  aria-label={`Discord Transport：${transportStatus.label}，前往设置管理`}
+                  aria-label={t('home.transport.goToSettings', { status: transportStatus.label })}
                   className={cn(
                     hePressable,
                     heSpring,
@@ -367,19 +370,18 @@ export function HomeOperationsPanel({
             footer={
               transportUnavailable ? (
                 <p className="mt-2 text-[12px] text-text-tertiary">
-                  当前环境未启用 Transport 监管，请直接在终端运行 Discord 服务。
+                  {t('home.transport.supervisionHint')}
                 </p>
               ) : undefined
             }
           />
         </div>
 
-        {/* 右列：Bot 列表 → 设置 */}
         <article className={cn(hePanelShell, 'flex flex-col p-5')}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-[13px] font-semibold text-text-primary">Discord Bot</p>
-              <p className="text-[12px] text-text-tertiary">Token、绑定专家与 Gateway 角色</p>
+              <p className="text-[13px] font-semibold text-text-primary">{t('home.bots.title')}</p>
+              <p className="text-[12px] text-text-tertiary">{t('home.bots.subtitle')}</p>
             </div>
             <SettingsNavLink
               to="/settings"
@@ -392,7 +394,7 @@ export function HomeOperationsPanel({
               )}
             >
               <Settings2 className="size-3.5 opacity-70" aria-hidden />
-              管理 Bot
+              {t('home.bots.manage')}
               <ChevronRight className="size-3 opacity-50" aria-hidden />
             </SettingsNavLink>
           </div>
@@ -407,7 +409,7 @@ export function HomeOperationsPanel({
 
           {!loading && discordBots.length === 0 && (
             <div className="flex flex-1 flex-col items-start justify-center gap-3 py-4">
-              <p className="text-[13px] text-text-tertiary">尚未配置 Discord Bot</p>
+              <p className="text-[13px] text-text-tertiary">{t('home.bots.empty')}</p>
               <SettingsNavLink
                 to="/settings"
                 nav={SETTINGS_IM_DISCORD}
@@ -417,7 +419,7 @@ export function HomeOperationsPanel({
                   'hover:underline',
                 )}
               >
-                前往设置添加
+                {t('home.bots.goSettings')}
                 <ArrowRight className="size-3.5" />
               </SettingsNavLink>
             </div>
@@ -426,7 +428,7 @@ export function HomeOperationsPanel({
           {!loading && discordBots.length > 0 && (
             <ul className="space-y-2">
               {discordBots.map((bot) => {
-                const state = botConnectionState(bot, transportPhase)
+                const state = botConnectionState(bot, transportPhase, t)
                 return (
                   <li key={bot.id}>
                     <SettingsNavLink
@@ -454,9 +456,13 @@ export function HomeOperationsPanel({
                         <p className="truncate text-[13px] font-medium text-text-primary">
                           {botLabel(bot)}
                           {isGatewayHost(bot) ? (
-                            <span className="ml-1.5 text-[10px] font-normal text-brand">司仪</span>
+                            <span className="ml-1.5 text-[10px] font-normal text-brand">
+                              {t('home.bots.hostTag')}
+                            </span>
                           ) : (
-                            <span className="ml-1.5 text-[10px] font-normal text-text-tertiary">参与</span>
+                            <span className="ml-1.5 text-[10px] font-normal text-text-tertiary">
+                              {t('home.bots.participantTag')}
+                            </span>
                           )}
                         </p>
                         <p className="truncate font-mono text-[11px] text-text-tertiary">
@@ -464,7 +470,7 @@ export function HomeOperationsPanel({
                             ? `@${bot.discord_username.replace(/^@/, '')}`
                             : bot.configured
                               ? bot.id
-                              : 'Token 未配置'}
+                              : t('home.bots.tokenMissing')}
                         </p>
                       </div>
                       <ServiceStatusPill
@@ -482,7 +488,7 @@ export function HomeOperationsPanel({
 
           {!loading && configuredBots.some((b) => !isGatewayHost(b)) && (
             <p className="mt-3 text-[11px] leading-relaxed text-text-tertiary">
-              参与 Bot 为 REST 发话，Discord 成员列表显示离线属正常；点击 Bot 可跳转设置编辑 Token 与绑定。
+              {t('home.bots.restHint')}
             </p>
           )}
         </article>

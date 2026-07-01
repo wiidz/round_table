@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n'
 import { cn } from '@/lib/utils'
 import { heFilePill, heFilePillSelected, hePressable } from '@/lib/highend-styles'
 
@@ -10,6 +11,8 @@ interface MarkdownViewToggleProps {
 }
 
 export function MarkdownViewToggle({ mode, onChange, className }: MarkdownViewToggleProps) {
+  const { t } = useI18n()
+
   return (
     <div className={cn('inline-flex flex-wrap gap-2', className)}>
       <button
@@ -20,7 +23,7 @@ export function MarkdownViewToggle({ mode, onChange, className }: MarkdownViewTo
           mode === 'preview' ? heFilePillSelected : heFilePill,
         )}
       >
-        预览
+        {t('common.markdown.preview')}
       </button>
       <button
         type="button"
@@ -30,7 +33,7 @@ export function MarkdownViewToggle({ mode, onChange, className }: MarkdownViewTo
           mode === 'source' ? heFilePillSelected : heFilePill,
         )}
       >
-        源码
+        {t('common.markdown.source')}
       </button>
     </div>
   )

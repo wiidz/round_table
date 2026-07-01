@@ -1,5 +1,6 @@
 import { ArrowUp } from 'lucide-react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import { heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
@@ -9,6 +10,8 @@ interface TocBackToTopProps {
 }
 
 export function TocBackToTop({ onClick, className }: TocBackToTopProps) {
+  const { t } = useI18n()
+
   return (
     <div className={cn('shrink-0 border-t border-border-subtle pt-2', className)}>
       <button
@@ -25,7 +28,7 @@ export function TocBackToTop({ onClick, className }: TocBackToTopProps) {
         )}
       >
         <ArrowUp className="size-3.5 shrink-0" aria-hidden />
-        回到顶部
+        {t('common.markdown.backToTop')}
       </button>
     </div>
   )

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/use-i18n'
 import { cn } from '@/lib/utils'
 
 interface PaginationProps {
@@ -18,6 +19,7 @@ export function Pagination({
   onPageChange,
   className,
 }: PaginationProps) {
+  const { t } = useI18n()
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1
   const end = Math.min(page * pageSize, total)
@@ -30,7 +32,9 @@ export function Pagination({
       )}
     >
       <p>
-        {total === 0 ? '共 0 条' : `第 ${start}–${end} 条，共 ${total} 条`}
+        {total === 0
+          ? t('common.pagination.empty')
+          : t('common.pagination.range', { start, end, total })}
       </p>
       <div className="flex items-center gap-2">
         <Button
@@ -40,7 +44,7 @@ export function Pagination({
           onClick={() => onPageChange(page - 1)}
         >
           <ChevronLeft className="size-4" />
-          上一页
+          {t('common.pagination.prev')}
         </Button>
         <span className="min-w-[4rem] text-center tabular-nums">
           {page} / {totalPages}
@@ -51,7 +55,7 @@ export function Pagination({
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
         >
-          下一页
+          {t('common.pagination.next')}
           <ChevronRight className="size-4" />
         </Button>
       </div>

@@ -1,6 +1,7 @@
 import { MarkdownDocument } from '@/components/markdown/markdown-document'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
-import { assignsTurn, messageAvatar, messageLabel } from '@/lib/chat-display'
+import { useI18n } from '@/hooks/use-i18n'
+import { assignsTurn } from '@/lib/chat-display'
 import { formatChatTime } from '@/lib/format-date'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/types/chat'
@@ -26,10 +27,11 @@ export function ChatBubble({
   message: ChatMessage
   sequence?: number | null
 }) {
+  const { locale, messageLabel, messageAvatar } = useI18n()
   const isUser = message.role === 'user'
   const label = messageLabel(message)
   const avatar = messageAvatar(message)
-  const timeLabel = formatChatTime(message.createdAt)
+  const timeLabel = formatChatTime(message.createdAt, locale)
   const sequenceNo = sequence ?? message.turn ?? null
   const showSequence = assignsTurn(message.role) && sequenceNo != null
 

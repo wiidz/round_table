@@ -11,6 +11,7 @@ import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
+import { useI18n } from '@/hooks/use-i18n'
 import { heSubsectionTitleNeutral } from '@/lib/highend-styles'
 
 import type { BriefTemplateIndex } from '@/types/brief-template'
@@ -44,6 +45,8 @@ function TemplateSection({
 }
 
 export function BriefTemplatesPage() {
+  const i18n = useI18n()
+  const { t } = i18n
   const [templates, setTemplates] = useState<BriefTemplateIndex[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -60,11 +63,11 @@ export function BriefTemplatesPage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载简报模板')
+          setError(t('brief.page.loadFailed'))
         }
       })
       .finally(() => {
@@ -73,7 +76,7 @@ export function BriefTemplatesPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   const { builtin, custom } = useMemo(() => {
     const builtinItems: BriefTemplateIndex[] = []
@@ -90,9 +93,9 @@ export function BriefTemplatesPage() {
       header={
         <ProfilePageHeader
           role="principal"
-          eyebrow="Meeting Brief"
-          title="简报模板 · Brief Template"
-          description="可复用的会议意图：主题、目标、议程与范围。内置模板可另存为自定义副本后再改。"
+          eyebrow={i18n.briefTemplatePageEyebrow()}
+          title={i18n.briefTemplatePageTitle()}
+          description={t('brief.page.description')}
         />
       }
     >
@@ -100,26 +103,30 @@ export function BriefTemplatesPage() {
       {loading && <BriefTemplateGridSkeleton />}
 
       {!loading && error && (
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       )}
 
       {!loading && !error && templates.length === 0 && (
         <ProfileStatePanel
-          title="暂无简报模板"
-          description="请确认 data/_templates/briefs/ 下存在 BRIEF.yaml。"
+          title={t('brief.page.emptyTitle')}
+          description={t('brief.page.emptyDescription')}
         />
       )}
 
       {!loading && !error && templates.length > 0 && (
         <div className="space-y-10">
           <TemplateSection
-            title="内置模板"
-            hint="只读起点；编辑后请另存为自定义模板。"
+            title={t('brief.page.sectionBuiltin')}
+            hint={t('brief.page.sectionBuiltinHint')}
             templates={builtin}
           />
           <TemplateSection
-            title="自定义模板"
-            hint="保存在 data/briefs/，可直接修改并保存。"
+            title={t('brief.page.sectionCustom')}
+            hint={t('brief.page.sectionCustomHint')}
             templates={custom}
           />
         </div>

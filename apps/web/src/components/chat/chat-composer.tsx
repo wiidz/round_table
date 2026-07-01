@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { SendHorizonal } from 'lucide-react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import {
   chatComposerInnerClass,
   chatComposerOuterClass,
@@ -28,6 +29,7 @@ export function ChatComposer({
   disabled = false,
   className,
 }: ChatComposerProps) {
+  const { t } = useI18n()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const composingRef = useRef(false)
   const pendingEnterSendRef = useRef(false)
@@ -93,9 +95,11 @@ export function ChatComposer({
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
             rows={2}
-            placeholder={disabled ? '连接中…' : '输入消息，Enter 发送，Shift+Enter 换行'}
+            placeholder={
+              disabled ? t('chat.composer.placeholderConnecting') : t('chat.composer.placeholder')
+            }
             disabled={disabled}
-            aria-label="聊天输入"
+            aria-label={t('chat.composer.ariaLabel')}
             className={chatComposerTextareaClass}
           />
           <button
@@ -104,7 +108,7 @@ export function ChatComposer({
             className={chatComposerSendClass}
           >
             <SendHorizonal className="size-4" aria-hidden />
-            发送
+            {t('chat.composer.send')}
           </button>
         </div>
       </form>

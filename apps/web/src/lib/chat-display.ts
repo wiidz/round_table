@@ -1,4 +1,11 @@
+import {
+  messageAvatar as messageAvatarI18n,
+  messageLabel as messageLabelI18n,
+} from '@/lib/i18n/chat-display'
+import type { AppLocale } from '@/lib/locale'
 import type { ChatMessage, ChatRole } from '@/types/chat'
+
+const FALLBACK_LOCALE: AppLocale = 'zh'
 
 /** Stable seat key for Live projection and transcript grouping. */
 export function speakerId(message: ChatMessage): string {
@@ -10,25 +17,17 @@ export function speakerId(message: ChatMessage): string {
   return 'system'
 }
 
-export function messageLabel(message: ChatMessage): string {
-  if (message.role === 'user') return '我'
-  if (message.role === 'system') return '系统'
-  if (message.role === 'participant') {
-    return message.authorName?.trim() || message.authorId || '专家'
-  }
-  return message.authorName?.trim() || '司仪'
+/** Non-React helper; defaults to zh. Prefer useI18n().messageLabel in components. */
+export function messageLabel(message: ChatMessage, locale: AppLocale = FALLBACK_LOCALE): string {
+  return messageLabelI18n(locale, message)
 }
 
-export function messageAvatar(message: ChatMessage): { id: string; name: string } {
-  if (message.role === 'user') return { id: 'user', name: '我' }
-  if (message.role === 'system') return { id: 'system', name: '系统' }
-  if (message.role === 'participant') {
-    return {
-      id: message.authorId?.trim() || 'participant',
-      name: message.authorName?.trim() || message.authorId || '专家',
-    }
-  }
-  return { id: 'moderator', name: message.authorName?.trim() || '司仪' }
+/** Non-React helper; defaults to zh. Prefer useI18n().messageAvatar in components. */
+export function messageAvatar(
+  message: ChatMessage,
+  locale: AppLocale = FALLBACK_LOCALE,
+): { id: string; name: string } {
+  return messageAvatarI18n(locale, message)
 }
 
 export function assignsTurn(role: ChatRole): boolean {

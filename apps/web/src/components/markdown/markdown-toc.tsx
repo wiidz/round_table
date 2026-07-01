@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { List, X } from 'lucide-react'
 
 import { TocBackToTop } from '@/components/markdown/back-to-top-button'
+import { useI18n } from '@/hooks/use-i18n'
 import { heSpring } from '@/lib/highend-styles'
 import {
   MARKDOWN_HEADING_SCROLL_OFFSET,
@@ -108,13 +109,14 @@ interface MarkdownTocProps {
 
 /** Article heading TOC — right column in meeting documents three-col layout. */
 export function MarkdownTocAside({ headings }: MarkdownTocProps) {
+  const { t } = useI18n()
   const { activeId, navigateTo } = useActiveHeadingId(headings)
 
   if (headings.length < TOC_MIN_HEADINGS) return null
 
   return (
     <nav
-      aria-label="文档目录"
+      aria-label={t('common.markdown.tocAriaLabel')}
       className={cn(
         'sticky top-20 flex max-h-[calc(100vh-7rem)] w-full flex-col rounded-xl p-3.5',
         'bg-surface/92 backdrop-blur-sm',
@@ -122,7 +124,7 @@ export function MarkdownTocAside({ headings }: MarkdownTocProps) {
       )}
     >
       <p className="mb-2 shrink-0 text-[10px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
-        目录
+        {t('common.markdown.tocTitle')}
       </p>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <TocList headings={headings} activeId={activeId} navigateTo={navigateTo} />
@@ -133,6 +135,7 @@ export function MarkdownTocAside({ headings }: MarkdownTocProps) {
 }
 
 export function MarkdownTocFloating({ headings }: MarkdownTocProps) {
+  const { t } = useI18n()
   const { activeId, navigateTo } = useActiveHeadingId(headings)
 
   if (headings.length < TOC_MIN_HEADINGS) return null
@@ -140,7 +143,7 @@ export function MarkdownTocFloating({ headings }: MarkdownTocProps) {
   return (
     <aside className="absolute inset-y-0 left-full z-10 ml-5 hidden w-60 xl:block">
       <nav
-        aria-label="文档目录"
+        aria-label={t('common.markdown.tocAriaLabel')}
         className={cn(
           'sticky top-20 flex max-h-[calc(100vh-5.5rem)] w-full flex-col rounded-xl p-3.5',
           'bg-surface/92 backdrop-blur-sm',
@@ -148,7 +151,7 @@ export function MarkdownTocFloating({ headings }: MarkdownTocProps) {
         )}
       >
         <p className="mb-2 shrink-0 text-[10px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
-          目录
+          {t('common.markdown.tocTitle')}
         </p>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <TocList headings={headings} activeId={activeId} navigateTo={navigateTo} />
@@ -168,6 +171,7 @@ export function MarkdownTocMobile({
   /** Hide floating TOC from this breakpoint up (gutter layout uses 96rem). */
   hideFrom?: 'xl' | '96rem'
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const { activeId, navigateTo } = useActiveHeadingId(headings)
 
@@ -190,13 +194,13 @@ export function MarkdownTocMobile({
         >
           <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
-              目录
+              {t('common.markdown.tocTitle')}
             </p>
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="rounded-md p-1 text-text-tertiary hover:bg-black/[0.04] hover:text-text-secondary"
-              aria-label="关闭目录"
+              aria-label={t('common.markdown.tocClose')}
             >
               <X className="size-3.5" />
             </button>
@@ -225,7 +229,7 @@ export function MarkdownTocMobile({
           'hover:text-brand hover:ring-primary/25',
           open && 'text-brand ring-primary/30',
         )}
-        aria-label={open ? '关闭目录' : '打开目录'}
+        aria-label={open ? t('common.markdown.tocClose') : t('common.markdown.tocOpen')}
         aria-expanded={open}
       >
         <List className="size-4" />

@@ -8,6 +8,7 @@ import { FieldHintPopover, SettingsFieldRow, SettingsSwitch } from '@/components
 import { SearchableSelect } from '@/components/settings/searchable-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heColumnTitleAI,
   heColumnTitleBrand,
@@ -24,6 +25,7 @@ import {
   sideTabLabelMotion,
 } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
+import type { Translator } from '@/lib/i18n/translate'
 import { formatDateTimeYMDHMS } from '@/lib/format-date'
 import type { DiscordBotInput, DiscordBotsUpdate, DiscordBotState, SettingsResponse } from '@/types/settings'
 
@@ -101,13 +103,13 @@ const botSideTabAddClass = cn(
   'text-[13px] text-text-tertiary hover:bg-black/[0.06] hover:text-text-secondary',
 )
 
-function tokenForSave(draft: string, configured: boolean): string | undefined {
+function tokenForSave(draft: string, configured: boolean, t: Translator): string | undefined {
   const value = draft.trim()
   if (!value) {
     if (configured) {
       return undefined
     }
-    throw new Error('请填写 Bot Token')
+    throw new Error(t('settings.discord.tokenRequired'))
   }
   return value
 }
@@ -129,8 +131,9 @@ function BotTab({
   isModerator?: boolean
   onSelect: () => void
 }) {
-  const displayLabel = label.trim() || '新 Bot'
-  const displayRoleId = roleId.trim() || '待填写'
+  const { t } = useI18n()
+  const displayLabel = label.trim() || t('settings.discord.newBot')
+  const displayRoleId = roleId.trim() || t('settings.discord.pendingFill')
   const fallback = (displayLabel || '?').slice(0, 1).toUpperCase()
 
   return (
@@ -258,6 +261,7 @@ function SettingsBlock({
   accent?: 'brand' | 'ai' | 'neutral'
   children: ReactNode
 }) {
+  const { t } = useI18n()
   const titleClass =
     accent === 'ai'
       ? heColumnTitleAI
@@ -270,7 +274,10 @@ function SettingsBlock({
       <div className="flex items-center gap-1.5">
         <h3 className={titleClass}>{title}</h3>
         {description && (
-          <FieldHintPopover content={description} ariaLabel={`${title} 说明`} />
+          <FieldHintPopover
+            content={description}
+            ariaLabel={t('settings.fieldHint.labelSuffix', { label: title })}
+          />
         )}
       </div>
       <div className="space-y-6">{children}</div>
@@ -319,7 +326,8 @@ function BotSettingsForm({
   boundParticipantId?: string
   onBoundParticipantIdChange?: (id: string) => void
 }) {
-  const discordProfileHint = '保存 Token 后点「同步信息」获取'
+  const { t } = useI18n()
+  const discordProfileHint = t('settings.discord.profileHint')
   const formKey = id || 'new'
 
   return (
@@ -337,37 +345,41 @@ function BotSettingsForm({
                 </StatusPill>
               )
             })}
-            {configured && <StatusPill tone="success">已配置</StatusPill>}
+            {configured && <StatusPill tone="success">{t('common.configured')}</StatusPill>}
           </div>
           {subtitle && <p className={heSectionDesc}>{subtitle}</p>}
         </div>
       </header>
 
       <SettingsBlock
-        title="Discord Developer"
-        description="Application ID 与用户名通过顶部「同步信息」从 Discord API 拉取（只读）。"
+        title={t('settings.discord.developerTitle')}
+        description={t('settings.discord.developerDescription')}
         accent="ai"
       >
         <SettingsFieldRow
-          label="Bot Token"
+          label={t('settings.discord.tokenLabel')}
           htmlFor={`bot-token-${formKey}`}
           required
-          hint="修改后需重启 discord 服务"
+          hint={t('settings.discord.tokenHint')}
         >
           <Input
             id={`bot-token-${formKey}`}
             type="text"
             value={token}
-            placeholder={configured ? '留空则保留现有 Token' : '填入 Discord Bot Token'}
+            placeholder={
+              configured
+                ? t('settings.discord.tokenPlaceholderKeep')
+                : t('settings.discord.tokenPlaceholderNew')
+            }
             autoComplete="off"
             className="!rounded-xs font-mono text-sm"
             onChange={(e) => onTokenChange(e.target.value)}
           />
         </SettingsFieldRow>
         <SettingsFieldRow
-          label="Application ID"
+          label={t('settings.discord.applicationIdLabel')}
           htmlFor={`discord-app-id-${formKey}`}
-          hint="Discord 开发者后台 Application ID"
+          hint={t('settings.discord.applicationIdHint')}
         >
           <Input
             id={`discord-app-id-${formKey}`}
@@ -377,7 +389,7 @@ function BotSettingsForm({
             className={cn(heFieldReadonly, 'font-mono text-sm')}
           />
         </SettingsFieldRow>
-        <SettingsFieldRow label="Bot 用户名" htmlFor={`discord-name-${formKey}`}>
+        <SettingsFieldRow label={t('settings.discord.usernameLabel')} htmlFor={`discord-name-${formKey}`}>
           <Input
             id={`discord-name-${formKey}`}
             value={discordUsername ?? ''}
@@ -389,17 +401,17 @@ function BotSettingsForm({
       </SettingsBlock>
 
       {onIsModeratorChange && (
-        <SettingsBlock title="角色" accent="neutral">
+        <SettingsBlock title={t('settings.discord.roleTitle')} accent="neutral">
           <SettingsSwitch
             id={`bot-moderator-${formKey}`}
-            label="是否设为主持人"
+            label={t('settings.discord.moderatorSwitch')}
             checked={isModerator}
             disabled={kind === 'participant' && !configured && !id.trim()}
             onCheckedChange={onIsModeratorChange}
             hint={
               kind === 'participant' && !configured && !id.trim()
-                ? '请先保存 Token，系统将根据 Discord 资料自动注册 Bot'
-                : '主持 Bot 负责指令、进度与会议流程；每位 Bot 均可绑定专家档案'
+                ? t('settings.discord.saveTokenFirstRegister')
+                : t('settings.discord.moderatorRoleHint')
             }
           />
         </SettingsBlock>
@@ -407,33 +419,33 @@ function BotSettingsForm({
 
       {expertOptions && onBoundParticipantIdChange && (
         <SettingsBlock
-          title="绑定专家"
-          description="每个 Discord Bot 仅绑定一位专家；绑定后 Bot 展示名称与头像跟随专家，并使用其 SOUL / AGENTS / TOOLS 档案。"
+          title={t('settings.discord.bindExpertTitle')}
+          description={t('settings.discord.bindExpertDescription')}
           accent="brand"
         >
           {expertOptions.length === 0 ? (
-            <p className="text-[13px] text-text-tertiary">请先在「专家」页添加专家。</p>
+            <p className="text-[13px] text-text-tertiary">{t('settings.discord.noExperts')}</p>
           ) : (
             <SettingsFieldRow
-              label="选择专家"
+              label={t('settings.discord.selectExpert')}
               htmlFor={`bot-expert-${formKey}`}
-              hint="每位专家在同一平台只能绑定一个 Bot；已被其他 Bot 绑定的专家不可选"
+              hint={t('settings.discord.selectExpertHint')}
             >
               <SearchableSelect
                 id={`bot-expert-${formKey}`}
                 value={boundParticipantId ?? ''}
-                placeholder="不绑定专家"
-                searchPlaceholder="输入名称或代号…"
+                placeholder={t('settings.discord.bindNone')}
+                searchPlaceholder={t('settings.discord.searchExpert')}
                 emptyOption={{
                   value: '',
-                  label: '不绑定专家',
+                  label: t('settings.discord.bindNone'),
                 }}
                 options={expertOptions.map((expert) => {
                   const name = expert.display_name?.trim() || expert.id
                   return {
                     value: expert.id,
                     label: name,
-                    hint: expert.disabled ? '已绑定其他 Bot' : expert.id,
+                    hint: expert.disabled ? t('settings.discord.alreadyBound') : expert.id,
                     disabled: expert.disabled,
                   }
                 })}
@@ -457,7 +469,7 @@ function BotSettingsForm({
             onClick={() => void onDelete()}
           >
             <Trash2 className="size-4" />
-            删除 Bot
+            {t('settings.discord.deleteBot')}
           </Button>
         ) : (
           <span aria-hidden className="shrink-0" />
@@ -469,7 +481,7 @@ function BotSettingsForm({
           onClick={() => void onSubmit()}
         >
           <Save className="size-4" />
-          {saving ? '保存中…' : '保存 Bot 配置'}
+          {saving ? t('common.saving') : t('settings.discord.saveBot')}
         </Button>
       </div>
     </div>
@@ -489,6 +501,7 @@ function assembleDiscordBotsUpdate({
   participants,
   requireTokenForId,
   requireTokenForIndex,
+  t,
 }: {
   primaryRoleId: string
   moderatorToken: string
@@ -497,8 +510,9 @@ function assembleDiscordBotsUpdate({
   participants: ParticipantDraft[]
   requireTokenForId?: string
   requireTokenForIndex?: number
+  t: Translator
 }): DiscordBotsUpdate {
-  validateDiscordBotExpertDrafts(participants, moderatorBoundParticipantId)
+  validateDiscordBotExpertDrafts(participants, moderatorBoundParticipantId, t)
 
   const payload: DiscordBotInput[] = []
 
@@ -509,7 +523,7 @@ function assembleDiscordBotsUpdate({
       return
     }
     if (!appId && !hasToken) {
-      throw new Error('新 Bot 需要填写 Token')
+      throw new Error(t('settings.discord.newBotNeedsToken'))
     }
 
     let token: string | undefined
@@ -518,7 +532,7 @@ function assembleDiscordBotsUpdate({
       (requireTokenForId && appId === requireTokenForId)
     if (appId !== primaryRoleId) {
       if (needsToken) {
-        token = tokenForSave(p.token ?? '', p.configured)
+        token = tokenForSave(p.token ?? '', p.configured, t)
       } else {
         token = optionalParticipantToken(p)
       }
@@ -539,7 +553,7 @@ function assembleDiscordBotsUpdate({
 
   if (primaryRoleId === 'moderator') {
     if (requireTokenForId === 'moderator') {
-      const tok = tokenForSave(moderatorToken, moderatorConfigured)
+      const tok = tokenForSave(moderatorToken, moderatorConfigured, t)
       if (tok !== undefined) update.moderator_token = tok
     } else {
       const tok = optionalParticipantToken({ token: moderatorToken, configured: moderatorConfigured } as ParticipantDraft)
@@ -551,7 +565,7 @@ function assembleDiscordBotsUpdate({
     )
     if (primaryParticipant) {
       if (requireTokenForId === primaryRoleId) {
-        const tok = tokenForSave(primaryParticipant.token ?? '', primaryParticipant.configured)
+        const tok = tokenForSave(primaryParticipant.token ?? '', primaryParticipant.configured, t)
         if (tok !== undefined) update.moderator_token = tok
       } else {
         const tok = optionalParticipantToken(primaryParticipant)
@@ -559,7 +573,7 @@ function assembleDiscordBotsUpdate({
       }
     }
     if (requireTokenForId === 'moderator') {
-      const tok = tokenForSave(moderatorToken, moderatorConfigured)
+      const tok = tokenForSave(moderatorToken, moderatorConfigured, t)
       if (tok !== undefined) update.moderator_role_token = tok
     } else {
       const tok = optionalParticipantToken({ token: moderatorToken, configured: moderatorConfigured } as ParticipantDraft)
@@ -573,6 +587,7 @@ function assembleDiscordBotsUpdate({
 function validateDiscordBotExpertDrafts(
   participants: ParticipantDraft[],
   moderatorBoundParticipantId: string,
+  t: Translator,
 ) {
   const expertBot = new Map<string, string>()
   const botExpert = new Map<string, string>()
@@ -580,23 +595,23 @@ function validateDiscordBotExpertDrafts(
   function track(botKey: string, expertId: string) {
     const prevBot = expertBot.get(expertId)
     if (prevBot && prevBot !== botKey) {
-      throw new Error(`专家 ${expertId} 不能绑定多个 Discord Bot`)
+      throw new Error(t('settings.discord.expertMultiBind', { expertId }))
     }
     expertBot.set(expertId, botKey)
     const prevExpert = botExpert.get(botKey)
     if (prevExpert && prevExpert !== expertId) {
-      throw new Error(`Bot ${botKey} 只能绑定一位专家`)
+      throw new Error(t('settings.discord.botMultiExpert', { botKey }))
     }
     botExpert.set(botKey, expertId)
   }
 
   const moderatorExpert = moderatorBoundParticipantId.trim()
   if (moderatorExpert) {
-    track('主持人', moderatorExpert)
+    track(t('settings.discord.hostRole'), moderatorExpert)
   }
 
   for (const [index, p] of participants.entries()) {
-    const botKey = p.application_id.trim() || `(新 Bot ${index + 1})`
+    const botKey = p.application_id.trim() || t('settings.discord.newBotIndex', { index: index + 1 })
     const expertId = (p.bound_participant_id ?? '').trim()
     if (!expertId) continue
     track(botKey, expertId)
@@ -625,13 +640,14 @@ function expertSelectOptions(
   roster: ExpertOption[],
   slots: BotBindingSlot[],
   activeKey: string,
+  t: Translator,
 ): ExpertSelectOption[] {
   const taken = new Map<string, string>()
   slots.forEach((slot) => {
     if (slot.key === activeKey) return
     const expertId = slot.bound_participant_id.trim()
     if (expertId) {
-      taken.set(expertId, slot.key === 'moderator' ? '主持人' : slot.key)
+      taken.set(expertId, slot.key === 'moderator' ? t('settings.discord.hostRole') : slot.key)
     }
   })
   const current =
@@ -648,6 +664,7 @@ function participantTabLabel(
   p: ParticipantDraft,
   expertRoster: ExpertOption[],
   index: number,
+  t: Translator,
 ): string {
   const bound = (p.bound_participant_id ?? '').trim()
   const expert = expertRoster.find((e) => e.id === bound)
@@ -656,16 +673,16 @@ function participantTabLabel(
     p.display_name?.trim() ||
     p.discord_username?.trim() ||
     p.application_id.trim() ||
-    `新 Bot ${index + 1}`
+    t('settings.discord.newBotIndex', { index: index + 1 })
   )
 }
 
-function participantTabSubtitle(p: ParticipantDraft): string {
+function participantTabSubtitle(p: ParticipantDraft, t: Translator): string {
   const appId = p.application_id.trim() || p.discord_application_id?.trim() || ''
   if (appId) {
     return appId.length > 12 ? `${appId.slice(0, 6)}…${appId.slice(-4)}` : appId
   }
-  return '待保存'
+  return t('settings.discord.pendingSave')
 }
 
 function handlePrimaryChange(
@@ -673,6 +690,7 @@ function handlePrimaryChange(
   checked: boolean,
   setPrimaryRoleId: (id: string) => void,
   participants: ParticipantDraft[],
+  t: Translator,
 ) {
   if (checked) {
     const appId = applicationId.trim()
@@ -681,7 +699,7 @@ function handlePrimaryChange(
       return
     }
     if (!appId) {
-      toast.error('请先保存 Bot Token 以获取 Application ID')
+      toast.error(t('settings.discord.saveTokenFirst'))
       return
     }
     setPrimaryRoleId(appId)
@@ -694,7 +712,7 @@ function handlePrimaryChange(
       setPrimaryRoleId(fallback)
       return
     }
-    toast.error('至少需要一位主持 Bot')
+    toast.error(t('settings.discord.needHostBot'))
     return
   }
 
@@ -715,30 +733,32 @@ function DiscordGeneralSection({
   autoStart: boolean
   onAutoStartChange: (checked: boolean) => void
 }) {
+  const { t } = useI18n()
+
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <Hash className="size-4 shrink-0 text-info" strokeWidth={2} aria-hidden />
-        <h2 className={heSectionTitle}>General · 通用</h2>
+        <h2 className={heSectionTitle}>{t('settings.discord.generalTitle')}</h2>
       </div>
       <SettingsSwitch
         id={AUTO_START_KEY}
-        label="自动启动"
+        label={t('settings.discord.autoStart')}
         checked={autoStart}
         onCheckedChange={onAutoStartChange}
-        hint="开启后，启动 roundtable 主服务时会自动拉起 Discord transport；保存后需重启主服务生效"
+        hint={t('settings.discord.autoStartHint')}
       />
       <SettingsFieldRow
-        label="Guild ID"
+        label={t('settings.discord.guildId')}
         htmlFor={GUILD_ID_KEY}
-        hint="留空表示不限制 Discord 服务器；Bot 仅在该 Guild 内响应指令"
+        hint={t('settings.discord.guildIdHint')}
       >
         <Input
           id={GUILD_ID_KEY}
           name={GUILD_ID_KEY}
           type="text"
           value={guildId}
-          placeholder="留空表示不限制服务器"
+          placeholder={t('settings.discord.guildIdPlaceholder')}
           autoComplete="off"
           className="!rounded-xs font-mono text-sm"
           onChange={(e) => onGuildIdChange(e.target.value)}
@@ -768,6 +788,7 @@ export function DiscordBotsPanel({
   /** 从概览等页跳转时预选 Bot 侧栏 Tab */
   initialBotId?: string
 }) {
+  const { t } = useI18n()
   const moderator = useMemo(() => bots.find((b) => b.id === 'moderator'), [bots])
   const [primaryRoleId, setPrimaryRoleId] = useState(
     () => bots.find((b) => b.primary)?.id ?? 'moderator',
@@ -833,9 +854,9 @@ export function DiscordBotsPanel({
     try {
       const resp = await saveDiscordBots(update)
       onSaved(resp)
-      toast.success('Bot 配置已保存，请重启 discord 服务')
+      toast.success(t('settings.discord.saveSuccess'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
       throw err
     } finally {
       setSaving(false)
@@ -853,9 +874,10 @@ export function DiscordBotsPanel({
         moderatorBoundParticipantId,
         participants,
         requireTokenForId: 'moderator',
+        t,
       })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
       return
     }
     try {
@@ -868,7 +890,7 @@ export function DiscordBotsPanel({
   async function handleSaveParticipant(index: number) {
     const p = participants[index]
     if (!p.application_id.trim() && !(p.token ?? '').trim() && !p.configured) {
-      toast.error('请填写 Bot Token')
+      toast.error(t('settings.discord.tokenRequired'))
       return
     }
     let update: DiscordBotsUpdate
@@ -881,9 +903,10 @@ export function DiscordBotsPanel({
         participants,
         requireTokenForId: p.application_id.trim() || undefined,
         requireTokenForIndex: index,
+        t,
       })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
       return
     }
     try {
@@ -911,9 +934,10 @@ export function DiscordBotsPanel({
         moderatorConfigured: moderator?.configured ?? false,
         moderatorBoundParticipantId,
         participants: next,
+        t,
       })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '删除失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.deleteFailed'))
       setParticipants(toParticipantDrafts(bots))
       setPrimaryRoleId(bots.find((b) => b.primary)?.id ?? 'moderator')
       return
@@ -923,9 +947,9 @@ export function DiscordBotsPanel({
     try {
       const resp = await saveDiscordBots(update)
       onSaved(resp)
-      toast.success('已删除 Bot')
+      toast.success(t('settings.discord.deleteSuccess'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '删除失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.deleteFailed'))
       setParticipants(toParticipantDrafts(bots))
       setPrimaryRoleId(bots.find((b) => b.primary)?.id ?? 'moderator')
     } finally {
@@ -948,12 +972,12 @@ export function DiscordBotsPanel({
       onSaved(resp)
       const count = (resp.discord_bots ?? []).filter((b) => b.avatar_url).length
       if (count > 0) {
-        toast.success(`已拉取 ${count} 个 Bot 头像并缓存`)
+        toast.success(t('settings.discord.syncSuccess', { count }))
       } else {
-        toast.warning('拉取完成，但未获取到头像（请检查 Token 或网络/代理）')
+        toast.warning(t('settings.discord.syncNoAvatar'))
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '拉取头像失败')
+      toast.error(err instanceof Error ? err.message : t('settings.discord.syncFailed'))
     } finally {
       setRefreshing(false)
     }
@@ -990,14 +1014,16 @@ export function DiscordBotsPanel({
           <div className="min-w-0 space-y-1.5">
             <div className="flex items-center gap-2">
               <Hash className="size-4 shrink-0 text-info" strokeWidth={2} aria-hidden />
-              <h2 className={heSectionTitle}>Discord Bots</h2>
+              <h2 className={heSectionTitle}>{t('settings.discord.botsTitle')}</h2>
             </div>
             <p className={heSectionDesc}>
-              修改 Token 并保存后，可点「同步信息」获取 <a href="https://discord.com/developers/applications" target='blank'>Developer Portal</a>里的资料（
-              {lastProfileFetchedAt
-                ? `上次：${formatDateTimeYMDHMS(lastProfileFetchedAt)}`
-                : '从未拉取'}
-              ）
+              {t('settings.discord.botsHeaderDescription', {
+                status: lastProfileFetchedAt
+                  ? t('settings.discord.lastFetched', {
+                      datetime: formatDateTimeYMDHMS(lastProfileFetchedAt),
+                    })
+                  : t('settings.discord.neverFetched'),
+              })}
             </p>
           </div>
           <Button
@@ -1009,7 +1035,7 @@ export function DiscordBotsPanel({
             onClick={() => void handleRefreshProfiles()}
           >
             <RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} />
-            {refreshing ? '同步中…' : '同步信息'}
+            {refreshing ? t('settings.discord.syncing') : t('settings.discord.syncProfiles')}
           </Button>
         </div>
       </header>
@@ -1017,12 +1043,12 @@ export function DiscordBotsPanel({
       <div className="min-w-0">
       <div className="flex min-h-0 min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-0">
         <nav
-          aria-label="Discord Bot 列表"
+          aria-label={t('settings.discord.navAriaLabel')}
           className={botSideTabListClass}
           style={{ width: BOT_SIDE_TAB_WIDTH }}
         >
           <BotTab
-            label={moderator.label ?? moderator.display_name ?? '主持人'}
+            label={moderator.label ?? moderator.display_name ?? t('settings.discord.moderatorTitle')}
             roleId={moderator.id}
             avatarUrl={moderator.avatar_url}
             configured={moderator.configured}
@@ -1033,13 +1059,13 @@ export function DiscordBotsPanel({
 
           {participants.map((p, index) => {
             const key: DiscordBotTabKey = `participant-${index}`
-            const tabLabel = participantTabLabel(p, expertRoster, index)
+            const tabLabel = participantTabLabel(p, expertRoster, index, t)
             const appId = p.application_id.trim()
             return (
               <BotTab
                 key={key}
                 label={tabLabel}
-                roleId={participantTabSubtitle(p)}
+                roleId={participantTabSubtitle(p, t)}
                 avatarUrl={p.avatar_url}
                 configured={p.configured}
                 selected={activeTab === key}
@@ -1051,15 +1077,15 @@ export function DiscordBotsPanel({
 
           <button
             type="button"
-            title="添加参与 Bot"
-            aria-label="添加参与 Bot"
+            title={t('settings.discord.addParticipantBot')}
+            aria-label={t('settings.discord.addParticipantBot')}
             onClick={addParticipant}
             className={botSideTabAddClass}
           >
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xs border border-dashed border-black/[0.12] bg-black/[0.02]">
               <Plus className="size-4" />
             </span>
-            <span className="truncate font-medium">添加 Bot</span>
+            <span className="truncate font-medium">{t('settings.discord.addBot')}</span>
           </button>
         </nav>
 
@@ -1070,9 +1096,9 @@ export function DiscordBotsPanel({
         <BotSettingsForm
           embedded
           kind="moderator"
-          title="主持人"
-          tags={[{ label: 'Moderator', tone: 'accent' }]}
-          subtitle="填写 Token、绑定专家并指定是否为主持 Bot；主持 Bot 负责指令、进度与会议流程"
+          title={t('settings.discord.moderatorTitle')}
+          tags={[{ label: t('settings.discord.moderatorBadge'), tone: 'accent' }]}
+          subtitle={t('settings.discord.moderatorSubtitle')}
           id={moderator.id}
           configured={moderator.configured}
           discordApplicationId={moderator.discord_application_id}
@@ -1080,12 +1106,12 @@ export function DiscordBotsPanel({
           token={moderatorToken}
           isModerator={primaryRoleId === 'moderator'}
           onIsModeratorChange={(checked) =>
-            handlePrimaryChange('moderator', checked, setPrimaryRoleId, participants)
+            handlePrimaryChange('moderator', checked, setPrimaryRoleId, participants, t)
           }
           saving={saving}
           onTokenChange={setModeratorToken}
           onBoundParticipantIdChange={setModeratorBoundParticipantId}
-          expertOptions={expertSelectOptions(expertRoster, bindingSlots, 'moderator')}
+          expertOptions={expertSelectOptions(expertRoster, bindingSlots, 'moderator', t)}
           boundParticipantId={moderatorBoundParticipantId}
           onSubmit={handleSaveModerator}
         />
@@ -1095,8 +1121,8 @@ export function DiscordBotsPanel({
         <BotSettingsForm
           embedded
           kind="participant"
-          title={participantTabLabel(activeParticipant, expertRoster, activeParticipantIndex)}
-          subtitle="填写 Token 并选择绑定专家；展示名称与头像跟随专家，Discord 资料仅本地缓存预览"
+          title={participantTabLabel(activeParticipant, expertRoster, activeParticipantIndex, t)}
+          subtitle={t('settings.discord.participantSubtitle')}
           id={activeParticipant.application_id.trim() || 'new'}
           configured={activeParticipant.configured}
           discordApplicationId={activeParticipant.discord_application_id}
@@ -1109,6 +1135,7 @@ export function DiscordBotsPanel({
               checked,
               setPrimaryRoleId,
               participants,
+              t,
             )
           }
           saving={saving}
@@ -1120,6 +1147,7 @@ export function DiscordBotsPanel({
             expertRoster,
             bindingSlots,
             activeParticipant.application_id.trim() || `draft-${activeParticipantIndex}`,
+            t,
           )}
           boundParticipantId={activeParticipant.bound_participant_id}
           onSubmit={() => handleSaveParticipant(activeParticipantIndex)}

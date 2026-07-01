@@ -10,6 +10,8 @@ import {
 } from '@/components/settings/field-hint-popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/hooks/use-i18n'
+import type { Translator } from '@/lib/i18n/translate'
 import {
   heFieldSurface,
   hePressable,
@@ -34,7 +36,6 @@ const presetSideTabListClass = cn(
   'flex shrink-0 flex-col gap-2 self-start overflow-visible bg-transparent pt-8 pb-1',
 )
 
-/** 与 discord-bots-panel botFormPanelShell 一致 */
 const presetFormPanelShell = cn(
   'relative z-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-canvas',
   'shadow-[var(--field-inset-shadow)]',
@@ -42,7 +43,6 @@ const presetFormPanelShell = cn(
   '-ml-px',
 )
 
-/** 与 discord-bots-panel botSideTabButtonClass 一致 */
 function presetSideTabButtonClass(selected: boolean) {
   return cn(
     sideTabButtonMotion,
@@ -62,11 +62,6 @@ function presetSideTabButtonClass(selected: boolean) {
         ),
   )
 }
-
-const MEET_MODE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'deliberation', label: '研讨型（方案共建）' },
-  { value: 'decision', label: '裁决型（是否批准）' },
-]
 
 function normalizeCommandKey(s: string): string {
   const trimmed = s.trim().replace(/\s+/g, '')
@@ -137,10 +132,19 @@ function MeetModeRadio({
   value: string
   onChange: (value: string) => void
 }) {
+  const { t } = useI18n()
+  const modeOptions = useMemo(
+    () => [
+      { value: 'deliberation', label: t('settings.meetPresets.modeDeliberation') },
+      { value: 'decision', label: t('settings.meetPresets.modeDecision') },
+    ],
+    [t],
+  )
+
   return (
     <fieldset className="flex flex-wrap gap-2 sm:gap-3">
-      <legend className="sr-only">会议模式</legend>
-      {MEET_MODE_OPTIONS.map((opt) => {
+      <legend className="sr-only">{t('settings.meetPresets.modeLabel')}</legend>
+      {modeOptions.map((opt) => {
         const optionId = `${id}-mode-${opt.value}`
         const selected = value === opt.value
         return (
@@ -172,6 +176,34 @@ function MeetModeRadio({
   )
 }
 
+function validatePresets(drafts: PresetDraft[], t: Translator): { id: string; message: string } | null {
+  const missing = drafts.find((p) => !p.name_zh.trim())
+  if (missing) {
+    return { id: missing.id, message: t('settings.meetPresets.errorMissingName', { id: missing.id }) }
+  }
+  const noCmd = drafts.find((p) => !p.command?.trim())
+  if (noCmd) {
+    return { id: noCmd.id, message: t('settings.meetPresets.errorMissingCommand', { id: noCmd.id }) }
+  }
+  const reserved = drafts.find((p) => normalizeCommandKey(p.command ?? '') === '0')
+  if (reserved) {
+    return { id: reserved.id, message: t('settings.meetPresets.errorReservedZero') }
+  }
+  const keys = new Map<string, string>()
+  for (const p of drafts) {
+    const key = normalizeCommandKey(p.command ?? '')
+    const prev = keys.get(key)
+    if (prev) {
+      return {
+        id: p.id,
+        message: t('settings.meetPresets.errorDuplicateCommand', { command: p.command ?? '', id: prev }),
+      }
+    }
+    keys.set(key, p.id)
+  }
+  return null
+}
+
 export function MeetPresetsPanel({
   presets,
   defaults,
@@ -183,6 +215,7 @@ export function MeetPresetsPanel({
   maxRoundsCap: number
   onSaved: (resp: SettingsResponse) => void
 }) {
+  const { t } = useI18n()
   const [drafts, setDrafts] = useState<PresetDraft[]>(() => clonePresets(presets))
   const [activeId, setActiveId] = useState<PresetTabKey>(() => presets[0]?.id ?? '1')
   const [saving, setSaving] = useState(false)
@@ -234,42 +267,19 @@ export function MeetPresetsPanel({
   }
 
   async function handleSave() {
-    const missing = drafts.find((p) => !p.name_zh.trim())
-    if (missing) {
-      toast.error(`请填写预设 ${missing.id} 的菜单名称`)
-      setActiveId(missing.id)
+    const validation = validatePresets(drafts, t)
+    if (validation) {
+      toast.error(validation.message)
+      setActiveId(validation.id)
       return
-    }
-    const noCmd = drafts.find((p) => !p.command?.trim())
-    if (noCmd) {
-      toast.error(`预设 ${noCmd.id} 须填写绑定指令`)
-      setActiveId(noCmd.id)
-      return
-    }
-    const reserved = drafts.find((p) => normalizeCommandKey(p.command ?? '') === '0')
-    if (reserved) {
-      toast.error('0 为系统保留（自定义入口），不能绑定到预设')
-      setActiveId(reserved.id)
-      return
-    }
-    const keys = new Map<string, string>()
-    for (const p of drafts) {
-      const key = normalizeCommandKey(p.command ?? '')
-      const prev = keys.get(key)
-      if (prev) {
-        toast.error(`指令「${p.command}」与预设 ${prev} 重复`)
-        setActiveId(p.id)
-        return
-      }
-      keys.set(key, p.id)
     }
     setSaving(true)
     try {
       const resp = await saveMeetPresets(drafts)
       onSaved(resp)
-      toast.success('预设菜单已保存')
+      toast.success(t('settings.meetPresets.saveSuccess'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -281,24 +291,20 @@ export function MeetPresetsPanel({
     setDrafts((prev) =>
       prev.map((p) => (p.id === active.id ? clonePresets([def])[0] : p)),
     )
-    toast.success('已恢复此项默认（尚未保存）')
+    toast.success(t('settings.meetPresets.restoreItemSuccess'))
   }
 
   async function handleResetAll() {
-    if (
-      !window.confirm(
-        '确定将全部预设恢复为系统默认？当前自定义会丢失，且立即写入配置。',
-      )
-    ) {
+    if (!window.confirm(t('settings.meetPresets.resetAllConfirm'))) {
       return
     }
     setResetting(true)
     try {
       const resp = await resetMeetPresets()
       onSaved(resp)
-      toast.success('已恢复默认预设菜单')
+      toast.success(t('settings.meetPresets.resetAllSuccess'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '恢复失败')
+      toast.error(err instanceof Error ? err.message : t('settings.meetPresets.resetFailed'))
     } finally {
       setResetting(false)
     }
@@ -314,7 +320,7 @@ export function MeetPresetsPanel({
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Hash className="size-4 shrink-0 text-info" strokeWidth={2} aria-hidden />
-            <h2 className={heSectionTitle}>预设菜单</h2>
+            <h2 className={heSectionTitle}>{t('settings.meetPresets.title')}</h2>
           </div>
           <Button
             type="button"
@@ -324,18 +330,16 @@ export function MeetPresetsPanel({
             className={cn(hePressable, 'shrink-0 gap-2 rounded-xl px-4')}
           >
             <RotateCcw className="size-4" />
-            {resetting ? '恢复中…' : '恢复全部默认'}
+            {resetting ? t('settings.meetPresets.resetting') : t('settings.meetPresets.resetAll')}
           </Button>
         </div>
-        <p className={heSectionDesc}>
-          Discord 发起主题后的选项菜单；每项可配置名称、绑定指令与会议参数。恢复默认可回到系统内置方案。
-        </p>
+        <p className={heSectionDesc}>{t('settings.meetPresets.description')}</p>
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-0">
         <nav
           ref={tabsRef}
-          aria-label="会议预设列表"
+          aria-label={t('settings.meetPresets.navAriaLabel')}
           className={presetSideTabListClass}
           style={{ width: PRESET_SIDE_TAB_WIDTH }}
         >
@@ -360,7 +364,7 @@ export function MeetPresetsPanel({
                   <div className="space-y-1.5">
                     <h2 className={heSectionTitle}>{active.name_zh}</h2>
                     <p className={heSectionDesc}>
-                      内部编号 <span className="font-mono">{active.id}</span>
+                      {t('settings.meetPresets.internalId', { id: active.id })}
                     </p>
                   </div>
                   <Button
@@ -372,16 +376,16 @@ export function MeetPresetsPanel({
                     className={cn(hePressable, 'gap-1.5 rounded-xl shrink-0')}
                   >
                     <RotateCcw className="size-3.5" />
-                    恢复此项默认
+                    {t('settings.meetPresets.restoreItem')}
                   </Button>
                 </div>
               </header>
 
               <SettingsFieldRow
-                label="绑定指令"
+                label={t('settings.meetPresets.commandLabel')}
                 htmlFor={`preset-${active.id}-command`}
                 required
-                hint="Discord 预设菜单中 Principal 发送此文字即选中本项。不可使用 0（保留给自定义）；各预设指令不能重复。"
+                hint={t('settings.meetPresets.commandHint')}
               >
                 <Input
                   id={`preset-${active.id}-command`}
@@ -395,41 +399,41 @@ export function MeetPresetsPanel({
               </SettingsFieldRow>
 
               <SettingsFieldRow
-                label="菜单名称"
+                label={t('settings.meetPresets.nameZhLabel')}
                 htmlFor={`preset-${active.id}-name-zh`}
                 required
-                hint="Discord 菜单展示文案，emoji 与标题写在一起，例如「⚡ 闪电研讨」。"
+                hint={t('settings.meetPresets.nameZhHint')}
               >
                 <Input
                   id={`preset-${active.id}-name-zh`}
                   type="text"
                   value={active.name_zh}
                   maxLength={40}
-                  placeholder="例如 ⚡ 闪电研讨"
+                  placeholder={t('settings.meetPresets.nameZhPlaceholder')}
                   onChange={(e) => patchActive({ name_zh: e.target.value })}
                   className="!rounded-xs"
                 />
               </SettingsFieldRow>
 
               <SettingsFieldRow
-                label="英文名称"
+                label={t('settings.meetPresets.nameEnLabel')}
                 htmlFor={`preset-${active.id}-name-en`}
-                hint="Discord 英文界面下的菜单文案；留空则沿用默认种子值。"
+                hint={t('settings.meetPresets.nameEnHint')}
               >
                 <Input
                   id={`preset-${active.id}-name-en`}
                   type="text"
                   value={active.name_en}
                   maxLength={48}
-                  placeholder="例如 Flash"
+                  placeholder={t('settings.meetPresets.nameEnPlaceholder')}
                   onChange={(e) => patchActive({ name_en: e.target.value })}
                   className="!rounded-xs"
                 />
               </SettingsFieldRow>
 
               <SettingsFieldRow
-                label="会议模式"
-                hint="单场会议采用研讨或裁决流程。"
+                label={t('settings.meetPresets.modeLabel')}
+                hint={t('settings.meetPresets.modeHint')}
               >
                 <MeetModeRadio
                   id={`preset-${active.id}`}
@@ -439,9 +443,9 @@ export function MeetPresetsPanel({
               </SettingsFieldRow>
 
               <SettingsFieldRow
-                label="辩论轮次"
+                label={t('settings.meetPresets.maxRoundsLabel')}
                 htmlFor={`preset-${active.id}-rounds`}
-                hint={`本场最多 ${cap} 轮（受「设定上限 → 辩论轮次上限」约束）。`}
+                hint={t('settings.meetPresets.maxRoundsHint', { cap })}
               >
                 <Input
                   id={`preset-${active.id}-rounds`}
@@ -460,13 +464,13 @@ export function MeetPresetsPanel({
               </SettingsFieldRow>
 
               <SettingsFieldRow
-                label="确认关"
-                hint="开启后，会议结束前 Principal 须批准合成方案；驳回后可继续讨论。最多审阅几轮由上方「确认关轮次上限」控制。"
+                label={t('settings.meetPresets.confirmationLabel')}
+                hint={t('settings.meetPresets.confirmationHint')}
               >
                 <SettingsToggle
                   id={`preset-${active.id}-confirm`}
                   checked={active.confirmation === 'required'}
-                  ariaLabel="确认关"
+                  ariaLabel={t('settings.meetPresets.confirmationLabel')}
                   onCheckedChange={(checked) =>
                     patchActive({ confirmation: checked ? 'required' : 'skip' })
                   }
@@ -474,9 +478,9 @@ export function MeetPresetsPanel({
               </SettingsFieldRow>
 
               <SettingsFieldRow
-                label="自由对话"
+                label={t('settings.meetPresets.freeDialogueLabel')}
                 htmlFor={`preset-${active.id}-free`}
-                hint="每位专家（Participant）在辩论前可提问的轮数；0 表示关闭。"
+                hint={t('settings.meetPresets.freeDialogueHint')}
               >
                 <Input
                   id={`preset-${active.id}-free`}
@@ -496,8 +500,8 @@ export function MeetPresetsPanel({
 
               <div className="flex flex-wrap items-center justify-end gap-2 border-t border-black/[0.05] pt-6">
                 <FieldHintPopover
-                  content="保存后立即作用于 Discord 发起会议时的选项菜单；无需重启服务。"
-                  ariaLabel="保存说明"
+                  content={t('settings.meetPresets.saveHint')}
+                  ariaLabel={t('settings.meetPresets.saveHintAria')}
                 />
                 <Button
                   type="button"
@@ -506,7 +510,7 @@ export function MeetPresetsPanel({
                   className={cn(hePressable, 'gap-2 rounded-xl px-5')}
                 >
                   <Save className="size-4" />
-                  {saving ? '保存中…' : '保存预设菜单'}
+                  {saving ? t('common.saving') : t('settings.meetPresets.save')}
                 </Button>
               </div>
             </div>

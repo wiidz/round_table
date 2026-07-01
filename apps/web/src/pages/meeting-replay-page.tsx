@@ -7,6 +7,7 @@ import { PageLayout } from '@/components/layout/page-main-layout'
 import { MeetingReplayViewer } from '@/components/meeting/meeting-replay-viewer'
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { ApiError } from '@/api/client'
+import { useI18n } from '@/hooks/use-i18n'
 import { hePanelShell, heSpring } from '@/lib/highend-styles'
 import {
   hasWorkspaceTranscript,
@@ -15,6 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 
 export function MeetingReplayPage() {
+  const { t } = useI18n()
   const { id: rawId } = useParams()
   const id = rawId ? decodeURIComponent(rawId) : ''
 
@@ -34,10 +36,10 @@ export function MeetingReplayPage() {
       .then((detail) => {
         if (cancelled) return
         if (!hasWorkspaceTranscript(detail.files ?? {})) {
-          setError('本场暂无可回放 transcript')
+          setError(t('pages.meetingReplay.noTranscript'))
           return
         }
-        setTopic(detail.topic?.trim() || '（无主题）')
+        setTopic(detail.topic?.trim() || t('meeting.topicEmpty'))
         setMeetingMd(detail.files?.['MEETING.md'] ?? '')
         setMessages(workspaceTranscriptMessages(detail.files, detail.id, detail.started_at))
         setError(null)
@@ -45,11 +47,11 @@ export function MeetingReplayPage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载会议回放')
+          setError(t('pages.meetingReplay.loadFailed'))
         }
       })
       .finally(() => {
@@ -58,7 +60,7 @@ export function MeetingReplayPage() {
     return () => {
       cancelled = true
     }
-  }, [id, load])
+  }, [id, load, t])
 
   const detailPath = useMemo(
     () => (id ? `/meetings/${encodeURIComponent(id)}` : '/meetings'),
@@ -74,7 +76,7 @@ export function MeetingReplayPage() {
       )}
     >
       <ArrowLeft className="size-4" />
-      返回会议详情
+      {t('pages.meetingReplay.back')}
     </Link>
   )
 
@@ -86,7 +88,7 @@ export function MeetingReplayPage() {
     return (
       <PageLayout header={backLink}>
         <div className={cn(hePanelShell, 'px-8 py-10 text-sm text-text-secondary')}>
-          加载回放…
+          {t('pages.meetingReplay.loading')}
         </div>
       </PageLayout>
     )
@@ -95,7 +97,11 @@ export function MeetingReplayPage() {
   if (error) {
     return (
       <PageLayout header={backLink}>
-        <ProfileStatePanel variant="danger" title="无法回放" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('pages.meetingReplay.cannotReplay')}
+          description={error}
+        />
       </PageLayout>
     )
   }

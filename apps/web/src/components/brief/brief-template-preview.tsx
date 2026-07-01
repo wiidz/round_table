@@ -2,13 +2,13 @@ import { BriefTemplateMeetingConfigPreview } from '@/components/brief/brief-temp
 import { BriefTemplateScopePreview } from '@/components/brief/brief-template-scope-fields'
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import {
-  BRIEF_TEMPLATE_SECTIONS,
-  BRIEF_TOPIC_EMPTY_COPY,
   briefAgendaItemShell,
   briefFieldCaptionClass,
   briefTemplateLeftColumnClass,
   briefTemplateRightColumnClass,
 } from '@/components/brief/brief-template-sections'
+import { useI18n } from '@/hooks/use-i18n'
+import { getBriefSections, getBriefTopicEmptyCopy } from '@/lib/i18n/brief-sections'
 import { heFieldHint } from '@/lib/highend-styles'
 import { normalizeBriefDocument } from '@/lib/brief-template-document'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,9 @@ export const briefTemplateBodyGridClass =
   'grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)] lg:gap-x-5'
 
 export function BriefTemplatePreview({ document }: { document: BriefTemplateDocument }) {
+  const { t, locale } = useI18n()
+  const sections = getBriefSections(locale)
+  const topicEmpty = getBriefTopicEmptyCopy(locale)
   const doc = normalizeBriefDocument(document)
   const agenda = doc.brief.agenda?.filter(Boolean) ?? []
   const topic = doc.topic?.trim()
@@ -29,30 +32,30 @@ export function BriefTemplatePreview({ document }: { document: BriefTemplateDocu
       <div className={briefTemplateLeftColumnClass}>
         <section className="space-y-4">
           <BriefSectionHeading
-            title={BRIEF_TEMPLATE_SECTIONS.topicGoal.title}
-            description={BRIEF_TEMPLATE_SECTIONS.topicGoal.description}
+            title={sections.topicGoal.title}
+            description={sections.topicGoal.description}
           />
           <div className="space-y-5">
             <div className="space-y-1.5">
-              <p className={briefFieldCaptionClass}>主题</p>
+              <p className={briefFieldCaptionClass}>{t('brief.fields.topic')}</p>
               <p
                 className={cn(
                   'text-[18px] font-semibold leading-snug tracking-[-0.02em]',
                   topic ? 'text-text-primary' : 'font-normal text-text-tertiary',
                 )}
               >
-                {topic || BRIEF_TOPIC_EMPTY_COPY.preview}
+                {topic || topicEmpty.preview}
               </p>
             </div>
             <div className="space-y-1.5">
-              <p className={briefFieldCaptionClass}>会议目标</p>
+              <p className={briefFieldCaptionClass}>{t('brief.fields.goal')}</p>
               <p
                 className={cn(
                   'text-[15px] leading-relaxed',
                   goal ? 'font-medium text-text-primary' : 'text-text-tertiary',
                 )}
               >
-                {goal || '尚未填写会议目标'}
+                {goal || t('brief.fields.goalEmpty')}
               </p>
             </div>
           </div>
@@ -60,8 +63,8 @@ export function BriefTemplatePreview({ document }: { document: BriefTemplateDocu
 
         <section className="space-y-4">
           <BriefSectionHeading
-            title={BRIEF_TEMPLATE_SECTIONS.agenda.title}
-            description={BRIEF_TEMPLATE_SECTIONS.agenda.description}
+            title={sections.agenda.title}
+            description={sections.agenda.description}
           />
           {agenda.length > 0 ? (
             <ol className="space-y-2.5">
@@ -77,7 +80,7 @@ export function BriefTemplatePreview({ document }: { document: BriefTemplateDocu
               ))}
             </ol>
           ) : (
-            <p className={heFieldHint}>暂无议程</p>
+            <p className={heFieldHint}>{t('brief.fields.agendaEmpty')}</p>
           )}
         </section>
 

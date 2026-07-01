@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/use-i18n'
 import { heColumnTitleBrand, heFieldHint, hePageDesc, hePageTitle } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 import type { BriefTemplateDocument } from '@/types/brief-template'
@@ -9,20 +10,20 @@ interface BriefTemplatePageHeaderProps {
   className?: string
 }
 
-/** 页头：模板名称 + 模板说明（卡片外，只读） */
 export function BriefTemplatePageHeader({ document, className }: BriefTemplatePageHeaderProps) {
+  const { t } = useI18n()
   const title = document.meta.title?.trim()
   const description = document.meta.description?.trim()
 
   return (
     <div className={cn('space-y-2', className)}>
       <h1 className={cn(hePageTitle, 'font-bold text-text-primary')}>
-        {title || '未命名模板'}
+        {title || t('brief.meta.unnamed')}
       </h1>
       <p className={hePageDesc}>
-        <span className="font-medium text-text-secondary">模板说明：</span>
+        <span className="font-medium text-text-secondary">{t('brief.meta.descriptionPrefix')}</span>
         <span className={description ? 'text-text-secondary' : 'text-text-tertiary'}>
-          {description || '暂无说明'}
+          {description || t('brief.meta.noDescription')}
         </span>
       </p>
     </div>
@@ -40,6 +41,8 @@ export function BriefTemplateMetaFields({
   readonly,
   onChange,
 }: BriefTemplateMetaFieldsProps) {
+  const { t } = useI18n()
+
   function patchMeta(partial: Partial<BriefTemplateDocument['meta']>) {
     onChange({ ...document, meta: { ...document.meta, ...partial } })
   }
@@ -47,26 +50,26 @@ export function BriefTemplateMetaFields({
   return (
     <section className="space-y-4">
       <div className="space-y-1">
-        <p className={heColumnTitleBrand}>模板信息</p>
-        <p className={heFieldHint}>列表展示用；不影响会议预填字段</p>
+        <p className={heColumnTitleBrand}>{t('brief.meta.sectionTitle')}</p>
+        <p className={heFieldHint}>{t('brief.meta.sectionHint')}</p>
       </div>
 
       <div className="space-y-2">
         <label htmlFor="brief-meta-title" className="text-[13px] font-medium text-text-secondary">
-          模板名称 <span className="text-destructive">*</span>
+          {t('brief.meta.titleLabel')} <span className="text-destructive">*</span>
         </label>
         <Input
           id="brief-meta-title"
           value={document.meta.title}
           readOnly={readonly}
-          placeholder="例如：裁决型评审"
+          placeholder={t('brief.meta.titlePlaceholder')}
           onChange={(e) => patchMeta({ title: e.target.value })}
         />
       </div>
 
       <div className="space-y-2">
         <label htmlFor="brief-meta-desc" className="text-[13px] font-medium text-text-secondary">
-          模板说明
+          {t('brief.meta.descriptionLabel')}
         </label>
         <Textarea
           id="brief-meta-desc"
@@ -74,7 +77,7 @@ export function BriefTemplateMetaFields({
           readOnly={readonly}
           rows={2}
           className="min-h-[5rem] font-sans text-[15px] leading-relaxed"
-          placeholder="说明这套模板的适用场景与用途，例如：围绕 Topic 形成可执行共识，适合是否上线类议题"
+          placeholder={t('brief.meta.descriptionPlaceholder')}
           onChange={(e) => patchMeta({ description: e.target.value })}
         />
       </div>

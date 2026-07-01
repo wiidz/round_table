@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { SearchableSelect } from '@/components/settings/searchable-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/hooks/use-i18n'
 import { heFieldSurface, hePressable, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 import type {
@@ -38,6 +39,7 @@ export function ParticipantFormDialog({
   onClose,
   onSubmit,
 }: ParticipantFormDialogProps) {
+  const { t } = useI18n()
   const [id, setId] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [expertise, setExpertise] = useState('')
@@ -60,25 +62,25 @@ export function ParticipantFormDialog({
     const trimmedExp = expertise.trim()
 
     if (!trimmedId) {
-      toast.error('请填写代号')
+      toast.error(t('profile.form.error.idRequired'))
       return null
     }
     if (!ID_PATTERN.test(trimmedId)) {
-      toast.error('代号须小写字母开头，仅含 a-z、0-9、_、-')
+      toast.error(t('profile.form.error.idPattern'))
       return null
     }
     if (trimmedId === 'moderator') {
-      toast.error('代号 moderator 为系统保留')
+      toast.error(t('profile.form.error.idReserved'))
       return null
     }
     if (!trimmedName) {
-      toast.error('请填写名称')
+      toast.error(t('profile.form.error.nameRequired'))
       return null
     }
 
     const peerIds = peers.filter((p) => p.id !== initial?.id)
     if (peerIds.some((p) => p.id === trimmedId)) {
-      toast.error(`代号 ${trimmedId} 已存在`)
+      toast.error(t('profile.form.error.idDuplicate', { id: trimmedId }))
       return null
     }
 
@@ -87,7 +89,11 @@ export function ParticipantFormDialog({
       (p) => normalizeNameKey(p.display_name?.trim() || p.id) === nameKey,
     )
     if (dupName) {
-      toast.error(`名称与 ${dupName.display_name || dupName.id} 重复`)
+      toast.error(
+        t('profile.form.error.nameDuplicate', {
+          name: dupName.display_name || dupName.id,
+        }),
+      )
       return null
     }
 
@@ -107,11 +113,13 @@ export function ParticipantFormDialog({
       await onSubmit(payload)
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
+
+  const discordNone = t('profile.form.discordNone')
 
   return (
     <div
@@ -131,54 +139,52 @@ export function ParticipantFormDialog({
       >
         <header className="space-y-1">
           <h2 id="participant-form-title" className="text-base font-semibold text-text-primary">
-            {mode === 'create' ? '添加专家' : '编辑专家'}
+            {mode === 'create' ? t('profile.form.createTitle') : t('profile.form.editTitle')}
           </h2>
-          <p className="text-[13px] text-text-secondary">
-            代号用于档案目录；名称不可重复。每位专家可绑定 Discord、Telegram 等 IM（每平台一个 Bot）。
-          </p>
+          <p className="text-[13px] text-text-secondary">{t('profile.form.description')}</p>
         </header>
 
         <div className="space-y-4">
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-text-tertiary">代号</span>
+            <span className="text-xs font-medium text-text-tertiary">{t('profile.form.idLabel')}</span>
             <Input
               value={id}
               onChange={(e) => setId(e.target.value)}
-              placeholder="例如 analyst"
+              placeholder={t('profile.form.idPlaceholder')}
               className="!rounded-xs font-mono"
               autoComplete="off"
             />
           </label>
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-text-tertiary">名称</span>
+            <span className="text-xs font-medium text-text-tertiary">{t('profile.form.nameLabel')}</span>
             <Input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="例如 数据分析师"
+              placeholder={t('profile.form.namePlaceholder')}
               className="!rounded-xs"
             />
           </label>
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-text-tertiary">专长（可选）</span>
+            <span className="text-xs font-medium text-text-tertiary">{t('profile.form.expertiseLabel')}</span>
             <Input
               value={expertise}
               onChange={(e) => setExpertise(e.target.value)}
-              placeholder="例如 research"
+              placeholder="research"
               className="!rounded-xs"
             />
           </label>
 
           <fieldset className="space-y-2 border-t border-black/[0.05] pt-4">
-            <legend className="text-xs font-medium text-text-tertiary">IM 绑定（1 对多平台）</legend>
+            <legend className="text-xs font-medium text-text-tertiary">{t('profile.form.imLegend')}</legend>
             <label className="block space-y-1.5">
-              <span className="text-[11px] text-text-tertiary">Discord Bot</span>
+              <span className="text-[11px] text-text-tertiary">{t('profile.form.discordBotLabel')}</span>
               <SearchableSelect
                 value={discordBotId}
-                placeholder="不绑定（使用主持人 Bot 发言）"
-                searchPlaceholder="搜索 Bot 名称或 ID…"
+                placeholder={discordNone}
+                searchPlaceholder={t('profile.form.discordSearchPlaceholder')}
                 emptyOption={{
                   value: '',
-                  label: '不绑定（使用主持人 Bot 发言）',
+                  label: discordNone,
                 }}
                 options={discordBots.map((bot) => ({
                   value: bot.id,
@@ -188,15 +194,13 @@ export function ParticipantFormDialog({
                 onChange={setDiscordBotId}
               />
             </label>
-            <p className="text-[11px] text-text-tertiary">
-              Telegram、Slack 等平台绑定即将支持
-            </p>
+            <p className="text-[11px] text-text-tertiary">{t('profile.form.imComingSoon')}</p>
           </fieldset>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -204,7 +208,7 @@ export function ParticipantFormDialog({
             onClick={() => void handleSubmit()}
             className={cn(hePressable, 'rounded-xl px-5')}
           >
-            {saving ? '保存中…' : '保存'}
+            {saving ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       </div>

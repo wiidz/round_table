@@ -13,12 +13,13 @@ import { TranscriptDrawer } from '@/components/round-table/transcript-drawer'
 import { Button } from '@/components/ui/button'
 import { useChatMeetingMeta } from '@/hooks/use-chat-meeting-meta'
 import { useChatViewMode } from '@/hooks/use-chat-view-mode'
+import { useI18n } from '@/hooks/use-i18n'
 import { useMeetingTranscript } from '@/hooks/use-meeting-transcript'
 import { useNarrowScreen, useMediaQuery } from '@/hooks/use-media-query'
 import { useRosterSeats } from '@/hooks/use-roster-seats'
 import type { TypingStates } from '@/types/chat'
 import { speakerId } from '@/lib/chat-display'
-import { phaseLabel } from '@/lib/chat-meeting-phase'
+import type { ChatMeetingPhase } from '@/lib/chat-meeting-phase'
 import { maxTurnNumber, scrubTurnForMessage, activeMessageAtScrubTurn } from '@/lib/meeting-transcript-projection'
 import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
 import { hePanelShell, heSubsectionTitleNeutral } from '@/lib/highend-styles'
@@ -29,14 +30,15 @@ import type { ChatConnectionState, ChatMessage } from '@/types/chat'
 type ChatLayout = 'list' | 'roundtable' | 'strip-only'
 
 function ConnectionBadge({ state }: { state: ChatConnectionState }) {
+  const { t } = useI18n()
   const label =
     state === 'open'
-      ? '已连接'
+      ? t('chat.connection.open')
       : state === 'connecting'
-        ? '连接中'
+        ? t('chat.connection.connecting')
         : state === 'error'
-          ? '连接异常'
-          : '已断开'
+          ? t('chat.connection.error')
+          : t('chat.connection.closed')
 
   const tone =
     state === 'open' ? 'success' : state === 'connecting' ? 'warning' : 'neutral'
@@ -71,6 +73,7 @@ function ViewModeToggle({
   onChange: (mode: 'list' | 'roundtable') => void
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   return (
     <div
       className={cn(
@@ -78,7 +81,7 @@ function ViewModeToggle({
         disabled && 'opacity-50',
       )}
       role="group"
-      aria-label="视图模式"
+      aria-label={t('chat.viewMode.ariaLabel')}
     >
       <button
         type="button"
@@ -93,7 +96,7 @@ function ViewModeToggle({
         )}
       >
         <Users className="size-3.5" aria-hidden />
-        圆桌
+        {t('chat.viewMode.roundtable')}
       </button>
       <button
         type="button"
@@ -108,7 +111,7 @@ function ViewModeToggle({
         )}
       >
         <LayoutList className="size-3.5" aria-hidden />
-        列表
+        {t('chat.viewMode.list')}
       </button>
     </div>
   )
@@ -153,6 +156,7 @@ export function ChatWindow({
   onReconnect,
   pageShell,
 }: ChatWindowProps) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState('')
   /** null = 自动跟踪 activeMessage；非 null = 用户手动固定的消息 */
   const [pinnedMessage, setPinnedMessage] = useState<ChatMessage | null>(null)
@@ -211,15 +215,17 @@ export function ChatWindow({
   const centerTitle = meetingTopic ?? undefined
   const centerSubtitle = useMemo(() => {
     if (isScrubbing && scrubTurn != null) {
-      return `回放 · 第 ${scrubTurn} 轮发言`
+      return t('chat.subtitle.replayTurn', { turn: scrubTurn })
     }
     if (meetingTopic) {
-      if (turns.length > 0) return `第 ${turns.length} 轮发言`
+      if (turns.length > 0) return t('chat.subtitle.turnCount', { count: turns.length })
       return meetingId ? `${meetingId.slice(0, 12)}…` : undefined
     }
-    if (meetingMetaLoading && meetingId) return '加载议题…'
+    if (meetingMetaLoading && meetingId) return t('chat.subtitle.loadingTopic')
     return undefined
-  }, [isScrubbing, scrubTurn, meetingTopic, turns.length, meetingMetaLoading, meetingId])
+  }, [isScrubbing, scrubTurn, meetingTopic, turns.length, meetingMetaLoading, meetingId, t])
+
+  const phaseLabel = (phase: ChatMeetingPhase) => t(`chat.phase.${phase}`)
 
   // focusedSeatId 只在手动选中时标记席位
   const focusedSeatId = useMemo(
@@ -245,15 +251,17 @@ export function ChatWindow({
     >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">
         <div>
-          <h2 className={heSubsectionTitleNeutral}>与司仪对话</h2>
+          <h2 className={heSubsectionTitleNeutral}>{t('chat.window.title')}</h2>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-text-tertiary">
-            <span>浏览器 Transport · 无需 Principal</span>
+            <span>{t('chat.window.transportHint')}</span>
             <span className="text-black/20">·</span>
             <span>{phaseLabel(phase)}</span>
             {narrow && (
               <>
                 <span className="text-black/20">·</span>
-                <span>{layout === 'strip-only' ? '窄屏记录' : '窄屏列表'}</span>
+                <span>
+                  {layout === 'strip-only' ? t('chat.window.narrowStrip') : t('chat.window.narrowList')}
+                </span>
               </>
             )}
           </p>
@@ -265,7 +273,7 @@ export function ChatWindow({
           <ConnectionBadge state={connectionState} />
           {connectionState !== 'open' && (
             <Button type="button" variant="outline" size="sm" onClick={onReconnect}>
-              重连
+              {t('chat.window.reconnect')}
             </Button>
           )}
         </div>
@@ -273,7 +281,7 @@ export function ChatWindow({
 
       {sessionId && connectionState === 'open' && (
         <p className="shrink-0 border-b border-black/[0.04] px-5 py-2 font-mono text-[11px] text-text-tertiary">
-          会话 {sessionId.slice(0, 8)}…
+          {t('chat.window.session', { id: sessionId.slice(0, 8) })}
         </p>
       )}
 

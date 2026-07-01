@@ -4,7 +4,8 @@ import { X } from 'lucide-react'
 import { MarkdownDocument } from '@/components/markdown/markdown-document'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
 import { Button } from '@/components/ui/button'
-import { messageLabel, speakerId } from '@/lib/chat-display'
+import { useI18n } from '@/hooks/use-i18n'
+import { speakerId } from '@/lib/chat-display'
 import { formatChatTime, formatDateTimeYMDHMS } from '@/lib/format-date'
 import { heSubsectionTitleNeutral } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
@@ -16,12 +17,8 @@ interface TranscriptDrawerProps {
   onClose: () => void
 }
 
-function drawerAvatar(message: ChatMessage): { id: string; name: string } {
-  const label = messageLabel(message)
-  return { id: speakerId(message), name: label }
-}
-
 export function TranscriptDrawer({ message, sequence, onClose }: TranscriptDrawerProps) {
+  const { locale, t, messageLabel } = useI18n()
   const open = message != null
 
   useEffect(() => {
@@ -35,7 +32,6 @@ export function TranscriptDrawer({ message, sequence, onClose }: TranscriptDrawe
 
   if (!message) return null
 
-  const avatar = drawerAvatar(message)
   const label = messageLabel(message)
   const at = formatDateTimeYMDHMS(new Date(message.createdAt).toISOString())
 
@@ -44,7 +40,7 @@ export function TranscriptDrawer({ message, sequence, onClose }: TranscriptDrawe
       <button
         type="button"
         className="absolute inset-0 bg-black/25 backdrop-blur-[1px]"
-        aria-label="关闭详情"
+        aria-label={t('transcript.drawer.close')}
         onClick={onClose}
       />
 
@@ -58,7 +54,7 @@ export function TranscriptDrawer({ message, sequence, onClose }: TranscriptDrawe
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/[0.06] px-5 py-4">
           <div className="flex min-w-0 items-start gap-3">
-            <ProfileAvatar id={avatar.id} name={avatar.name} size="sm" />
+            <ProfileAvatar id={speakerId(message)} name={label} size="sm" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 {(sequence ?? message.turn) != null && (
@@ -71,13 +67,13 @@ export function TranscriptDrawer({ message, sequence, onClose }: TranscriptDrawe
                 </h2>
               </div>
               <p className="mt-1 text-[12px] text-text-tertiary tabular-nums">
-                {at || formatChatTime(message.createdAt)}
+                {at || formatChatTime(message.createdAt, locale)}
               </p>
             </div>
           </div>
           <Button type="button" variant="outline" size="sm" className="shrink-0 px-2" onClick={onClose}>
             <X className="size-4" aria-hidden />
-            <span className="sr-only">关闭</span>
+            <span className="sr-only">{t('transcript.drawer.closeButton')}</span>
           </Button>
         </div>
 

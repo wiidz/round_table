@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 
+import { useI18n } from '@/hooks/use-i18n'
 import { cn } from '@/lib/utils'
 
 interface RoundTableEmptyHintProps {
@@ -17,16 +18,18 @@ export function RoundTableEmptyHint({
   seatedExpertCount,
   className,
 }: RoundTableEmptyHintProps) {
+  const { t } = useI18n()
+
   if (seatedExpertCount > 0) return null
   if (rosterFromApi && rosterTotal > 0) return null
 
   let message: string
   if (loading) {
-    message = '正在加载专家名录…'
+    message = t('roundTable.empty.loading')
   } else if (!rosterFromApi) {
-    message = '暂无 roster 专家；会议中的发言者将临时入座。'
+    message = t('roundTable.empty.noRoster')
   } else {
-    message = '专家名录为空，请先在设置中添加专家。'
+    message = t('roundTable.empty.rosterEmpty')
   }
 
   return (
@@ -40,9 +43,9 @@ export function RoundTableEmptyHint({
       {!loading && rosterFromApi && (
         <p className="pointer-events-auto mt-2 text-[11px]">
           <Link to="/participants" className="text-brand hover:underline">
-            前往专家管理
+            {t('roundTable.empty.goParticipants')}
           </Link>
-          <span className="text-text-tertiary"> · 或发送「!rt 专家 列表」查看</span>
+          <span className="text-text-tertiary">{t('roundTable.empty.discordHint')}</span>
         </p>
       )}
     </div>

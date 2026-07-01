@@ -6,6 +6,7 @@ import {
   SearchableSelect,
   type SearchableSelectOption,
 } from '@/components/settings/searchable-select'
+import { useI18n } from '@/hooks/use-i18n'
 
 interface ParticipantMultiSelectProps {
   id?: string
@@ -20,6 +21,7 @@ export function ParticipantMultiSelect({
   disabled,
   onChange,
 }: ParticipantMultiSelectProps) {
+  const { t } = useI18n()
   const [options, setOptions] = useState<SearchableSelectOption[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -49,10 +51,10 @@ export function ParticipantMultiSelect({
   }, [])
 
   const placeholder = useMemo(() => {
-    if (loading) return '加载专家列表…'
-    if (value.length === 0) return '搜索并选择专家（留空则默认全部专家）'
-    return '继续搜索添加专家'
-  }, [loading, value.length])
+    if (loading) return t('brief.participants.loading')
+    if (value.length === 0) return t('brief.participants.placeholderEmpty')
+    return t('brief.participants.placeholderMore')
+  }, [loading, t, value.length])
 
   const selectedExperts = useMemo(
     () =>
@@ -85,7 +87,7 @@ export function ParticipantMultiSelect({
         value={value}
         options={options}
         placeholder={placeholder}
-        searchPlaceholder="搜索专家名称、代号或专长"
+        searchPlaceholder={t('brief.participants.searchPlaceholder')}
         onChange={onChange}
         hideSelectedChips
       />

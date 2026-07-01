@@ -144,7 +144,7 @@ export function LiveBubble({
             <span
               className={cn(
                 'pointer-events-none absolute text-[9px] font-normal tabular-nums',
-                config.timeInset,
+                'timeInset' in config ? config.timeInset : undefined,
                 bubbleTimeClass(message, resolvedVariant),
               )}
             >

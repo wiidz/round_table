@@ -1,6 +1,7 @@
 import { ChevronRight, FileText } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heColumnTitleAI,
   heColumnTitleBrand,
@@ -9,7 +10,6 @@ import {
   hePanelShellHover,
   heSpring,
 } from '@/lib/highend-styles'
-import { profileFileCaption } from '@/lib/profile-labels'
 import { cn } from '@/lib/utils'
 
 import type { ProfileRole } from './profile-page-header'
@@ -42,6 +42,7 @@ export function ProfileListCard({
   files,
   meta,
 }: ProfileListCardProps) {
+  const { t, profileFileCaption } = useI18n()
   const fileBadges = normalizeFileBadges(files)
 
   return (
@@ -62,7 +63,9 @@ export function ProfileListCard({
                   role === 'principal' ? heColumnTitleBrand : heColumnTitleAI
                 }
               >
-                {role === 'principal' ? '决策委托人' : '专家'}
+                {role === 'principal'
+                  ? t('profile.list.principalRole')
+                  : t('profile.list.participantRole')}
               </p>
               <h2 className="mt-2 truncate text-[17px] font-semibold tracking-[-0.02em] text-text-primary">
                 {title}
@@ -111,11 +114,13 @@ export function ProfileListCard({
 }
 
 export function ProfileListSkeleton() {
+  const { t } = useI18n()
+
   return (
     <div className={cn(hePanelShell, 'px-8 py-10')}>
       <div className="flex items-center gap-3 text-sm text-text-secondary">
         <FileText className="size-4 animate-pulse opacity-50" />
-        加载档案索引…
+        {t('profile.list.loadingIndex')}
       </div>
     </div>
   )

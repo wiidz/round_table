@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, Search, X } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/hooks/use-i18n'
 import { cn } from '@/lib/utils'
 
 export type SearchableSelectOption = {
@@ -70,6 +71,7 @@ function computeMenuStyle(trigger: DOMRect): MenuStyle {
 }
 
 export function SearchableSelect(props: SearchableSelectProps) {
+  const { t } = useI18n()
   const autoId = useId()
   const fieldId = props.id ?? autoId
   const listboxId = `${fieldId}-listbox`
@@ -194,6 +196,11 @@ export function SearchableSelect(props: SearchableSelectProps) {
       ? query
       : singleSelected?.label ?? ''
 
+  const searchPlaceholder = props.searchPlaceholder ?? t('settings.searchableSelect.search')
+  const defaultPlaceholder = props.multiple
+    ? t('settings.searchableSelect.placeholderExperts')
+    : t('settings.searchableSelect.placeholderDefault')
+
   return (
     <div ref={rootRef} className="relative space-y-2">
       {props.multiple && !props.hideSelectedChips && selectedOptions.length > 0 && (
@@ -205,7 +212,7 @@ export function SearchableSelect(props: SearchableSelectProps) {
                 <button
                   type="button"
                   className="rounded p-0.5 text-text-tertiary hover:bg-black/[0.06] hover:text-text-primary"
-                  aria-label={`移除 ${opt.label}`}
+                  aria-label={t('settings.searchableSelect.remove', { label: opt.label })}
                   onClick={() => removeValue(opt.value)}
                 >
                   <X className="size-3" />
@@ -230,13 +237,7 @@ export function SearchableSelect(props: SearchableSelectProps) {
           aria-autocomplete="list"
           disabled={props.disabled}
           value={inputDisplayValue}
-          placeholder={
-            open
-              ? props.searchPlaceholder ?? '搜索…'
-              : props.multiple
-                ? props.placeholder ?? '搜索并选择专家'
-                : props.placeholder ?? '选择…'
-          }
+          placeholder={open ? searchPlaceholder : props.placeholder ?? defaultPlaceholder}
           className="!rounded-xs pl-8 pr-8 text-sm"
           onFocus={() => {
             setOpen(true)
@@ -256,7 +257,11 @@ export function SearchableSelect(props: SearchableSelectProps) {
         <button
           type="button"
           tabIndex={-1}
-          aria-label={open ? '收起选项' : '展开选项'}
+          aria-label={
+            open
+              ? t('settings.searchableSelect.collapse')
+              : t('settings.searchableSelect.expand')
+          }
           disabled={props.disabled}
           className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-text-tertiary hover:bg-black/[0.04] hover:text-text-primary"
           onClick={() => {
@@ -288,7 +293,9 @@ export function SearchableSelect(props: SearchableSelectProps) {
             className="z-[100] overflow-y-auto overscroll-contain rounded-xs border border-black/[0.08] bg-surface py-1 shadow-lg"
           >
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-[13px] text-text-tertiary">无匹配项</li>
+              <li className="px-3 py-2 text-[13px] text-text-tertiary">
+                {t('settings.searchableSelect.noResults')}
+              </li>
             ) : (
               filtered.map((opt) => {
                 const selected = selectedSet.has(opt.value)

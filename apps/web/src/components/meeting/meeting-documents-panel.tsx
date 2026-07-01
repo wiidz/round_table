@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useState } from 'react'
-
 import { MeetingFileNav } from '@/components/meeting/meeting-file-nav'
 import { MarkdownReader } from '@/components/markdown/markdown-reader'
 import {
@@ -7,18 +5,13 @@ import {
   type MarkdownViewMode,
 } from '@/components/markdown/markdown-view-toggle'
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heFieldHint,
   heFieldSurface,
   heTextarea,
 } from '@/lib/highend-styles'
-import {
-  meetingFileCaption,
-  meetingFileCategory,
-  meetingFileDescription,
-  MEETING_FILE_CATEGORY_LABELS,
-  type MeetingModeKind,
-} from '@/lib/meeting-labels'
+import { meetingFileCategory, type MeetingModeKind } from '@/lib/meeting-labels'
 import { cn } from '@/lib/utils'
 
 import type { MarkdownHeading } from '@/lib/markdown-headings'
@@ -50,25 +43,26 @@ export function MeetingDocumentsPanel({
   onViewModeChange,
   className,
 }: MeetingDocumentsPanelProps) {
+  const { t, meetingFileCaption, meetingFileDescription } = useI18n()
   const content = activeFile && detail.files ? detail.files[activeFile] ?? '' : ''
+  const categoryLabel = (category: ReturnType<typeof meetingFileCategory>) => {
+    const key = `meeting.fileCategory.${category}` as const
+    return t(key)
+  }
 
   return (
     <section className={cn('space-y-4', className)}>
       <div className="space-y-1">
-        <h2 className="text-[15px] font-semibold text-text-primary">Workspace 文档</h2>
-        <p className={heFieldHint}>浏览本场 Workspace 产出的 Markdown 文件</p>
+        <h2 className="text-[15px] font-semibold text-text-primary">
+          {t('meetingUi.documents.title')}
+        </h2>
+        <p className={heFieldHint}>{t('meetingUi.documents.hint')}</p>
       </div>
 
       {fileNames.length === 0 ? (
         <ProfileStatePanel
-          title="暂无 Markdown 文件"
-          description={
-            <>
-              在{' '}
-              <code className="font-mono text-xs">data/workspaces/{detail.id}/</code>{' '}
-              下尚未生成可读文档。
-            </>
-          }
+          title={t('meetingUi.documents.emptyTitle')}
+          description={t('meetingUi.documents.emptyDescription', { id: detail.id })}
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
@@ -88,7 +82,7 @@ export function MeetingDocumentsPanel({
                 <p className="font-mono text-[12px] text-text-secondary">
                   {meetingFileCaption(activeFile, modeKind)}
                   <span className="ml-2 text-text-tertiary">
-                    · {MEETING_FILE_CATEGORY_LABELS[meetingFileCategory(activeFile)]}
+                    · {categoryLabel(meetingFileCategory(activeFile))}
                   </span>
                 </p>
                 <p className={heFieldHint}>{meetingFileDescription(activeFile, modeKind)}</p>

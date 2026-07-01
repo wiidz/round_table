@@ -11,6 +11,7 @@ import { BriefTemplatePreview } from '@/components/brief/brief-template-preview'
 import { PageLayout } from '@/components/layout/page-main-layout'
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heEyebrowBrand,
   hePanelShell,
@@ -27,6 +28,8 @@ import { cn } from '@/lib/utils'
 import type { BriefTemplateDetail, BriefTemplateDocument } from '@/types/brief-template'
 
 export function BriefTemplateDetailPage() {
+  const i18n = useI18n()
+  const { t } = i18n
   const navigate = useNavigate()
   const { id: rawId } = useParams()
   const id = rawId ? decodeURIComponent(rawId) : ''
@@ -64,11 +67,11 @@ export function BriefTemplateDetailPage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载模板')
+          setError(t('brief.page.detailLoadFailed'))
         }
       })
       .finally(() => {
@@ -77,7 +80,7 @@ export function BriefTemplateDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, load])
+  }, [id, load, t])
 
   const dirty = !documentsEqual(formDocument, savedDocument)
   const headerDocument = mode === 'edit' ? formDocument : savedDocument
@@ -97,13 +100,13 @@ export function BriefTemplateDetailPage() {
     try {
       const normalized = normalizeBriefDocument(formDocument)
       if (!normalized.meta.title) {
-        toast.error('请填写模板名称')
+        toast.error(t('brief.page.titleRequired'))
         return
       }
 
       if (isBuiltin) {
         const res = await createBriefTemplate({ document: normalized })
-        toast.success(`已另存为自定义模板（${res.id}）`)
+        toast.success(t('brief.page.savedAsCustom', { id: res.id }))
         navigate(`/brief-templates/${encodeURIComponent(res.id)}`)
         return
       }
@@ -113,9 +116,9 @@ export function BriefTemplateDetailPage() {
       setFormDocument(normalized)
       setMode('view')
       await load()
-      toast.success('已保存模板')
+      toast.success(t('brief.page.saved'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -134,16 +137,16 @@ export function BriefTemplateDetailPage() {
         )}
       >
         <ArrowLeft className="size-4" />
-        返回简报模板列表
+        {t('brief.page.detailBack')}
       </Link>
 
       {!loading && !error && detail && (
         <header className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={heEyebrowBrand}>Meeting Brief · 简报模板</span>
+              <span className={heEyebrowBrand}>{i18n.briefTemplatePageEyebrow()}</span>
               <span className="rounded-full bg-black/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
-                {detail.source === 'builtin' ? '内置' : '自定义'}
+                {detail.source === 'builtin' ? t('common.builtin') : t('common.custom')}
               </span>
               {!isBuiltin && (
                 <span className="font-mono text-[11px] text-text-tertiary/80">{id}</span>
@@ -158,7 +161,7 @@ export function BriefTemplateDetailPage() {
                 className={cn(hePressable, 'shrink-0 gap-2 !rounded-xs px-4')}
               >
                 <Pencil className="size-4" />
-                编辑
+                {t('common.edit')}
               </Button>
             )}
           </div>
@@ -173,11 +176,18 @@ export function BriefTemplateDetailPage() {
     <PageLayout header={pageHeader}>
     <div className="space-y-8">
       {loading && (
-        <ProfileStatePanel title="加载中" description="正在读取模板…" />
+        <ProfileStatePanel
+          title={t('common.loading')}
+          description={t('brief.page.loadingDescription')}
+        />
       )}
 
       {!loading && error && (
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       )}
 
       {!loading && !error && detail && (
@@ -190,8 +200,8 @@ export function BriefTemplateDetailPage() {
             ) : (
               <div className="flex flex-col gap-8 p-6 sm:p-8">
                 <p className="text-[12px] leading-relaxed text-text-tertiary">
-                  编辑模板信息与会议预填字段；保存时由服务端生成 BRIEF.yaml。
-                  {isBuiltin && ' 内置模板另存时将按模板名称自动生成 ID。'}
+                  {t('brief.page.editHint')}
+                  {isBuiltin && t('brief.page.editHintBuiltin')}
                 </p>
 
                 <BriefTemplateFormFields
@@ -207,7 +217,11 @@ export function BriefTemplateDetailPage() {
                     className={cn(hePressable, 'gap-2 rounded-full px-5')}
                   >
                     <Save className="size-4" />
-                    {saving ? '保存中…' : isBuiltin ? '另存为自定义模板' : '保存模板'}
+                    {saving
+                      ? t('common.saving')
+                      : isBuiltin
+                        ? t('brief.page.saveAsCustom')
+                        : t('brief.page.save')}
                   </Button>
                   <Button
                     type="button"
@@ -217,10 +231,12 @@ export function BriefTemplateDetailPage() {
                     className={cn(hePressable, 'gap-2 !rounded-xs px-4')}
                   >
                     <X className="size-4" />
-                    取消
+                    {t('common.cancel')}
                   </Button>
                   {dirty && !isBuiltin && (
-                    <span className="text-xs font-medium text-warning">有未保存的修改</span>
+                    <span className="text-xs font-medium text-warning">
+                      {t('brief.page.unsavedChanges')}
+                    </span>
                   )}
                 </div>
               </div>

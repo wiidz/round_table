@@ -1,3 +1,4 @@
+import { useI18n } from '@/hooks/use-i18n'
 import type { DiscordTransportPhase } from '@/types/settings'
 import { cn } from '@/lib/utils'
 
@@ -12,6 +13,8 @@ export function DiscordTransportStatusBadge({
   readyAt?: string
   className?: string
 }) {
+  const { t } = useI18n()
+
   if (phase === 'ready') {
     return (
       <span
@@ -24,7 +27,7 @@ export function DiscordTransportStatusBadge({
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-success/50 opacity-75" />
           <span className="relative inline-flex size-2 rounded-full bg-success" />
         </span>
-        运行中
+        {t('settings.discord.statusRunning')}
         {pid != null && pid > 0 && (
           <span className="font-mono text-[11px] font-normal tabular-nums text-success/85">
             PID {pid}
@@ -32,7 +35,7 @@ export function DiscordTransportStatusBadge({
         )}
         {readyAt && (
           <span className="font-mono text-[11px] font-normal tabular-nums text-success/75">
-            {formatReadyAt(readyAt)}
+            {formatReadyAt(readyAt, t('settings.discord.statusReadyAt', { time: formatTimeHMS(readyAt) }))}
           </span>
         )}
       </span>
@@ -51,7 +54,7 @@ export function DiscordTransportStatusBadge({
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-warning/50 opacity-75" />
           <span className="relative inline-flex size-2 rounded-full bg-warning" />
         </span>
-        启动中
+        {t('settings.discord.statusStarting')}
         {pid != null && pid > 0 && (
           <span className="font-mono text-[11px] font-normal tabular-nums text-warning/85">
             PID {pid}
@@ -69,16 +72,22 @@ export function DiscordTransportStatusBadge({
       )}
     >
       <span aria-hidden className="size-1.5 rounded-full bg-text-tertiary/40" />
-      未启动
+      {t('settings.discord.statusStopped')}
     </span>
   )
 }
 
-function formatReadyAt(raw: string): string {
+function formatTimeHMS(raw: string): string {
   const d = new Date(raw)
   if (Number.isNaN(d.getTime())) return raw
   const h = String(d.getHours()).padStart(2, '0')
   const m = String(d.getMinutes()).padStart(2, '0')
   const s = String(d.getSeconds()).padStart(2, '0')
-  return `${h}:${m}:${s} 就绪`
+  return `${h}:${m}:${s}`
+}
+
+function formatReadyAt(raw: string, formatted: string): string {
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw
+  return formatted
 }

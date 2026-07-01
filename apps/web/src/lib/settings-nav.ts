@@ -7,9 +7,23 @@ export type SettingsNavState = {
   discordBotId?: string
 }
 
+/** Legacy tab names (Chinese / old keys) → stable tab keys */
+const LEGACY_TAB_MAP: Record<string, string> = {
+  服务: 'service',
+  存储: 'storage',
+  LLM: 'llm',
+  会议: 'meeting',
+  IM: 'im',
+  传输: 'im',
+}
+
+export function normalizeSettingsTab(tab: string): string {
+  return LEGACY_TAB_MAP[tab] ?? tab
+}
+
 /** 设置 → IM → Discord Bot */
 export const SETTINGS_IM_DISCORD: SettingsNavState = {
-  tab: 'IM',
+  tab: 'im',
   subsection: 'discord',
 }
 
@@ -22,7 +36,7 @@ export function settingsNavForDiscordBot(botId: string): SettingsNavState {
 
 /** 设置 → 服务 */
 export const SETTINGS_SERVICE: SettingsNavState = {
-  tab: '服务',
+  tab: 'service',
   subsection: '',
 }
 
@@ -36,7 +50,7 @@ export function readSettingsNav(): SettingsNavState | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as SettingsNavState
     if (typeof parsed.tab !== 'string') return null
-    const tab = parsed.tab === '传输' ? 'IM' : parsed.tab
+    const tab = normalizeSettingsTab(parsed.tab)
     return {
       tab,
       subsection: typeof parsed.subsection === 'string' ? parsed.subsection : '',

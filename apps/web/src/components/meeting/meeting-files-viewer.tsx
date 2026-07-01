@@ -16,6 +16,7 @@ import {
 import { MeetingDocumentsPanel } from '@/components/meeting/meeting-documents-panel'
 import { ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { ApiError } from '@/api/client'
+import { useI18n } from '@/hooks/use-i18n'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { hePanelShell, heSpring } from '@/lib/highend-styles'
 import { headingsEqual, type MarkdownHeading } from '@/lib/markdown-headings'
@@ -57,6 +58,7 @@ export function MeetingFilesViewer({
   backLabel,
   load,
 }: MeetingFilesViewerProps) {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [detail, setDetail] = useState<MeetingDetail | null>(null)
@@ -130,11 +132,11 @@ export function MeetingFilesViewer({
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载会议详情')
+          setError(t('meetingUi.files.loadFailed'))
         }
       })
       .finally(() => {
@@ -143,7 +145,7 @@ export function MeetingFilesViewer({
     return () => {
       cancelled = true
     }
-  }, [load])
+  }, [load, t])
 
   const canReplay = useMemo(
     () => (detail?.files ? hasWorkspaceTranscript(detail.files) : false),
@@ -180,16 +182,21 @@ export function MeetingFilesViewer({
       await downloadMeetingArchive(detail.id)
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        setActionError(`下载失败 (${err.status})：${err.message}`)
+        setActionError(
+          t('meetingUi.files.downloadFailedWithStatus', {
+            status: err.status,
+            message: err.message,
+          }),
+        )
       } else if (err instanceof Error) {
         setActionError(err.message)
       } else {
-        setActionError('下载失败')
+        setActionError(t('meetingUi.files.downloadFailed'))
       }
     } finally {
       setDownloading(false)
     }
-  }, [detail])
+  }, [detail, t])
 
   const handleConfirmDelete = useCallback(async () => {
     if (!detail) return
@@ -201,16 +208,18 @@ export function MeetingFilesViewer({
       navigate(backTo)
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        setActionError(`删除失败 (${err.status})：${err.message}`)
+        setActionError(
+          t('meetingUi.files.deleteFailedWithStatus', { status: err.status, message: err.message }),
+        )
       } else if (err instanceof Error) {
         setActionError(err.message)
       } else {
-        setActionError('删除失败')
+        setActionError(t('meetingUi.files.deleteFailed'))
       }
     } finally {
       setDeleting(false)
     }
-  }, [backTo, detail, navigate])
+  }, [backTo, detail, navigate, t])
 
   const deleteTopic = brief?.topic?.trim() || detail?.topic?.trim() || detail?.id || ''
 
@@ -242,7 +251,7 @@ export function MeetingFilesViewer({
         }
       >
         <div className={cn(hePanelShell, 'px-8 py-10 text-sm text-text-secondary')}>
-          加载会议 workspace…
+          {t('meetingUi.files.loading')}
         </div>
       </PageLayout>
     )
@@ -264,7 +273,11 @@ export function MeetingFilesViewer({
           </Link>
         }
       >
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       </PageLayout>
     )
   }
@@ -316,7 +329,7 @@ export function MeetingFilesViewer({
       {actionError && (
         <ProfileStatePanel
           variant="danger"
-          title="操作失败"
+          title={t('common.error.actionFailed')}
           description={actionError}
           className="mb-5"
         />

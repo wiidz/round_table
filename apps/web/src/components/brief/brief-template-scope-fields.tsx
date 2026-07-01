@@ -3,20 +3,20 @@ import { Ban, CheckCircle2, Scan } from 'lucide-react'
 
 import {
   applyScopePreset,
-  BRIEF_SCOPE_PRESETS,
+  getBriefScopePresets,
   scopePresetApplied,
   type BriefScopePreset,
 } from '@/components/brief/brief-scope-presets'
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import {
-  BRIEF_TEMPLATE_SECTIONS,
-  BRIEF_SCOPE_EMPTY_COPY,
   briefFieldLabelClass,
   briefScopeBlockShell,
   briefScopeBlockTone,
   briefScopeIconShell,
 } from '@/components/brief/brief-template-sections'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/use-i18n'
+import { getBriefScopeEmptyCopy, getBriefSections } from '@/lib/i18n/brief-sections'
 import { hePressable, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
@@ -132,48 +132,52 @@ export function BriefTemplateScopeFields({
   readonly,
   onChange,
 }: BriefTemplateScopeFieldsProps) {
+  const { t, locale } = useI18n()
+  const sections = getBriefSections(locale)
+  const presets = getBriefScopePresets(locale)
+
   return (
     <div className="space-y-4">
       <BriefSectionHeading
-        title={BRIEF_TEMPLATE_SECTIONS.scope.title}
-        description={BRIEF_TEMPLATE_SECTIONS.scope.description}
+        title={sections.scope.title}
+        description={sections.scope.description}
         as="h3"
       />
       <div className="space-y-4">
         <ScopeField
           id="brief-in-scope"
-          label="讨论范围"
+          label={t('brief.scope.inScope')}
           icon={<Scan className="size-3.5 text-brand" aria-hidden />}
           blockClassName={briefScopeBlockTone.inScope}
           chipClassName={scopePresetChipTone.inScope}
-          presets={BRIEF_SCOPE_PRESETS.inScope}
+          presets={presets.inScope}
           value={inScope}
           readonly={readonly}
-          placeholder="本次会议要讨论什么"
+          placeholder={t('brief.scope.inScopePlaceholder')}
           onChange={(v) => onChange({ in_scope: v })}
         />
         <ScopeField
           id="brief-out-scope"
-          label="不在范围"
+          label={t('brief.scope.outOfScope')}
           icon={<Ban className="size-3.5 text-destructive" aria-hidden />}
           blockClassName={briefScopeBlockTone.outOfScope}
           chipClassName={scopePresetChipTone.outOfScope}
-          presets={BRIEF_SCOPE_PRESETS.outOfScope}
+          presets={presets.outOfScope}
           value={outOfScope}
           readonly={readonly}
-          placeholder="明确排除、不在本次会议讨论的内容"
+          placeholder={t('brief.scope.outOfScopePlaceholder')}
           onChange={(v) => onChange({ out_of_scope: v })}
         />
         <ScopeField
           id="brief-done"
-          label="完成标准"
+          label={t('brief.scope.doneCriteria')}
           icon={<CheckCircle2 className="size-3.5 text-success" aria-hidden />}
           blockClassName={briefScopeBlockTone.done}
           chipClassName={scopePresetChipTone.done}
-          presets={BRIEF_SCOPE_PRESETS.doneCriteria}
+          presets={presets.doneCriteria}
           value={doneCriteria}
           readonly={readonly}
-          placeholder="怎样算这场会开完了"
+          placeholder={t('brief.scope.donePlaceholder')}
           onChange={(v) => onChange({ done_criteria: v })}
         />
       </div>
@@ -224,32 +228,36 @@ export function BriefTemplateScopePreview({
   outOfScope,
   doneCriteria,
 }: BriefTemplateScopePreviewProps) {
+  const { t, locale } = useI18n()
+  const sections = getBriefSections(locale)
+  const emptyCopy = getBriefScopeEmptyCopy(locale)
+
   return (
     <section className="space-y-4">
       <BriefSectionHeading
-        title={BRIEF_TEMPLATE_SECTIONS.scope.title}
-        description={BRIEF_TEMPLATE_SECTIONS.scope.description}
+        title={sections.scope.title}
+        description={sections.scope.description}
       />
       <div className="space-y-4">
         <ScopePreviewBlock
-          label="讨论范围"
+          label={t('brief.scope.inScope')}
           icon={<Scan className="size-3.5 text-brand" aria-hidden />}
           blockClassName={briefScopeBlockTone.inScope}
-          empty={BRIEF_SCOPE_EMPTY_COPY.inScope}
+          empty={emptyCopy.inScope}
           children={inScope}
         />
         <ScopePreviewBlock
-          label="不在范围"
+          label={t('brief.scope.outOfScope')}
           icon={<Ban className="size-3.5 text-destructive" aria-hidden />}
           blockClassName={briefScopeBlockTone.outOfScope}
-          empty={BRIEF_SCOPE_EMPTY_COPY.outOfScope}
+          empty={emptyCopy.outOfScope}
           children={outOfScope}
         />
         <ScopePreviewBlock
-          label="完成标准"
+          label={t('brief.scope.doneCriteria')}
           icon={<CheckCircle2 className="size-3.5 text-success" aria-hidden />}
           blockClassName={briefScopeBlockTone.done}
-          empty={BRIEF_SCOPE_EMPTY_COPY.doneCriteria}
+          empty={emptyCopy.doneCriteria}
           children={doneCriteria}
         />
       </div>

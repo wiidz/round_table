@@ -11,12 +11,14 @@ import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
-import { domainPageEyebrow, domainPageTitle } from '@/lib/ui-labels'
+import { useI18n } from '@/hooks/use-i18n'
 import { PRINCIPAL_STANDARD_FILES } from '@/lib/profile-labels'
 
 import type { PrincipalIndex } from '@/types/principal'
 
 export function PrincipalsPage() {
+  const i18n = useI18n()
+  const { t } = i18n
   const [principals, setPrincipals] = useState<PrincipalIndex[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,11 +35,11 @@ export function PrincipalsPage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载委托人列表')
+          setError(t('pages.principals.loadFailed'))
         }
       })
       .finally(() => {
@@ -46,23 +48,16 @@ export function PrincipalsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   return (
     <PageLayout
       header={
         <ProfilePageHeader
           role="principal"
-          eyebrow={domainPageEyebrow('principal')}
-          title={domainPageTitle('principal')}
-          description={
-            <>
-              管理委托人（Principal）身份与{' '}
-              <strong className="font-medium text-text-primary">USER.md</strong>{' '}
-              偏好档案（ADR-0010）。每人仅一份 USER.md，描述语言、验收习惯与背景；单次会议意图请用{' '}
-              <strong className="font-medium text-text-primary">简报模板</strong>。
-            </>
-          }
+          eyebrow={i18n.domainPageEyebrow('principal')}
+          title={i18n.domainPageTitle('principal')}
+          description={t('pages.principals.description')}
         />
       }
     >
@@ -70,19 +65,17 @@ export function PrincipalsPage() {
       {loading && <ProfileListSkeleton />}
 
       {!loading && error && (
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       )}
 
       {!loading && !error && principals.length === 0 && (
         <ProfileStatePanel
-          title="暂无委托人档案"
-          description={
-            <>
-              Discord 绑定后会自动创建{' '}
-              <code className="font-mono text-xs">discord:{'{user_id}'}</code>{' '}
-              目录；进入详情页可编辑 USER.md。
-            </>
-          }
+          title={t('pages.principals.emptyTitle')}
+          description={t('pages.principals.emptyDescription')}
         />
       )}
 
@@ -99,7 +92,11 @@ export function PrincipalsPage() {
                   name,
                   present: p.files.includes(name),
                 }))}
-                meta={p.files.includes('USER.md') ? 'USER.md 已配置' : '待编辑 USER.md'}
+                meta={
+                  p.files.includes('USER.md')
+                    ? t('profile.list.userConfigured')
+                    : t('profile.list.userPending')
+                }
               />
             </li>
           ))}

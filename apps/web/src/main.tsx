@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { Toaster } from 'sonner'
 
+import { LocaleProvider } from '@/contexts/locale-context'
 import { router } from '@/router'
 
 import './index.css'
@@ -23,7 +24,9 @@ document.addEventListener(
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
-    <Toaster richColors position="top-center" />
+    <LocaleProvider>
+      <RouterProvider router={router} />
+      <Toaster richColors position="top-center" />
+    </LocaleProvider>
   </StrictMode>,
 )

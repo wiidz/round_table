@@ -1,5 +1,6 @@
 import { TranscriptScrubBar } from '@/components/round-table/transcript-scrub-bar'
 import { TranscriptStrip } from '@/components/round-table/transcript-strip'
+import { useI18n } from '@/hooks/use-i18n'
 import type { ChatMessage } from '@/types/chat'
 
 interface StripOnlyViewProps {
@@ -22,10 +23,12 @@ export function StripOnlyView({
   selectedMessageId,
   onSelectMessage,
 }: StripOnlyViewProps) {
+  const { t } = useI18n()
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <p className="shrink-0 border-b border-black/[0.04] bg-black/[0.02] px-5 py-2 text-[11px] text-text-tertiary">
-        窄屏模式：发言记录列表。宽屏可切换圆桌视图。
+        {t('roundTable.stripOnly.hint')}
       </p>
       <TranscriptScrubBar
         maxTurn={maxTurn}

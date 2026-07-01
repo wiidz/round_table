@@ -1,13 +1,13 @@
 import type { LucideIcon } from 'lucide-react'
 import { Bot, FileText, Layers, Users } from 'lucide-react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import {
   buildMeetingOverviewStats,
-  formatMeetingRoundsHint,
   formatMeetingRoundsValue,
   formatTokenCount,
 } from '@/lib/meeting-overview-stats'
-import { type MeetingModeKind } from '@/lib/meeting-labels'
+import { primaryDeliverablePath, type MeetingModeKind } from '@/lib/meeting-labels'
 import { cn } from '@/lib/utils'
 
 import type { MeetingDetail } from '@/types/meeting'
@@ -66,58 +66,64 @@ export function MeetingOverviewStatCards({
   modeKind,
   className,
 }: MeetingOverviewStatCardsProps) {
+  const { t, intlTag, formatNumber, formatMeetingRoundsHint, meetingFileLabel } = useI18n()
   const stats = buildMeetingOverviewStats(detail, modeKind)
   const { deliverable, usage, experts, rounds } = stats
+  const deliverableTitle = meetingFileLabel(
+    primaryDeliverablePath(modeKind),
+    modeKind,
+  )
 
   const deliverableValue = deliverable.available
-    ? `${deliverable.charCount.toLocaleString('zh-CN')} 字`
+    ? t('meetingUi.stats.deliverableChars', { n: formatNumber(deliverable.charCount) })
     : '—'
   const deliverableHint = deliverable.available
-    ? `约 ${deliverable.readingMinutes} 分钟 · ${deliverable.title}`
-    : '主交付物尚未产出'
+    ? t('meetingUi.stats.deliverableHint', {
+        minutes: deliverable.readingMinutes,
+        title: deliverableTitle,
+      })
+    : t('meetingUi.stats.deliverableEmpty')
 
-  const usageValue =
-    usage.totalTokens > 0 ? formatTokenCount(usage.totalTokens) : '—'
+  const usageValue = usage.totalTokens > 0 ? formatTokenCount(usage.totalTokens, intlTag) : '—'
   const usageHint =
     usage.llmCallCount > 0
-      ? `${usage.llmCallCount.toLocaleString('zh-CN')} 次 LLM 调用`
-      : '暂无 Token 用量'
+      ? t('meetingUi.stats.llmCalls', { n: formatNumber(usage.llmCallCount) })
+      : t('meetingUi.stats.tokensEmpty')
 
-  const expertsValue = experts.count > 0 ? `${experts.count} 人` : '—'
-  const expertsHint = experts.count > 0 ? '参会专家' : '尚未记录阵容'
+  const expertsValue =
+    experts.count > 0 ? t('meetingUi.stats.expertsCount', { n: experts.count }) : '—'
+  const expertsHint =
+    experts.count > 0 ? t('meetingUi.stats.expertsHint') : t('meetingUi.stats.expertsEmpty')
 
   const roundsValue = formatMeetingRoundsValue(
     rounds.maxRounds,
     rounds.freeDialogueQuestions,
   )
-  const roundsHint = formatMeetingRoundsHint(
-    rounds.maxRounds,
-    rounds.freeDialogueQuestions,
-  )
+  const roundsHint = formatMeetingRoundsHint(rounds.maxRounds, rounds.freeDialogueQuestions)
 
   return (
     <div className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4', className)}>
       <StatCard
-        label="交付物"
+        label={t('meetingUi.stats.deliverable')}
         value={deliverableValue}
         hint={deliverableHint}
         icon={FileText}
         accent="brand"
       />
       <StatCard
-        label="专家"
+        label={t('meetingUi.stats.experts')}
         value={expertsValue}
         hint={expertsHint}
         icon={Users}
       />
       <StatCard
-        label="辩论轮次"
+        label={t('meetingUi.stats.rounds')}
         value={roundsValue}
         hint={roundsHint}
         icon={Layers}
       />
       <StatCard
-        label="Token 用量"
+        label={t('meetingUi.stats.tokens')}
         value={usageValue}
         hint={usageHint}
         icon={Bot}

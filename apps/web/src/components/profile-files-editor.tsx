@@ -17,6 +17,7 @@ import {
 } from '@/components/markdown/markdown-view-toggle'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heColumnTitleAI,
   heColumnTitleBrand,
@@ -33,7 +34,7 @@ import {
   heEyebrowBrand,
 } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
-import { PROFILE_FILE_LABELS, profileFileCaption, profileFileHasTitle } from '@/lib/profile-labels'
+import { profileFileHasTitle } from '@/lib/i18n/profile-labels'
 
 interface ProfileLoadData {
   id: string
@@ -83,6 +84,7 @@ export function ProfileFilesEditor({
   resolveSubtitle,
   resolveAvatar,
 }: ProfileFilesEditorProps) {
+  const { t, profileFileCaption } = useI18n()
   const [entityId, setEntityId] = useState('')
   const [heading, setHeading] = useState(title ?? '')
   const [subheading, setSubheading] = useState<string>()
@@ -133,11 +135,11 @@ export function ProfileFilesEditor({
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载档案')
+          setError(t('profile.state.loadProfileFailed'))
         }
       })
       .finally(() => {
@@ -151,7 +153,7 @@ export function ProfileFilesEditor({
   function selectFile(name: string) {
     const isDirty =
       activeFile !== '' && draft !== (files[activeFile] ?? '')
-    if (isDirty && !window.confirm('当前文件有未保存修改，确定切换？')) {
+    if (isDirty && !window.confirm(t('profile.filesEditor.switchConfirm'))) {
       return
     }
     setActiveFile(name)
@@ -164,9 +166,9 @@ export function ProfileFilesEditor({
     try {
       await save(activeFile, draft)
       setFiles((prev) => ({ ...prev, [activeFile]: draft }))
-      toast.success(`已保存 ${activeFile}`)
+      toast.success(t('profile.filesEditor.saveSuccess', { filename: activeFile }))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -239,26 +241,32 @@ export function ProfileFilesEditor({
     <PageLayout header={<div className="space-y-8">{pageHeader}</div>}>
     <div className="space-y-8">
       {loading && (
-        <ProfileStatePanel title="加载中" description="正在读取 Markdown 档案…" />
+        <ProfileStatePanel
+          title={t('common.loading')}
+          description={t('profile.filesEditor.loadingMarkdown')}
+        />
       )}
 
       {!loading && error && (
         <ProfileStatePanel
           variant="danger"
-          title="加载失败"
+          title={t('common.error.loadFailed')}
           description={error}
         />
       )}
 
       {!loading && !error && fileNames.length === 0 && (
-        <ProfileStatePanel title="无 Markdown 档案" description={emptyHint} />
+        <ProfileStatePanel
+          title={t('profile.filesEditor.emptyTitle')}
+          description={emptyHint}
+        />
       )}
 
       {!loading && !error && fileNames.length > 0 && (
         <div className={cn(hePanelShell, 'p-6 sm:p-8')}>
           <div className="grid gap-8 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
             <aside className="space-y-4">
-              <p className={columnTitleClass}>档案文件</p>
+              <p className={columnTitleClass}>{t('profile.filesEditor.sectionTitle')}</p>
               <nav className="flex flex-row flex-wrap gap-2 lg:flex-col lg:items-start">
                 {fileNames.map((name) => {
                   const exists = Object.hasOwn(files, name)
@@ -275,7 +283,7 @@ export function ProfileFilesEditor({
                   >
                     {profileFileHasTitle(name) ? (
                       <span className="flex min-w-0 flex-col gap-0.5 text-left">
-                        <span className="text-[13px]">{PROFILE_FILE_LABELS[name]}</span>
+                        <span className="text-[13px]">{t(`profile.files.${name}`)}</span>
                         <span className="font-mono text-[10px] text-text-tertiary/90">
                           {name}
                         </span>
@@ -284,7 +292,9 @@ export function ProfileFilesEditor({
                       name
                     )}
                     {!exists && (
-                      <span className="ml-1 text-[10px] text-text-tertiary">未创建</span>
+                      <span className="ml-1 text-[10px] text-text-tertiary">
+                        {t('profile.filesEditor.notCreated')}
+                      </span>
                     )}
                   </button>
                   )
@@ -298,8 +308,8 @@ export function ProfileFilesEditor({
                   {profileFileCaption(activeFile)}
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {fileHints[activeFile] ?? 'Markdown 档案'}
-                  {!Object.hasOwn(files, activeFile) && ' · 保存后将创建此文件'}
+                  {fileHints[activeFile] ?? t('profile.filesEditor.defaultHint')}
+                  {!Object.hasOwn(files, activeFile) && t('profile.filesEditor.createOnSave')}
                 </p>
               </div>
 
@@ -308,8 +318,8 @@ export function ProfileFilesEditor({
                 {dirty && (
                   <span className="text-xs font-medium text-warning">
                     {viewMode === 'preview'
-                      ? '预览含未保存修改 · 切回源码可保存'
-                      : '有未保存的修改'}
+                      ? t('profile.filesEditor.unsavedPreview')
+                      : t('profile.filesEditor.unsaved')}
                   </span>
                 )}
               </div>
@@ -337,11 +347,11 @@ export function ProfileFilesEditor({
                     className={cn(hePressable, 'gap-2 rounded-full px-5')}
                   >
                     <Save className="size-4" />
-                    {saving ? '保存中…' : '保存档案'}
+                    {saving ? t('common.saving') : t('profile.filesEditor.save')}
                   </Button>
                   {dirty && (
                     <span className="text-xs font-medium text-warning">
-                      有未保存的修改
+                      {t('profile.filesEditor.unsaved')}
                     </span>
                   )}
                 </div>

@@ -4,17 +4,16 @@ import { ChevronRight, Download, ExternalLink, FileText, Trash2, Users } from 'l
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import { BriefTemplateScopePreview } from '@/components/brief/brief-template-scope-fields'
 import {
-  BRIEF_TEMPLATE_SECTIONS,
   briefAgendaItemShell,
   briefFieldLabelClass,
 } from '@/components/brief/brief-template-sections'
-import {
-  MeetingModeInline,
-} from '@/components/meeting/meeting-mode-badge'
+import { MeetingModeInline } from '@/components/meeting/meeting-mode-badge'
 import { MeetingOverviewStatCards } from '@/components/meeting/meeting-overview-stat-cards'
 import { MeetingStatusBadge } from '@/components/meeting/meeting-status-badge'
+import { useI18n } from '@/hooks/use-i18n'
+import { getBriefSections } from '@/lib/i18n/brief-sections'
 import { hePageTitle, hePanelShell, hePressable, heSpring } from '@/lib/highend-styles'
-import { meetingFileLabel, primaryDeliverablePath, type MeetingModeKind } from '@/lib/meeting-labels'
+import { primaryDeliverablePath, type MeetingModeKind } from '@/lib/meeting-labels'
 import type { MeetingBriefPreview } from '@/lib/meeting-brief-preview'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +32,14 @@ interface MeetingDetailOverviewProps {
   deleting?: boolean
 }
 
+function isMeetingRunning(status: string): boolean {
+  return status === 'Running' || status === '进行中'
+}
+
+function isMeetingAborted(status: string): boolean {
+  return status === 'Aborted' || status === 'aborted' || status === '已中断'
+}
+
 export function MeetingDetailOverview({
   detail,
   brief,
@@ -45,6 +52,8 @@ export function MeetingDetailOverview({
   downloading = false,
   deleting = false,
 }: MeetingDetailOverviewProps) {
+  const { t, locale, meetingFileLabel } = useI18n()
+  const sections = getBriefSections(locale)
   const primaryPath = primaryDeliverablePath(modeKind)
   const primaryTitle = meetingFileLabel(primaryPath, modeKind)
   const topic = brief.topic.trim()
@@ -53,19 +62,18 @@ export function MeetingDetailOverview({
 
   const sessionMeta = detail.started_at?.trim()
 
-  const conclusionEmpty =
-    detail.status === '进行中' || detail.status === 'Running'
-      ? '会议进行中，结论尚未产出'
-      : detail.status === '已中断' || detail.status === 'aborted' || detail.status === 'Aborted'
-        ? '会议已中断，未产出结论'
-        : '暂无总结结论'
+  const conclusionEmpty = isMeetingRunning(detail.status)
+    ? t('meetingUi.overview.conclusionRunning')
+    : isMeetingAborted(detail.status)
+      ? t('meetingUi.overview.conclusionAborted')
+      : t('meetingUi.overview.conclusionEmpty')
 
   return (
     <section className={cn(hePanelShell, 'overflow-visible p-5 sm:p-6')}>
       <div className="space-y-8">
         <div className="space-y-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
-            会议复盘
+            {t('meeting.reviewEyebrow')}
           </p>
           <h1
             className={cn(
@@ -74,7 +82,7 @@ export function MeetingDetailOverview({
               !topic && 'font-normal text-text-tertiary',
             )}
           >
-            {topic || '（无主题）'}
+            {topic || t('meeting.topicEmpty')}
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <MeetingModeInline mode={detail.mode} modeKind={detail.mode_kind} />
@@ -91,7 +99,7 @@ export function MeetingDetailOverview({
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="size-1.5 shrink-0 rounded-full bg-info" aria-hidden />
-              <p className={briefFieldLabelClass}>会议目标</p>
+              <p className={briefFieldLabelClass}>{t('meetingUi.overview.goal')}</p>
             </div>
             <p
               className={cn(
@@ -99,13 +107,13 @@ export function MeetingDetailOverview({
                 goal ? 'font-medium text-text-primary' : 'text-text-tertiary',
               )}
             >
-              {goal || '未填写会议目标'}
+              {goal || t('meetingUi.overview.goalEmpty')}
             </p>
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="size-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
-              <p className={briefFieldLabelClass}>总结结论</p>
+              <p className={briefFieldLabelClass}>{t('meetingUi.overview.conclusion')}</p>
             </div>
             <p
               className={cn(
@@ -125,7 +133,7 @@ export function MeetingDetailOverview({
                 )}
                 onClick={onOpenConclusion}
               >
-                查看完整{primaryTitle}
+                {t('meetingUi.overview.viewFullDeliverable', { title: primaryTitle })}
                 <ChevronRight className="size-3.5" aria-hidden />
               </button>
             )}
@@ -135,8 +143,8 @@ export function MeetingDetailOverview({
         {brief.agenda.length > 0 && (
           <section className="space-y-4">
             <BriefSectionHeading
-              title={BRIEF_TEMPLATE_SECTIONS.agenda.title}
-              description={BRIEF_TEMPLATE_SECTIONS.agenda.description}
+              title={sections.agenda.title}
+              description={sections.agenda.description}
             />
             <ol className="space-y-2.5">
               {brief.agenda.map((item, index) => (
@@ -170,7 +178,7 @@ export function MeetingDetailOverview({
             onClick={onOpenDocuments}
           >
             <FileText className="size-4" aria-hidden />
-            浏览文档
+            {t('meetingUi.overview.browseDocuments')}
           </button>
           {canReplay && (
             <Link
@@ -185,7 +193,7 @@ export function MeetingDetailOverview({
               )}
             >
               <Users className="size-4 text-brand" aria-hidden />
-              圆桌回放
+              {t('meetingUi.overview.replay')}
               <ExternalLink className="size-3.5 text-text-tertiary" aria-hidden />
             </Link>
           )}
@@ -202,7 +210,9 @@ export function MeetingDetailOverview({
               onClick={onDownload}
             >
               <Download className="size-4 text-brand" aria-hidden />
-              {downloading ? '打包中…' : '下载会议'}
+              {downloading
+                ? t('meetingUi.overview.downloading')
+                : t('meetingUi.overview.download')}
             </button>
           )}
           {onDelete && (
@@ -213,12 +223,12 @@ export function MeetingDetailOverview({
                 'inline-flex items-center gap-2 rounded-xl bg-surface px-4 py-2.5 text-[13px] font-medium text-danger ring-1 ring-inset ring-danger/20',
                 hePressable,
                 heSpring,
-                'hover:bg-danger/5 disabled:cursor-not-allowed disabled:opacity-60',
+                'hover:bg-black/[0.05] disabled:cursor-not-allowed disabled:opacity-60',
               )}
               onClick={onDelete}
             >
               <Trash2 className="size-4" aria-hidden />
-              {deleting ? '删除中…' : '删除会议'}
+              {deleting ? t('meetingUi.overview.deleting') : t('meetingUi.overview.delete')}
             </button>
           )}
           <span

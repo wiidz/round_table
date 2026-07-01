@@ -9,13 +9,12 @@ import {
   UserCheck,
 } from 'lucide-react'
 
-import {
-  buildMeetingFlow,
-  meetingFlowStepStatusLabel,
-  type MeetingFlow,
-  type MeetingFlowStep,
-  type MeetingFlowStepKind,
-  type MeetingFlowStepStatus,
+import { useI18n } from '@/hooks/use-i18n'
+import type {
+  MeetingFlow,
+  MeetingFlowStep,
+  MeetingFlowStepKind,
+  MeetingFlowStepStatus,
 } from '@/lib/meeting-flow'
 import { hePanelShell, hePressable, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
@@ -48,12 +47,15 @@ function CompactFlowStep({
   step,
   isLast,
   onOpenFile,
+  statusLabel,
+  clickToView,
 }: {
   step: MeetingFlowStep
   isLast: boolean
   onOpenFile?: (path: string) => void
+  statusLabel: (status: MeetingFlowStepStatus) => string
+  clickToView: string
 }) {
-  const Icon = STEP_ICONS[step.kind]
   const clickable = Boolean(step.filePath && onOpenFile)
 
   return (
@@ -85,11 +87,16 @@ function CompactFlowStep({
             )}
             onClick={() => step.filePath && onOpenFile?.(step.filePath)}
           >
-            <StepContent step={step} clickable />
+            <StepContent
+              step={step}
+              clickable
+              statusLabel={statusLabel}
+              clickToView={clickToView}
+            />
           </button>
         ) : (
           <div className="px-1.5 py-1 -mx-1.5">
-            <StepContent step={step} />
+            <StepContent step={step} statusLabel={statusLabel} clickToView={clickToView} />
           </div>
         )}
       </div>
@@ -97,7 +104,17 @@ function CompactFlowStep({
   )
 }
 
-function StepContent({ step, clickable }: { step: MeetingFlowStep; clickable?: boolean }) {
+function StepContent({
+  step,
+  clickable,
+  statusLabel,
+  clickToView,
+}: {
+  step: MeetingFlowStep
+  clickable?: boolean
+  statusLabel: (status: MeetingFlowStepStatus) => string
+  clickToView: string
+}) {
   const Icon = STEP_ICONS[step.kind]
 
   return (
@@ -124,8 +141,8 @@ function StepContent({ step, clickable }: { step: MeetingFlowStep; clickable?: b
         </p>
       </div>
       <p className="mt-0.5 text-[10px] text-text-tertiary">
-        {meetingFlowStepStatusLabel(step.status)}
-        {clickable && step.filePath ? ' · 点击查看' : ''}
+        {statusLabel(step.status)}
+        {clickable && step.filePath ? clickToView : ''}
       </p>
     </>
   )
@@ -144,9 +161,14 @@ export function MeetingFlowDock({
   sticky = true,
   onOpenFile,
 }: MeetingFlowDockProps) {
+  const { t, buildMeetingFlow, meetingFlowStepStatusLabel, meetingModeShort } = useI18n()
   const flow = buildMeetingFlow(detail)
   const completedCount = flow.steps.filter((s) => s.status === 'completed').length
   const activeStep = flow.steps.find((s) => s.status === 'active')
+  const modeLabel =
+    flow.modeKind === 'deliberation'
+      ? meetingModeShort('deliberation')
+      : meetingModeShort('decision')
 
   return (
     <aside
@@ -161,11 +183,11 @@ export function MeetingFlowDock({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <GitBranch className="size-3.5 shrink-0 text-info" aria-hidden />
-            <p className="text-[12px] font-semibold text-text-primary">会议流程</p>
+            <p className="text-[12px] font-semibold text-text-primary">
+              {t('meetingUi.flow.title')}
+            </p>
           </div>
-          <p className="mt-0.5 text-[10px] text-text-tertiary">
-            {flow.modeKind === 'deliberation' ? '研讨型' : '裁决型'}
-          </p>
+          <p className="mt-0.5 text-[10px] text-text-tertiary">{modeLabel}</p>
         </div>
         <span className="shrink-0 rounded-full bg-black/[0.03] px-2 py-0.5 text-[10px] font-medium tabular-nums text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
           {completedCount}/{flow.steps.length}
@@ -178,7 +200,7 @@ export function MeetingFlowDock({
         aria-valuenow={completedCount}
         aria-valuemin={0}
         aria-valuemax={flow.steps.length}
-        aria-label="流程进度"
+        aria-label={t('meetingUi.flow.progressAriaLabel')}
       >
         <div
           className="h-full rounded-full bg-brand transition-[width] duration-500"
@@ -188,7 +210,7 @@ export function MeetingFlowDock({
 
       {activeStep && (
         <p className="mb-3 rounded-xs bg-brand-soft/50 px-2.5 py-2 text-[11px] leading-relaxed text-text-secondary ring-1 ring-inset ring-primary/10">
-          当前：<span className="font-medium text-text-primary">{activeStep.title}</span>
+          {t('meetingUi.flow.currentStep', { title: activeStep.title })}
         </p>
       )}
 
@@ -199,6 +221,8 @@ export function MeetingFlowDock({
             step={step}
             isLast={index === flow.steps.length - 1}
             onOpenFile={onOpenFile}
+            statusLabel={meetingFlowStepStatusLabel}
+            clickToView={t('meetingUi.flow.clickToView')}
           />
         ))}
       </ol>

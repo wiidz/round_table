@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import { condenseMessage } from '@/lib/condense-message'
-import { messageLabel } from '@/lib/chat-display'
 import { formatChatTime } from '@/lib/format-date'
 import {
   buildMessageSequenceMap,
@@ -33,6 +33,7 @@ export function TranscriptStrip({
   embedded = false,
   className,
 }: TranscriptStripProps) {
+  const { locale, t, messageLabel } = useI18n()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [pinnedBottom, setPinnedBottom] = useState(true)
   const [newBelow, setNewBelow] = useState(0)
@@ -80,6 +81,9 @@ export function TranscriptStrip({
   }
 
   const showFilters = speakers.length > 1
+  const countDisplay = filterSpeakerId
+    ? `${visibleMessages.length}/${messages.length}`
+    : String(messages.length)
 
   return (
     <div
@@ -92,12 +96,15 @@ export function TranscriptStrip({
       <div className={cn('flex shrink-0 flex-col gap-2 px-5 py-2', embedded && 'px-4 sm:px-5 pt-3')}>
         {!embedded && (
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
-            发言记录 · {filterSpeakerId ? `${visibleMessages.length}/${messages.length}` : messages.length} 条
+            {t('transcript.list.stripCount', { count: countDisplay })}
           </p>
         )}
         {embedded && showFilters && (
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
-            筛选 · {filterSpeakerId ? `${visibleMessages.length}/${messages.length}` : messages.length} 条
+            {t('transcript.list.filter', {
+              visible: visibleMessages.length,
+              total: messages.length,
+            })}
           </p>
         )}
         {showFilters && (
@@ -112,7 +119,7 @@ export function TranscriptStrip({
                   : 'bg-black/[0.04] text-text-tertiary hover:text-text-secondary',
               )}
             >
-              全部
+              {t('transcript.list.all')}
             </button>
             {speakers.map((speaker) => (
               <button
@@ -145,7 +152,9 @@ export function TranscriptStrip({
       >
         {visibleMessages.length === 0 && (
           <p className="px-2 py-3 text-center text-[12px] text-text-tertiary">
-            {filterSpeakerId ? '该专家暂无消息' : '暂无消息'}
+            {filterSpeakerId
+              ? t('transcript.list.noExpertMessages')
+              : t('transcript.list.noMessages')}
           </p>
         )}
         {visibleMessages.map((message) => {
@@ -178,7 +187,7 @@ export function TranscriptStrip({
                 <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="text-[12px] font-medium text-text-secondary">{label}</span>
                   <span className="text-[11px] tabular-nums text-text-tertiary">
-                    {formatChatTime(message.createdAt)}
+                    {formatChatTime(message.createdAt, locale)}
                   </span>
                 </span>
                 <span
@@ -187,11 +196,13 @@ export function TranscriptStrip({
                     truncated ? 'line-clamp-1' : 'line-clamp-2',
                   )}
                 >
-                  {summary || '（空）'}
+                  {summary || t('transcript.list.emptyContent')}
                 </span>
               </span>
               {truncated && (
-                <span className="shrink-0 pt-0.5 text-[11px] text-brand">详情</span>
+                <span className="shrink-0 pt-0.5 text-[11px] text-brand">
+                  {t('transcript.list.detail')}
+                </span>
               )}
             </button>
           )
@@ -204,7 +215,7 @@ export function TranscriptStrip({
           onClick={scrollToBottom}
           className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-surface px-3 py-1 text-[12px] text-brand shadow-md ring-1 ring-black/[0.08]"
         >
-          ↓ 新消息
+          {t('transcript.list.newMessages')}
         </button>
       )}
     </div>

@@ -8,7 +8,7 @@ import { parseParticipantsFromMeetingMd } from '@/lib/meeting-participants'
 
 import type { MeetingDetail } from '@/types/meeting'
 
-export function formatTokenCount(value: number): string {
+export function formatTokenCount(value: number, intlTag = 'zh-CN'): string {
   if (value >= 1_000_000) {
     const compact = value / 1_000_000
     return `${compact >= 10 ? Math.round(compact) : compact.toFixed(1)}M`
@@ -17,7 +17,7 @@ export function formatTokenCount(value: number): string {
     const compact = value / 1_000
     return `${compact >= 100 ? Math.round(compact) : compact.toFixed(1)}k`
   }
-  return value.toLocaleString('zh-CN')
+  return value.toLocaleString(intlTag)
 }
 
 export interface MeetingOverviewStats {

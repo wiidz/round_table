@@ -1,6 +1,7 @@
 import { ChevronRight, FileStack } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heEyebrowBrand,
   heFileBadge,
@@ -13,12 +14,11 @@ import { cn } from '@/lib/utils'
 
 import type { BriefTemplateIndex } from '@/types/brief-template'
 
-function sourceLabel(source: BriefTemplateIndex['source']): string {
-  return source === 'builtin' ? '内置' : '自定义'
-}
-
 export function BriefTemplateGridCard({ template }: { template: BriefTemplateIndex }) {
+  const { t } = useI18n()
   const description = template.description?.trim()
+  const sourceLabel =
+    template.source === 'builtin' ? t('common.builtin') : t('common.custom')
 
   return (
     <Link
@@ -42,7 +42,7 @@ export function BriefTemplateGridCard({ template }: { template: BriefTemplateInd
                 : 'bg-brand-soft/70 text-brand ring-primary/15',
             )}
           >
-            {sourceLabel(template.source)}
+            {sourceLabel}
           </span>
           <span
             className={cn(
@@ -64,12 +64,12 @@ export function BriefTemplateGridCard({ template }: { template: BriefTemplateInd
             </h2>
           </div>
           <p className="line-clamp-3 min-h-[3.75rem] text-[13px] leading-relaxed text-text-secondary">
-            {description || '暂无说明，点击进入编辑模板内容。'}
+            {description || t('brief.gridCard.noDescription')}
           </p>
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-black/[0.04] pt-3">
-          <span className={heEyebrowBrand}>Meeting Brief</span>
+          <span className={heEyebrowBrand}>{t('brief.pageEyebrow')}</span>
           {template.source === 'custom' && (
             <span className="truncate font-mono text-[10px] text-text-tertiary">
               {template.id}

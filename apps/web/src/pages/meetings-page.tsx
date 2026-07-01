@@ -16,6 +16,7 @@ import {
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
 import { Pagination } from '@/components/ui/pagination'
+import { useI18n } from '@/hooks/use-i18n'
 import type { MeetingIndex } from '@/types/meeting'
 
 const DESKTOP_MEDIA = '(min-width: 1280px)'
@@ -41,6 +42,7 @@ function useMeetingsPageSize() {
 }
 
 export function MeetingsPage() {
+  const { t } = useI18n()
   const pageSize = useMeetingsPageSize()
   const [meetings, setMeetings] = useState<MeetingIndex[]>([])
   const [page, setPage] = useState(1)
@@ -67,11 +69,11 @@ export function MeetingsPage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载会议列表')
+          setError(t('pages.meetings.loadFailed'))
         }
       })
       .finally(() => {
@@ -81,24 +83,16 @@ export function MeetingsPage() {
     return () => {
       cancelled = true
     }
-  }, [page, pageSize])
+  }, [page, pageSize, t])
 
   return (
     <PageLayout
       header={
         <ProfilePageHeader
           role="principal"
-          eyebrow="Meeting Browse"
-          title="会议"
-          description={
-            <>
-              浏览{' '}
-              <code className="rounded-md bg-black/[0.04] px-1.5 py-0.5 font-mono text-[12px] ring-1 ring-inset ring-black/[0.05]">
-                data/workspaces/
-              </code>{' '}
-              下的历史 Meeting。**天平**（明亮橙底）为裁决型、**云朵**为研讨型；卡片含人数、轮次、自由对话与 LLM 用量。
-            </>
-          }
+          eyebrow={t('pages.meetings.eyebrow')}
+          title={t('pages.meetings.title')}
+          description={t('pages.meetings.description')}
         />
       }
     >
@@ -106,19 +100,17 @@ export function MeetingsPage() {
       {loading && <MeetingGridSkeleton count={pageSize} />}
 
       {!loading && error && (
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       )}
 
       {!loading && !error && total === 0 && (
         <ProfileStatePanel
-          title="暂无会议"
-          description={
-            <>
-              还没有 workspace 目录。可通过 Discord{' '}
-              <code className="font-mono text-xs">!rt meet</code> 或{' '}
-              <code className="font-mono text-xs">make meet</code> 创建一场会议。
-            </>
-          }
+          title={t('pages.meetings.emptyTitle')}
+          description={t('pages.meetings.emptyDescription')}
         />
       )}
 

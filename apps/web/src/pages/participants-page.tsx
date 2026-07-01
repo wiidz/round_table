@@ -20,7 +20,7 @@ import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
-import { domainPageEyebrow, domainPageTitle } from '@/lib/ui-labels'
+import { useI18n } from '@/hooks/use-i18n'
 import { Button } from '@/components/ui/button'
 import { hePressable } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils'
 import type { ParticipantIndex, ParticipantRosterInput } from '@/types/participant'
 
 export function ParticipantsPage() {
+  const i18n = useI18n()
+  const { t } = i18n
   const [participants, setParticipants] = useState<ParticipantIndex[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,11 +50,11 @@ export function ParticipantsPage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载专家列表')
+          setError(t('pages.participants.loadFailed'))
         }
       })
       .finally(() => {
@@ -61,7 +63,7 @@ export function ParticipantsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     let cancelled = false
@@ -106,7 +108,7 @@ export function ParticipantsPage() {
     const name = p.display_name?.trim() || p.id
     if (
       !window.confirm(
-        `确定删除专家「${name}」（${p.id}）？\n\n将移除专家配置与档案目录；不会影响已配置的 Discord Bot。`,
+        t('pages.participants.confirmDelete', { name, id: p.id }),
       )
     ) {
       return
@@ -114,9 +116,9 @@ export function ParticipantsPage() {
     try {
       const resp = await deleteParticipant(p.id)
       setParticipants(resp.participants ?? [])
-      toast.success('已删除专家')
+      toast.success(t('pages.participants.deleted'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '删除失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.deleteFailed'))
     }
   }
 
@@ -124,13 +126,13 @@ export function ParticipantsPage() {
     if (dialogMode === 'create') {
       const resp = await createParticipant(input)
       setParticipants(resp.participants ?? [])
-      toast.success('已添加专家')
+      toast.success(t('pages.participants.created'))
       return
     }
     if (!editing) return
     const resp = await updateParticipant(editing.id, input)
     setParticipants(resp.participants ?? [])
-    toast.success('已更新专家')
+    toast.success(t('pages.participants.updated'))
   }
 
   return (
@@ -139,13 +141,9 @@ export function ParticipantsPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <ProfilePageHeader
             role="participant"
-            eyebrow={domainPageEyebrow('participant')}
-            title={domainPageTitle('participant')}
-            description={
-              <>
-                管理会议专家（Participant）：代号、名称与 SOUL / AGENTS / TOOLS 档案。代号与名称均不可重复；修改代号会同步重命名档案目录。
-              </>
-            }
+            eyebrow={i18n.domainPageEyebrow('participant')}
+            title={i18n.domainPageTitle('participant')}
+            description={t('pages.participants.description')}
           />
           <Button
             type="button"
@@ -153,7 +151,7 @@ export function ParticipantsPage() {
             className={cn(hePressable, 'shrink-0 gap-2 rounded-xl px-4')}
           >
             <Plus className="size-4" />
-            添加专家
+            {t('pages.participants.add')}
           </Button>
         </div>
       }
@@ -162,19 +160,17 @@ export function ParticipantsPage() {
       {loading && <ParticipantGridSkeleton />}
 
       {!loading && error && (
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       )}
 
       {!loading && !error && participants.length === 0 && (
         <ProfileStatePanel
-          title="暂无专家档案"
-          description={
-            <>
-              点击「添加专家」创建第一位专家（Participant），或在{' '}
-              <code className="font-mono text-xs">data/profiles/participants/</code>{' '}
-              下手动新建目录。
-            </>
-          }
+          title={t('pages.participants.emptyTitle')}
+          description={t('pages.participants.emptyDescription')}
         />
       )}
 

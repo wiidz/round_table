@@ -15,6 +15,7 @@ import {
   meetingModeHoverClass,
 } from '@/components/meeting/meeting-mode-badge'
 import { MeetingStatusBadge } from '@/components/meeting/meeting-status-badge'
+import { useI18n } from '@/hooks/use-i18n'
 import { formatDateTimeYMDHMS, formatDateYMD } from '@/lib/format-date'
 import {
   heFileBadge,
@@ -23,6 +24,7 @@ import {
   hePressable,
   heSpring,
 } from '@/lib/highend-styles'
+import { formatTokenCount } from '@/lib/meeting-overview-stats'
 import { cn } from '@/lib/utils'
 
 import type { MeetingIndex } from '@/types/meeting'
@@ -50,18 +52,6 @@ function formatMeetingId(id: string): string {
   return `${id.slice(0, 10)}…${id.slice(-8)}`
 }
 
-function formatTokenCount(value: number): string {
-  if (value >= 1_000_000) {
-    const compact = value / 1_000_000
-    return `${compact >= 10 ? Math.round(compact) : compact.toFixed(1)}M`
-  }
-  if (value >= 10_000) {
-    const compact = value / 1_000
-    return `${compact >= 100 ? Math.round(compact) : compact.toFixed(1)}k`
-  }
-  return value.toLocaleString('zh-CN')
-}
-
 function MetaChip({
   icon: Icon,
   children,
@@ -86,7 +76,8 @@ function MetaChip({
 }
 
 export function MeetingGridCard({ meeting }: MeetingGridCardProps) {
-  const topic = meeting.topic?.trim() || '（无主题）'
+  const { t, intlTag } = useI18n()
+  const topic = meeting.topic?.trim() || t('meeting.topicEmpty')
   const timeLabel = formatMeetingTime(meeting)
   const participants = meeting.participant_count ?? 0
   const rounds = meeting.max_rounds ?? 0
@@ -128,10 +119,12 @@ export function MeetingGridCard({ meeting }: MeetingGridCardProps) {
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1.5">
             <MetaChip icon={Users}>
-              {participants > 0 ? `${participants} 人` : '— 人'}
+              {participants > 0
+                ? t('meeting.meta.participants', { n: participants })
+                : t('meeting.meta.participantsEmpty')}
             </MetaChip>
             <MetaChip icon={Layers}>
-              {rounds > 0 ? `${rounds} 轮` : '— 轮'}
+              {rounds > 0 ? t('meeting.meta.rounds', { n: rounds }) : t('meeting.meta.roundsEmpty')}
             </MetaChip>
             <MetaChip
               icon={meeting.free_dialogue ? MessageCircle : MessageCircleOff}
@@ -140,7 +133,9 @@ export function MeetingGridCard({ meeting }: MeetingGridCardProps) {
                   meetingModeFreeDialogueClass(meeting.mode_kind, meeting.mode),
               )}
             >
-              {meeting.free_dialogue ? '自由对话' : '无自由'}
+              {meeting.free_dialogue
+                ? t('meeting.meta.freeDialogueOn')
+                : t('meeting.meta.freeDialogueOff')}
             </MetaChip>
           </div>
           {hasUsage && (
@@ -151,7 +146,7 @@ export function MeetingGridCard({ meeting }: MeetingGridCardProps) {
                 <span className="text-text-tertiary/45"> calls</span>
                 <span className="mx-1.5 text-text-tertiary/25">/</span>
                 <span className="text-ai/75">
-                  {totalTokens > 0 ? formatTokenCount(totalTokens) : '—'}
+                  {totalTokens > 0 ? formatTokenCount(totalTokens, intlTag) : '—'}
                 </span>
                 <span className="text-text-tertiary/45"> tok</span>
               </p>

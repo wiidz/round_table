@@ -14,13 +14,13 @@ import { SettingsFieldRow } from '@/components/settings/field-hint-popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heColumnTitleBrand,
   hePanelShell,
   hePressable,
   heSpring,
 } from '@/lib/highend-styles'
-import { domainNavLabel, domainPageEyebrow } from '@/lib/ui-labels'
 import { cn } from '@/lib/utils'
 import {
   EMPTY_PRINCIPAL_USER_PROFILE,
@@ -40,6 +40,7 @@ function profilesEqual(a: PrincipalUserProfile, b: PrincipalUserProfile): boolea
 }
 
 export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
+  const { t, domainNavLabel, domainPageEyebrow } = useI18n()
   const [displayName, setDisplayName] = useState('')
   const [savedProfile, setSavedProfile] = useState<PrincipalUserProfile>(
     EMPTY_PRINCIPAL_USER_PROFILE,
@@ -65,11 +66,11 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载档案')
+          setError(t('profile.principal.loadFailed'))
         }
       })
       .finally(() => {
@@ -78,7 +79,7 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
     return () => {
       cancelled = true
     }
-  }, [load])
+  }, [load, t])
 
   const dirty = !profilesEqual(form, savedProfile)
 
@@ -88,9 +89,9 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
       const res = await savePrincipalUserProfile(id, form)
       setSavedProfile(res.user_profile)
       setForm(res.user_profile)
-      toast.success('已保存偏好档案')
+      toast.success(t('profile.principal.saveSuccess'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -109,7 +110,7 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
             )}
           >
             <ArrowLeft className="size-4" />
-            返回{domainNavLabel('principal')}列表
+            {t('profile.principal.backToList', { principal: domainNavLabel('principal') })}
           </Link>
 
           <ProfilePageHeader
@@ -121,7 +122,7 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
                 {displayName && (
                   <span className="mb-1 block font-mono text-xs text-text-tertiary">{id}</span>
                 )}
-                填写偏好字段后由服务端生成 USER.md。会议议题请使用「简报模板」。
+                {t('profile.principal.description')}
               </>
             }
           />
@@ -130,21 +131,28 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
     >
     <div className="space-y-8">
       {loading && (
-        <ProfileStatePanel title="加载中" description="正在读取偏好档案…" />
+        <ProfileStatePanel
+          title={t('common.loading')}
+          description={t('profile.state.loadingPrincipal')}
+        />
       )}
 
       {!loading && error && (
-        <ProfileStatePanel variant="danger" title="加载失败" description={error} />
+        <ProfileStatePanel
+          variant="danger"
+          title={t('common.error.loadFailed')}
+          description={error}
+        />
       )}
 
       {!loading && !error && (
         <div className={cn(hePanelShell, 'flex flex-col gap-6 p-6 sm:p-8')}>
           <div className="space-y-6">
-            <p className={heColumnTitleBrand}>偏好</p>
+            <p className={heColumnTitleBrand}>{t('profile.principal.preferences')}</p>
             <SettingsFieldRow
-              label="语言"
+              label={t('profile.principal.languageLabel')}
               htmlFor="user-language"
-              hint="Moderator 与 Reception 面向你的默认语言"
+              hint={t('profile.principal.languageHint')}
             >
               <Input
                 id="user-language"
@@ -154,9 +162,9 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
               />
             </SettingsFieldRow>
             <SettingsFieldRow
-              label="Confirmation 习惯"
+              label={t('profile.principal.confirmationLabel')}
               htmlFor="user-confirmation"
-              hint="例如：逐项审阅编号清单、偏好简短摘要"
+              hint={t('profile.principal.confirmationHint')}
             >
               <Input
                 id="user-confirmation"
@@ -168,16 +176,16 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
               />
             </SettingsFieldRow>
             <SettingsFieldRow
-              label="背景与约束"
+              label={t('profile.principal.contextLabel')}
               htmlFor="user-context"
-              hint="行业、团队、项目约束；供 Moderator 长期理解你的语境"
+              hint={t('profile.principal.contextHint')}
             >
               <Textarea
                 id="user-context"
                 value={form.context ?? ''}
                 rows={5}
                 className="min-h-[8rem] font-sans text-sm"
-                placeholder="例如：手游研发团队，关注可执行结论与上线风险"
+                placeholder={t('profile.principal.contextPlaceholder')}
                 onChange={(e) => setForm((prev) => ({ ...prev, context: e.target.value }))}
               />
             </SettingsFieldRow>
@@ -190,10 +198,12 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
               className={cn(hePressable, 'gap-2 rounded-full px-5')}
             >
               <Save className="size-4" />
-              {saving ? '保存中…' : '保存偏好'}
+              {saving ? t('common.saving') : t('profile.principal.save')}
             </Button>
             {dirty && (
-              <span className="text-xs font-medium text-warning">有未保存的修改</span>
+              <span className="text-xs font-medium text-warning">
+                {t('profile.filesEditor.unsaved')}
+              </span>
             )}
           </div>
         </div>

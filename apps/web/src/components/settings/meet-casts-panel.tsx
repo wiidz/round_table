@@ -6,6 +6,8 @@ import { fetchParticipants } from '@/api/participants'
 import { resetMeetCasts, saveMeetCasts } from '@/api/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/hooks/use-i18n'
+import type { Translator } from '@/lib/i18n/translate'
 import { hePressable, heSectionDesc, heSectionTitle } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 import type { ParticipantIndex } from '@/types/participant'
@@ -44,15 +46,19 @@ function prepareCastsForSave(drafts: CastDraft[], roster: ParticipantIndex[]): M
   })
 }
 
-function validateCasts(casts: MeetCastConfig[]): string | null {
+function validateCasts(casts: MeetCastConfig[], t: Translator): string | null {
   for (const cast of casts) {
-    if (!cast.id) return '阵容编号不能为空'
-    if (!cast.name_zh && !cast.name_en) return `阵容 ${cast.id} 需要填写显示名`
-    if (cast.participant_ids.length === 0) return `阵容 ${cast.id} 请至少选择一位专家`
+    if (!cast.id) return t('settings.meetCasts.errorEmptyId')
+    if (!cast.name_zh && !cast.name_en) {
+      return t('settings.meetCasts.errorMissingName', { id: cast.id })
+    }
+    if (cast.participant_ids.length === 0) {
+      return t('settings.meetCasts.errorNoParticipants', { id: cast.id })
+    }
   }
   const seen = new Set<string>()
   for (const cast of casts) {
-    if (seen.has(cast.id)) return `阵容编号 ${cast.id} 重复`
+    if (seen.has(cast.id)) return t('settings.meetCasts.errorDuplicateId', { id: cast.id })
     seen.add(cast.id)
   }
   return null
@@ -65,6 +71,7 @@ export function MeetCastsPanel({
   casts: MeetCastConfig[]
   onSaved: (resp: SettingsResponse) => void
 }) {
+  const { t } = useI18n()
   const [drafts, setDrafts] = useState<CastDraft[]>(() => casts.map((c) => ({ ...c, participant_ids: [...c.participant_ids] })))
   const [roster, setRoster] = useState<ParticipantIndex[]>([])
   const [saving, setSaving] = useState(false)
@@ -76,8 +83,8 @@ export function MeetCastsPanel({
   useEffect(() => {
     fetchParticipants()
       .then((resp) => setRoster(resp.participants.filter((p) => p.in_roster !== false)))
-      .catch(() => toast.error('加载专家列表失败'))
-  }, [])
+      .catch(() => toast.error(t('settings.meetCasts.loadExpertsFailed')))
+  }, [t])
 
   const updateDraft = (index: number, patch: Partial<CastDraft>) => {
     setDrafts((prev) =>
@@ -109,7 +116,7 @@ export function MeetCastsPanel({
 
   const handleSave = async () => {
     const payload = prepareCastsForSave(drafts, roster)
-    const err = validateCasts(payload)
+    const err = validateCasts(payload, t)
     if (err) {
       toast.error(err)
       return
@@ -118,9 +125,9 @@ export function MeetCastsPanel({
     try {
       const resp = await saveMeetCasts(payload)
       onSaved(resp)
-      toast.success('阵容已保存')
+      toast.success(t('settings.meetCasts.saveSuccess'))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '保存失败')
+      toast.error(e instanceof Error ? e.message : t('common.error.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -131,9 +138,9 @@ export function MeetCastsPanel({
     try {
       const resp = await resetMeetCasts()
       onSaved(resp)
-      toast.success('已清空阵容配置')
+      toast.success(t('settings.meetCasts.clearSuccess'))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '重置失败')
+      toast.error(e instanceof Error ? e.message : t('settings.meetCasts.resetFailed'))
     } finally {
       setSaving(false)
     }
@@ -142,10 +149,8 @@ export function MeetCastsPanel({
   return (
     <section className="space-y-4">
       <div>
-        <h3 className={heSectionTitle}>预设阵容·Cast</h3>
-        <p className={cn(heSectionDesc, 'mt-1')}>
-          预置常用专家组合；Discord 开会时在选人间可发 <strong>C编号</strong> 或阵容名称（如「策划+玩家」）。
-        </p>
+        <h3 className={heSectionTitle}>{t('settings.meetCasts.title')}</h3>
+        <p className={cn(heSectionDesc, 'mt-1')}>{t('settings.meetCasts.description')}</p>
       </div>
 
       <div className="space-y-4">
@@ -159,13 +164,13 @@ export function MeetCastsPanel({
               <Input
                 value={cast.id}
                 onChange={(e) => updateDraft(index, { id: e.target.value.trim() })}
-                placeholder="编号（Discord 用 C1）"
+                placeholder={t('settings.meetCasts.idPlaceholder')}
                 className="h-8 w-24 font-mono text-xs"
               />
               <Input
                 value={cast.name_zh}
                 onChange={(e) => updateDraft(index, { name_zh: e.target.value, name_en: e.target.value })}
-                placeholder="显示名（必填，如 策划+玩家）"
+                placeholder={t('settings.meetCasts.namePlaceholder')}
                 className="h-8 min-w-[12rem] flex-1 text-sm"
                 required
               />
@@ -213,15 +218,15 @@ export function MeetCastsPanel({
           onClick={() => setDrafts((prev) => [...prev, newCastDraft(prev.length + 1)])}
         >
           <Plus className="size-4" />
-          添加阵容
+          {t('settings.meetCasts.add')}
         </Button>
         <Button type="button" disabled={saving} className={cn(hePressable, 'gap-2')} onClick={handleSave}>
           <Save className="size-4" />
-          {saving ? '保存中…' : '保存阵容'}
+          {saving ? t('common.saving') : t('settings.meetCasts.save')}
         </Button>
         <Button type="button" variant="ghost" disabled={saving} className="gap-2" onClick={handleReset}>
           <RotateCcw className="size-4" />
-          清空
+          {t('settings.meetCasts.clear')}
         </Button>
       </div>
     </section>

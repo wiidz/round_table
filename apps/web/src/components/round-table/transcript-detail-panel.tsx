@@ -3,7 +3,8 @@ import { X } from 'lucide-react'
 import { MarkdownDocument } from '@/components/markdown/markdown-document'
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
 import { Button } from '@/components/ui/button'
-import { messageLabel, speakerId } from '@/lib/chat-display'
+import { useI18n } from '@/hooks/use-i18n'
+import { speakerId } from '@/lib/chat-display'
 import { formatChatTime, formatDateTimeYMDHMS } from '@/lib/format-date'
 import { TranscriptEmptyState, TranscriptPanelHeader } from '@/components/round-table/transcript-empty-state'
 import { hePanelShell } from '@/lib/highend-styles'
@@ -17,27 +18,28 @@ interface TranscriptDetailPanelProps {
   className?: string
 }
 
-function detailAvatar(message: ChatMessage): { id: string; name: string } {
-  const label = messageLabel(message)
-  return { id: speakerId(message), name: label }
-}
-
 export function TranscriptDetailPanel({
   message,
   sequence,
   onClear,
   className,
 }: TranscriptDetailPanelProps) {
+  const { locale, t, messageLabel } = useI18n()
+
   return (
     <aside
       className={cn(hePanelShell, 'flex h-full min-h-0 flex-col overflow-hidden', className)}
-      aria-label="发言详情"
+      aria-label={t('transcript.detail.title')}
     >
       {message ? (
         <>
           <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/[0.06] px-4 py-4 sm:px-5">
             <div className="flex min-w-0 items-start gap-3">
-              <ProfileAvatar id={detailAvatar(message).id} name={detailAvatar(message).name} size="sm" />
+              <ProfileAvatar
+                id={speakerId(message)}
+                name={messageLabel(message)}
+                size="sm"
+              />
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   {(sequence ?? message.turn) != null && (
@@ -51,7 +53,7 @@ export function TranscriptDetailPanel({
                 </div>
                 <p className="mt-1 text-[12px] text-text-tertiary tabular-nums">
                   {formatDateTimeYMDHMS(new Date(message.createdAt).toISOString()) ||
-                    formatChatTime(message.createdAt)}
+                    formatChatTime(message.createdAt, locale)}
                 </p>
               </div>
             </div>
@@ -64,7 +66,7 @@ export function TranscriptDetailPanel({
                 onClick={onClear}
               >
                 <X className="size-4" aria-hidden />
-                <span className="sr-only">清除选择</span>
+                <span className="sr-only">{t('transcript.detail.clearSelection')}</span>
               </Button>
             )}
           </div>
@@ -79,11 +81,11 @@ export function TranscriptDetailPanel({
         </>
       ) : (
         <>
-          <TranscriptPanelHeader title="发言详情" />
+          <TranscriptPanelHeader title={t('transcript.detail.title')} />
           <TranscriptEmptyState
             variant="detail"
-            title="选择一条发言"
-            description="点击左侧记录或圆桌气泡，在此查看完整 Markdown 内容。"
+            title={t('transcript.detail.emptyTitle')}
+            description={t('transcript.detail.emptyDescription')}
             className="flex-1"
           />
         </>

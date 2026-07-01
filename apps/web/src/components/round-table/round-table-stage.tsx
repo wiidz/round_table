@@ -1,4 +1,5 @@
 import { RoundTableEmptyHint } from '@/components/round-table/round-table-empty-hint'
+import { useI18n } from '@/hooks/use-i18n'
 import { resolveLiveBubbleVariant } from '@/lib/live-bubble-variant'
 import type { SeatLayout } from '@/lib/round-table-layout'
 import { cn } from '@/lib/utils'
@@ -24,9 +25,9 @@ interface RoundTableStageProps {
   className?: string
 }
 
-function defaultCenterTitle(turnCount: number): string {
-  if (turnCount > 0) return '会议进行中'
-  return '等待议题'
+function defaultCenterTitle(t: (key: string) => string, turnCount: number): string {
+  if (turnCount > 0) return t('roundTable.stage.inProgress')
+  return t('roundTable.stage.waitingTopic')
 }
 
 export function RoundTableStage({
@@ -46,15 +47,18 @@ export function RoundTableStage({
   onLiveMessageClick,
   className,
 }: RoundTableStageProps) {
+  const { t } = useI18n()
   const spokenSeats = new Set<string>()
   for (const [seatId] of latestBySeat) {
     spokenSeats.add(seatId)
   }
 
-  const title = centerTitle ?? defaultCenterTitle(turnCount)
+  const title = centerTitle ?? defaultCenterTitle(t, turnCount)
   const subtitle =
     centerSubtitle ??
-    (turnCount > 0 ? `第 ${turnCount} 轮发言` : '发起会议后专家将入座')
+    (turnCount > 0
+      ? t('roundTable.stage.turnCount', { count: turnCount })
+      : t('roundTable.stage.seatHint'))
 
   return (
     <div className={cn('relative min-h-0 flex-1 overflow-hidden', className)}>

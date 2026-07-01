@@ -1,3 +1,14 @@
+import type { AppLocale } from '@/lib/locale'
+import * as profile from '@/lib/i18n/profile-labels'
+
+export {
+  PARTICIPANT_STANDARD_FILES,
+  PRINCIPAL_STANDARD_FILES,
+  profileFileHasTitle,
+} from '@/lib/i18n/profile-labels'
+
+const fallbackLocale: AppLocale = 'zh'
+
 export const PROFILE_FILE_LABELS: Record<string, string> = {
   'USER.md': '偏好画像',
   'SOUL.md': '人格',
@@ -5,22 +16,9 @@ export const PROFILE_FILE_LABELS: Record<string, string> = {
   'TOOLS.md': '工具约定',
 }
 
-/** Sidebar / header: 人格 · SOUL.md */
 export function profileFileCaption(filename: string): string {
-  const title = PROFILE_FILE_LABELS[filename]
-  if (!title) return filename
-  return `${title} · ${filename}`
+  return profile.profileFileCaption(fallbackLocale, filename)
 }
-
-export function profileFileHasTitle(filename: string): boolean {
-  return filename in PROFILE_FILE_LABELS
-}
-
-/** ADR-0010 规定的 Participant 标准档案三件套 */
-export const PARTICIPANT_STANDARD_FILES = ['SOUL.md', 'AGENTS.md', 'TOOLS.md'] as const
-
-/** ADR-0010 规定的 Principal 标准档案 */
-export const PRINCIPAL_STANDARD_FILES = ['USER.md'] as const
 
 export const PARTICIPANT_FILE_HINTS: Record<string, string> = {
   'SOUL.md': '人格、语气与边界（ADR-0010 标准档案）',
@@ -31,4 +29,20 @@ export const PARTICIPANT_FILE_HINTS: Record<string, string> = {
 export const PRINCIPAL_FILE_HINTS: Record<string, string> = {
   'USER.md':
     'Principal 偏好与背景（语言、Confirmation 审阅习惯、行业约束）。Moderator 服务你的长期设定，不是单次会议议题。',
+}
+
+export function participantFileHints(locale: AppLocale): Record<string, string> {
+  const hints: Record<string, string> = {}
+  for (const file of profile.PARTICIPANT_STANDARD_FILES) {
+    hints[file] = profile.participantFileHint(locale, file)
+  }
+  return hints
+}
+
+export function principalFileHints(locale: AppLocale): Record<string, string> {
+  const hints: Record<string, string> = {}
+  for (const file of profile.PRINCIPAL_STANDARD_FILES) {
+    hints[file] = profile.principalFileHint(locale, file)
+  }
+  return hints
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { CircleHelp } from 'lucide-react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import { heFieldLabel, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
@@ -9,11 +10,12 @@ export const settingsFieldRowGrid =
 
 export function FieldHintPopover({
   content,
-  ariaLabel = '字段说明',
+  ariaLabel,
 }: {
   content: string
   ariaLabel?: string
 }) {
+  const { t } = useI18n()
   const text = content.trim()
   if (!text) return null
 
@@ -22,7 +24,7 @@ export function FieldHintPopover({
       <button
         type="button"
         tabIndex={0}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ?? t('settings.fieldHint.defaultAria')}
         className={cn(
           'rounded-full p-0.5 text-text-tertiary hover:bg-black/[0.04] hover:text-text-secondary',
           heSpring,
@@ -79,6 +81,8 @@ export function SettingsFieldRow({
   labelExtra?: ReactNode
   children: ReactNode
 }) {
+  const { t } = useI18n()
+
   return (
     <div className={settingsFieldRowGrid}>
       <div className="space-y-2">
@@ -87,7 +91,12 @@ export function SettingsFieldRow({
       </div>
       <div className="flex min-w-0 items-start gap-1.5">
         <div className="min-w-0 flex-1">{children}</div>
-        {hint && <FieldHintPopover content={hint} ariaLabel={`${label} 说明`} />}
+        {hint && (
+          <FieldHintPopover
+            content={hint}
+            ariaLabel={t('settings.fieldHint.labelSuffix', { label })}
+          />
+        )}
       </div>
     </div>
   )

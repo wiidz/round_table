@@ -4,11 +4,9 @@ import { fetchParticipants } from '@/api/participants'
 import { BriefMeetingExpertsList } from '@/components/brief/brief-meeting-experts-list'
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import { BriefMeetingConfigRow } from '@/components/brief/brief-meeting-config-row'
-import {
-  BRIEF_MEETING_CONFIG_LABELS,
-  BRIEF_TEMPLATE_SECTIONS,
-  briefConfigPanelShell,
-} from '@/components/brief/brief-template-sections'
+import { briefConfigPanelShell } from '@/components/brief/brief-template-sections'
+import { useI18n } from '@/hooks/use-i18n'
+import { getBriefMeetingConfigLabels, getBriefSections } from '@/lib/i18n/brief-sections'
 import { normalizeBriefDocument } from '@/lib/brief-template-document'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +19,9 @@ export function BriefTemplateMeetingConfigPreview({
   document: BriefTemplateDocument
   className?: string
 }) {
+  const { t, locale } = useI18n()
+  const sections = getBriefSections(locale)
+  const configLabels = getBriefMeetingConfigLabels(locale)
   const doc = normalizeBriefDocument(document)
   const expertIds = doc.meeting?.participant_ids?.filter(Boolean) ?? []
   const isDeliberation = doc.meeting?.mode === 'deliberation'
@@ -58,43 +59,49 @@ export function BriefTemplateMeetingConfigPreview({
   return (
     <aside className={cn('space-y-4 lg:sticky lg:top-20 lg:self-start', className)}>
       <BriefSectionHeading
-        title={BRIEF_TEMPLATE_SECTIONS.meeting.title}
-        description={BRIEF_TEMPLATE_SECTIONS.meeting.description}
+        title={sections.meeting.title}
+        description={sections.meeting.description}
       />
       <div className={briefConfigPanelShell}>
         <BriefMeetingConfigRow
-          label={BRIEF_MEETING_CONFIG_LABELS.mode}
-          value={isDeliberation ? '研讨型（deliberation）' : '裁决型（decision）'}
-        />
-        <BriefMeetingConfigRow
-          label={BRIEF_MEETING_CONFIG_LABELS.confirmation}
+          label={configLabels.mode}
           value={
-            doc.meeting?.confirmation_mode === 'skip'
-              ? '跳过 Principal 确认'
-              : '需要 Principal 确认'
+            isDeliberation ? t('brief.config.modeDeliberation') : t('brief.config.modeDecision')
           }
         />
         <BriefMeetingConfigRow
-          label={BRIEF_MEETING_CONFIG_LABELS.maxRounds}
-          value={`${doc.meeting?.max_rounds ?? 3} 轮`}
+          label={configLabels.confirmation}
+          value={
+            doc.meeting?.confirmation_mode === 'skip'
+              ? t('brief.config.confirmationSkipPrincipal')
+              : t('brief.config.confirmationRequired')
+          }
+        />
+        <BriefMeetingConfigRow
+          label={configLabels.maxRounds}
+          value={t('brief.config.maxRoundsValue', { n: doc.meeting?.max_rounds ?? 3 })}
         />
         {isDeliberation && (
           <BriefMeetingConfigRow
-            label={BRIEF_MEETING_CONFIG_LABELS.minSynthesis}
-            value={`第 ${doc.meeting?.min_rounds_before_synthesis ?? 2} 轮起`}
+            label={configLabels.minSynthesis}
+            value={t('brief.config.minSynthesisFrom', {
+              n: doc.meeting?.min_rounds_before_synthesis ?? 2,
+            })}
           />
         )}
         <BriefMeetingConfigRow
-          label={BRIEF_MEETING_CONFIG_LABELS.freeDialogue}
-          value={`${doc.meeting?.free_dialogue_max_questions ?? 1} 问`}
+          label={configLabels.freeDialogue}
+          value={t('brief.config.freeDialogueQuestions', {
+            n: doc.meeting?.free_dialogue_max_questions ?? 1,
+          })}
         />
         <BriefMeetingConfigRow
-          label={BRIEF_MEETING_CONFIG_LABELS.experts}
+          label={configLabels.experts}
           valueAlign="start"
           value={
             <BriefMeetingExpertsList
               experts={experts}
-              emptyLabel="全部专家（默认）"
+              emptyLabel={t('brief.config.expertsEmpty')}
             />
           }
         />

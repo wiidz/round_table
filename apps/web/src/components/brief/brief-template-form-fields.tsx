@@ -6,14 +6,14 @@ import { briefTemplateBodyGridClass } from '@/components/brief/brief-template-pr
 import { BriefTemplateScopeFields } from '@/components/brief/brief-template-scope-fields'
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import {
-  BRIEF_TEMPLATE_SECTIONS,
-  BRIEF_TOPIC_EMPTY_COPY,
   briefFieldCaptionClass,
   briefTemplateLeftColumnClass,
   briefTemplateRightColumnClass,
 } from '@/components/brief/brief-template-sections'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/hooks/use-i18n'
+import { getBriefSections, getBriefTopicEmptyCopy } from '@/lib/i18n/brief-sections'
 import { hePressable, heSpring } from '@/lib/highend-styles'
 import { emptyBriefDocument } from '@/lib/brief-template-document'
 import type { BriefTemplateDocument } from '@/types/brief-template'
@@ -33,6 +33,10 @@ export function BriefTemplateFormFields({
   readonly,
   onChange,
 }: BriefTemplateFormFieldsProps) {
+  const { t, locale } = useI18n()
+  const sections = getBriefSections(locale)
+  const topicEmpty = getBriefTopicEmptyCopy(locale)
+
   function patch(partial: Partial<BriefTemplateDocument>) {
     onChange({ ...document, ...partial })
   }
@@ -55,26 +59,26 @@ export function BriefTemplateFormFields({
         <div className={briefTemplateLeftColumnClass}>
           <section className="space-y-4">
             <BriefSectionHeading
-              title={BRIEF_TEMPLATE_SECTIONS.topicGoal.title}
-              description={BRIEF_TEMPLATE_SECTIONS.topicGoal.description}
+              title={sections.topicGoal.title}
+              description={sections.topicGoal.description}
               as="h3"
             />
             <div className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="brief-topic" className={briefFieldCaptionClass}>
-                  主题
+                  {t('brief.fields.topic')}
                 </label>
                 <Input
                   id="brief-topic"
                   value={document.topic ?? ''}
                   readOnly={readonly}
-                  placeholder={BRIEF_TOPIC_EMPTY_COPY.placeholder}
+                  placeholder={topicEmpty.placeholder}
                   onChange={(e) => patch({ topic: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <label htmlFor="brief-goal" className={briefFieldCaptionClass}>
-                  会议目标 <span className="text-destructive">*</span>
+                  {t('brief.fields.goal')} <span className="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="brief-goal"
@@ -91,8 +95,8 @@ export function BriefTemplateFormFields({
           <section className="space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <BriefSectionHeading
-                title={BRIEF_TEMPLATE_SECTIONS.agenda.title}
-                description={BRIEF_TEMPLATE_SECTIONS.agenda.description}
+                title={sections.agenda.title}
+                description={sections.agenda.description}
                 as="h3"
               />
               {!readonly && (
@@ -106,7 +110,7 @@ export function BriefTemplateFormFields({
                   onClick={() => patchBrief({ agenda: [...agenda, ''] })}
                 >
                   <Plus className="size-3.5" />
-                  添加议程
+                  {t('brief.fields.agendaAdd')}
                 </button>
               )}
             </div>
@@ -123,7 +127,7 @@ export function BriefTemplateFormFields({
                     <Input
                       value={item}
                       readOnly={readonly}
-                      placeholder={`议题 ${index + 1}`}
+                      placeholder={t('brief.fields.agendaItem', { index: index + 1 })}
                       className={agendaInputClass}
                       onChange={(e) => {
                         const next = [...agenda]
@@ -134,7 +138,7 @@ export function BriefTemplateFormFields({
                     {!readonly ? (
                       <button
                         type="button"
-                        aria-label={`删除议题 ${index + 1}`}
+                        aria-label={t('brief.fields.agendaDelete', { index: index + 1 })}
                         className={cn(
                           'inline-flex size-9 items-center justify-center rounded-lg text-text-tertiary hover:bg-black/[0.04] hover:text-destructive',
                           hePressable,

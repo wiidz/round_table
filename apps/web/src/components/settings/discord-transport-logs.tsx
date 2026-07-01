@@ -10,6 +10,7 @@ import {
 } from '@/api/settings'
 import { DiscordTransportStatusBadge } from '@/components/settings/discord-transport-status-badge'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/use-i18n'
 import { resolveDiscordTransportPhase } from '@/lib/discord-transport-phase'
 import {
   heFieldHint,
@@ -46,12 +47,14 @@ function RefreshModeControl({
   onModeChange: (mode: RefreshMode) => void
   onRefresh: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div
         className="inline-flex rounded-lg bg-black/[0.04] p-0.5 ring-1 ring-black/[0.06]"
         role="group"
-        aria-label="刷新模式"
+        aria-label={t('settings.discord.logsRefreshMode')}
       >
         {(['live', 'manual'] as const).map((item) => {
           const active = mode === item
@@ -71,7 +74,7 @@ function RefreshModeControl({
                 !active && 'text-text-tertiary hover:text-text-secondary',
               )}
             >
-              {item === 'live' ? '实时' : '手动'}
+              {item === 'live' ? t('settings.discord.logsLive') : t('settings.discord.logsManual')}
             </button>
           )
         })}
@@ -81,7 +84,7 @@ function RefreshModeControl({
         <button
           type="button"
           disabled={loading}
-          title="点击立即刷新"
+          title={t('settings.discord.logsRefreshNow')}
           onClick={onRefresh}
           className={cn(
             'inline-flex items-center gap-1.5 text-xs tabular-nums text-text-tertiary',
@@ -90,7 +93,9 @@ function RefreshModeControl({
           )}
         >
           <RefreshCw className={cn('size-3 shrink-0', loading && 'animate-spin')} />
-          {updatedAt ? `更新于 ${formatTimeHMS(updatedAt)}` : '等待首次更新…'}
+          {updatedAt
+            ? t('settings.discord.logsUpdatedAt', { time: formatTimeHMS(updatedAt) })
+            : t('settings.discord.logsWaitingFirst')}
         </button>
       ) : (
         <Button
@@ -102,7 +107,7 @@ function RefreshModeControl({
           onClick={onRefresh}
         >
           <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
-          刷新
+          {t('common.refresh')}
         </Button>
       )}
     </div>
@@ -122,6 +127,7 @@ function ServiceStatus({
 }
 
 export function DiscordTransportLogsDialog() {
+  const { t } = useI18n()
   const preRef = useRef<HTMLPreElement>(null)
   const [open, setOpen] = useState(false)
   const [refreshMode, setRefreshMode] = useState<RefreshMode>('manual')
@@ -170,13 +176,13 @@ export function DiscordTransportLogsDialog() {
       setLines(logs.lines)
       setLogPath(logs.path)
       setUpdatedAt(new Date())
-      toast.success('日志已清空')
+      toast.success(t('settings.discord.logsClearSuccess'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '清空失败')
+      toast.error(err instanceof Error ? err.message : t('settings.discord.logsClearFailed'))
     } finally {
       setClearing(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (!open) return
@@ -225,7 +231,7 @@ export function DiscordTransportLogsDialog() {
         onClick={() => setOpen(true)}
       >
         <ScrollText className="size-3.5 text-text-tertiary" />
-        运行日志
+        {t('settings.discord.logsOpen')}
       </Button>
 
       {open &&
@@ -246,14 +252,14 @@ export function DiscordTransportLogsDialog() {
             >
               <div className="flex items-center justify-between gap-4 px-6 py-4">
                 <h2 id="discord-logs-title" className={heSectionTitle}>
-                  Discord 运行日志
+                  {t('settings.discord.logsTitle')}
                 </h2>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className={cn(hePressable, 'size-8 rounded-xl text-text-tertiary hover:text-text-secondary')}
-                  aria-label="关闭"
+                  aria-label={t('common.close')}
                   onClick={handleClose}
                 >
                   <X className="size-4" />
@@ -271,7 +277,9 @@ export function DiscordTransportLogsDialog() {
                     onRefresh={() => void refresh()}
                   />
                   {lineCount > 0 && (
-                    <span className="text-xs tabular-nums text-text-tertiary">{lineCount} 行</span>
+                    <span className="text-xs tabular-nums text-text-tertiary">
+                      {t('settings.discord.logsLineCount', { count: lineCount })}
+                    </span>
                   )}
                 </div>
                 <Button
@@ -279,7 +287,7 @@ export function DiscordTransportLogsDialog() {
                   variant="ghost"
                   size="sm"
                   disabled={clearing || loading}
-                  title="清空日志文件"
+                  title={t('settings.discord.logsClearTitle')}
                   className={cn(
                     hePressable,
                     'gap-1.5 rounded-lg text-destructive hover:bg-destructive hover:text-white',
@@ -287,13 +295,13 @@ export function DiscordTransportLogsDialog() {
                   onClick={() => void handleClear()}
                 >
                   <Trash2 className={cn('size-3.5', clearing && 'animate-pulse')} />
-                  清空
+                  {t('settings.discord.logsClear')}
                 </Button>
               </div>
 
               {lastExit && (
                 <div className="border-b border-destructive/15 bg-destructive/5 px-6 py-2 text-xs text-destructive">
-                  上次退出：{lastExit}
+                  {t('settings.discord.logsLastExit', { message: lastExit })}
                 </div>
               )}
 
@@ -307,8 +315,8 @@ export function DiscordTransportLogsDialog() {
                     )}
                   >
                     {loading && !lines
-                      ? '加载日志…'
-                      : lines || '暂无日志，启动 Discord 服务后此处会显示输出。'}
+                      ? t('settings.discord.logsLoading')
+                      : lines || t('settings.discord.logsEmpty')}
                   </pre>
                 </div>
               </div>

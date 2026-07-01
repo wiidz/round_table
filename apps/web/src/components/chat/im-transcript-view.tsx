@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 
 import { ChatBubble } from '@/components/chat/chat-bubble'
+import { useI18n } from '@/hooks/use-i18n'
 import { buildMessageSequenceMap, messageSequenceNumber } from '@/lib/message-sequence'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/types/chat'
@@ -11,6 +12,7 @@ interface ImTranscriptViewProps {
 }
 
 export function ImTranscriptView({ messages, className }: ImTranscriptViewProps) {
+  const { t } = useI18n()
   const scrollRef = useRef<HTMLDivElement>(null)
   const sequenceMap = useMemo(() => buildMessageSequenceMap(messages), [messages])
 
@@ -30,7 +32,7 @@ export function ImTranscriptView({ messages, className }: ImTranscriptViewProps)
     >
       {messages.length === 0 && (
         <p className="text-center text-[13px] text-text-tertiary">
-          发送「会议状态」或「开个会」，或直接提问。
+          {t('chat.transcript.emptyHint')}
         </p>
       )}
       {messages.map((message) => (

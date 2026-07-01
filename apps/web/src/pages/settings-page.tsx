@@ -14,6 +14,10 @@ import { toast } from 'sonner'
 
 import { fetchSettings, saveSettings } from '@/api/settings'
 import { ApiError } from '@/api/client'
+import { useLocale } from '@/contexts/locale-context'
+import { useI18n } from '@/hooks/use-i18n'
+import { settingsFieldDescription, settingsFieldLabel } from '@/lib/i18n/settings-fields'
+import type { Translator } from '@/lib/i18n/translate'
 import { BrandIcon, hasBrandIcon } from '@/components/brand-icon'
 import { PageLayout } from '@/components/layout/page-main-layout'
 import { ProfilePageHeader, ProfileStatePanel } from '@/components/profile/profile-page-header'
@@ -51,14 +55,25 @@ const settingsTabPill = cn(heFilePill, '!rounded-xs px-4 py-2.5 text-[15px]')
 const settingsTabPillSelected = cn(heFilePillSelected, '!rounded-xs px-4 py-2.5 text-[15px]')
 const settingsPanelShell = cn(hePanelShell, '!rounded-lg')
 
-const TAB_ORDER = ['服务', '存储', 'LLM', '会议', 'IM'] as const
+const TAB_ORDER = ['service', 'storage', 'llm', 'meeting', 'im'] as const
 
 const TAB_META: Record<string, { icon: LucideIcon }> = {
-  服务: { icon: Server },
-  存储: { icon: Database },
-  LLM: { icon: Bot },
-  会议: { icon: Users },
-  IM: { icon: MessagesSquare },
+  service: { icon: Server },
+  storage: { icon: Database },
+  llm: { icon: Bot },
+  meeting: { icon: Users },
+  im: { icon: MessagesSquare },
+}
+
+/** Server-side section name for meeting limits (locale-independent) */
+const MEETING_LIMITS_SECTION = '设定上限'
+
+const SERVER_GROUP_FALLBACK: Record<string, string> = {
+  service: '服务',
+  storage: '存储',
+  llm: 'LLM',
+  meeting: '会议',
+  im: 'IM',
 }
 
 const SUBSECTION_FALLBACK_ICONS: Record<string, typeof Bot> = {}
@@ -67,12 +82,16 @@ function subsectionFallbackIcon(id: string) {
   return SUBSECTION_FALLBACK_ICONS[id] ?? Settings2
 }
 
-function groupFields(fields: SettingsFieldState[]) {
+function groupFields(
+  fields: SettingsFieldState[],
+  settingsTabKey: (serverGroup: string) => string,
+) {
   const map = new Map<string, SettingsFieldState[]>()
   for (const f of fields) {
-    const list = map.get(f.group) ?? []
+    const tabKey = settingsTabKey(f.group)
+    const list = map.get(tabKey) ?? []
     list.push(f)
-    map.set(f.group, list)
+    map.set(tabKey, list)
   }
   return map
 }
@@ -92,29 +111,38 @@ function orderedTabs(grouped: Map<string, SettingsFieldState[]>) {
   return tabs
 }
 
+function serverGroupForTabKey(
+  tabKey: string,
+  fields: SettingsFieldState[],
+  settingsTabKey: (serverGroup: string) => string,
+): string {
+  const groups = new Set(fields.map((f) => f.group))
+  for (const g of groups) {
+    if (settingsTabKey(g) === tabKey) return g
+  }
+  return SERVER_GROUP_FALLBACK[tabKey] ?? tabKey
+}
+
 function tabIcon(tab: string) {
   return TAB_META[tab]?.icon ?? Settings2
 }
 
-function fieldSections(fields: SettingsFieldState[]) {
+function fieldSections(fields: SettingsFieldState[], t: Translator) {
   const runtime = fields.filter((f) => !f.secret)
   const secrets = fields.filter((f) => f.secret)
   if (runtime.length === 0 || secrets.length === 0) {
     return [{ title: '', fields }]
   }
   return [
-    { title: '运行参数', fields: runtime },
-    { title: 'API 密钥', fields: secrets },
+    { title: t('pages.settings.sections.runtimeParams'), fields: runtime },
+    { title: t('pages.settings.sections.apiKeys'), fields: secrets },
   ]
 }
 
-const SUBSECTION_RAIL_TITLE: Record<string, string> = {
-  LLM: '模型',
-  IM: '平台',
-}
-
-function subsectionRailTitle(tab: string) {
-  return SUBSECTION_RAIL_TITLE[tab] ?? '分类'
+function subsectionRailTitle(tab: string, t: Translator) {
+  if (tab === 'llm') return t('pages.settings.rail.models')
+  if (tab === 'im') return t('pages.settings.rail.platforms')
+  return t('pages.settings.rail.category')
 }
 
 function SubsectionMark({ id, className }: { id: string; className?: string }) {
@@ -156,6 +184,7 @@ function SubsectionIconRail({
   groupLabel,
   title,
   discordRunning,
+  comingSoonSuffix,
 }: {
   items: SettingsSubsectionMeta[]
   activeId: string
@@ -163,6 +192,7 @@ function SubsectionIconRail({
   groupLabel: string
   title: string
   discordRunning?: boolean
+  comingSoonSuffix: string
 }) {
   return (
     <nav
@@ -179,7 +209,7 @@ function SubsectionIconRail({
           <button
             key={sub.id}
             type="button"
-            title={sub.available ? sub.label : `${sub.label}（即将推出）`}
+            title={sub.available ? sub.label : `${sub.label}${comingSoonSuffix}`}
             aria-label={sub.label}
             aria-selected={selected}
             onClick={() => onSelect(sub.id)}
@@ -201,11 +231,20 @@ function SubsectionIconRail({
   )
 }
 
-const MEETING_SECTION_ORDER = ['设定上限'] as const
+const MEETING_SECTION_ORDER = [MEETING_LIMITS_SECTION] as const
 
-const MEETING_SECTION_DESC: Record<(typeof MEETING_SECTION_ORDER)[number], string> = {
-  设定上限:
-    '单场会议的 Engine 硬约束（写入 MeetingCreated）。预设里的辩论轮次、确认关开关不得突破此处上限；「确认关轮次上限」指 Principal 最多审阅几次方案（含首次）。',
+function meetingSectionDescription(section: string, t: Translator): string | undefined {
+  if (section === MEETING_LIMITS_SECTION) {
+    return t('pages.settings.sections.limitsDescription')
+  }
+  return undefined
+}
+
+function meetingSectionTitle(section: string, t: Translator): string {
+  if (section === MEETING_LIMITS_SECTION) {
+    return t('pages.settings.sections.limits')
+  }
+  return section
 }
 
 function SettingsSectionBlock({
@@ -231,25 +270,32 @@ function SettingsSectionBlock({
   )
 }
 
-function groupMeetingFields(fields: SettingsFieldState[]) {
-  const sections: { title: string; fields: SettingsFieldState[] }[] = []
-  for (const title of MEETING_SECTION_ORDER) {
-    const sectionFields = fields.filter((f) => f.section === title)
+function groupMeetingFields(fields: SettingsFieldState[], t: Translator) {
+  const sections: { title: string; description?: string; fields: SettingsFieldState[] }[] = []
+  for (const serverSection of MEETING_SECTION_ORDER) {
+    const sectionFields = fields.filter((f) => f.section === serverSection)
     if (sectionFields.length > 0) {
-      sections.push({ title, fields: sectionFields })
+      sections.push({
+        title: meetingSectionTitle(serverSection, t),
+        description: meetingSectionDescription(serverSection, t),
+        fields: sectionFields,
+      })
     }
   }
-  const rest = fields.filter((f) => !f.section || !MEETING_SECTION_ORDER.includes(f.section as typeof MEETING_SECTION_ORDER[number]))
+  const rest = fields.filter(
+    (f) => !f.section || !MEETING_SECTION_ORDER.includes(f.section as typeof MEETING_SECTION_ORDER[number]),
+  )
   if (rest.length > 0) {
     sections.push({ title: '', fields: rest })
   }
   return sections
 }
 
-function settingsFieldHint(field: SettingsFieldState) {
-  const parts = [field.description]
+function settingsFieldHint(field: SettingsFieldState, t: Translator) {
+  const description = settingsFieldDescription(t, field)
+  const parts = [description]
   if (!field.input_type && field.key) {
-    parts.push(`键名：${field.key}`)
+    parts.push(t('pages.settings.field.keyName', { key: field.key }))
   }
   return parts.filter(Boolean).join('\n\n')
 }
@@ -261,10 +307,12 @@ function SettingsFieldInput({
   field,
   value,
   onChange,
+  t,
 }: {
   field: SettingsFieldState
   value: string
   onChange: (value: string) => void
+  t: Translator
 }) {
   const inputClass = cn(
     heFieldSurface,
@@ -279,7 +327,7 @@ function SettingsFieldInput({
       <SettingsToggle
         id={field.key}
         checked={checked}
-        ariaLabel={field.label}
+        ariaLabel={settingsFieldLabel(t, field)}
         onCheckedChange={(next) => onChange(next ? 'required' : 'skip')}
       />
     )
@@ -288,7 +336,7 @@ function SettingsFieldInput({
   if (isRadioField(field) && field.options?.length) {
     return (
       <fieldset className="flex flex-wrap gap-2 sm:gap-3">
-        <legend className="sr-only">{field.label}</legend>
+        <legend className="sr-only">{settingsFieldLabel(t, field)}</legend>
         {field.options.map((opt) => {
           const optionId = `${field.key}-${opt.value}`
           const selected = value === opt.value
@@ -313,7 +361,13 @@ function SettingsFieldInput({
                 className="size-4 shrink-0 accent-primary"
                 onChange={() => onChange(opt.value)}
               />
-              <span className="text-sm text-text-primary">{opt.label}</span>
+              <span className="text-sm text-text-primary">
+                {field.key === 'ROUND_TABLE_LOCALE'
+                  ? opt.value === 'en'
+                    ? t('pages.settings.localeEn')
+                    : t('pages.settings.localeZh')
+                  : opt.label}
+              </span>
             </label>
           )
         })}
@@ -383,28 +437,32 @@ function SettingsFieldRow({
   field,
   draft,
   onChange,
+  t,
 }: {
   field: SettingsFieldState
   draft: Record<string, string>
   onChange: (key: string, value: string) => void
+  t: Translator
 }) {
-  const hint = settingsFieldHint(field)
+  const hint = settingsFieldHint(field, t)
 
   const badges = (
     <div className="flex flex-wrap gap-1.5">
       {field.secret && field.configured && (
         <span className={cn(heFileBadge, 'bg-success-soft text-success ring-success/20')}>
-          已配置
+          {t('common.configured')}
         </span>
       )}
-      {field.restart_required && <span className={heFileBadge}>需重启</span>}
-      {field.secret && <span className={heFileBadge}>只读</span>}
+      {field.restart_required && (
+        <span className={heFileBadge}>{t('pages.settings.field.restartRequired')}</span>
+      )}
+      {field.secret && <span className={heFileBadge}>{t('common.readonly')}</span>}
     </div>
   )
 
   return (
     <SettingsFieldRowLayout
-      label={field.label}
+      label={settingsFieldLabel(t, field)}
       htmlFor={isRadioField(field) ? undefined : field.key}
       hint={hint || undefined}
       labelExtra={badges}
@@ -417,14 +475,15 @@ function SettingsFieldRow({
           )}
         >
           {field.configured
-            ? '已在 deploy/.env 中配置，修改后请重启服务。'
-            : '请在 deploy/.env 中配置对应密钥。'}
+            ? t('pages.settings.field.secretConfigured')
+            : t('pages.settings.field.secretMissing')}
         </p>
       ) : field.editable ? (
         <SettingsFieldInput
           field={field}
           value={draft[field.key] ?? ''}
           onChange={(next) => onChange(field.key, next)}
+          t={t}
         />
       ) : (
         <Input
@@ -444,17 +503,20 @@ const DISCORD_GUILD_ID_KEY = 'ROUND_TABLE_DISCORD_GUILD_ID'
 const DISCORD_AUTO_START_KEY = 'ROUND_TABLE_DISCORD_AUTO_START'
 const LOCALE_KEY = 'ROUND_TABLE_LOCALE'
 
-const LOCALE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'zh', label: '中文' },
-  { value: 'en', label: 'English' },
-]
+function localeOptions(t: Translator): { value: string; label: string }[] {
+  return [
+    { value: 'zh', label: t('pages.settings.localeZh') },
+    { value: 'en', label: t('pages.settings.localeEn') },
+  ]
+}
 
-function normalizeSettingsField(field: SettingsFieldState): SettingsFieldState {
+function normalizeSettingsField(field: SettingsFieldState, t: Translator): SettingsFieldState {
   if (field.key === LOCALE_KEY) {
+    const options = localeOptions(t)
     return {
       ...field,
       input_type: 'radio',
-      options: field.options?.length ? field.options : LOCALE_OPTIONS,
+      options: field.options?.length ? field.options : options,
     }
   }
   return field
@@ -468,13 +530,16 @@ function isRadioField(field: SettingsFieldState) {
   return field.input_type === 'radio' || field.key === LOCALE_KEY
 }
 
-function normalizeSettingsFields(fields: SettingsFieldState[]): SettingsFieldState[] {
-  return fields.map(normalizeSettingsField)
+function normalizeSettingsFields(fields: SettingsFieldState[], t: Translator): SettingsFieldState[] {
+  return fields.map((field) => normalizeSettingsField(field, t))
 }
 
 const DISCORD_GENERAL_KEYS = new Set([DISCORD_GUILD_ID_KEY, DISCORD_AUTO_START_KEY])
 
 export function SettingsPage() {
+  const i18n = useI18n()
+  const { t, settingsTabKey, settingsTabLabel } = i18n
+  const { applyLocaleFromFields } = useLocale()
   const [fields, setFields] = useState<SettingsFieldState[]>([])
   const [discordBots, setDiscordBots] = useState<DiscordBotState[]>([])
   const [meetPresets, setMeetPresets] = useState<MeetPresetConfig[]>([])
@@ -501,16 +566,23 @@ export function SettingsPage() {
     writeSettingsNav({ tab: nav.tab, subsection: nav.subsection })
   }, [])
 
-  const grouped = useMemo(() => groupFields(fields), [fields])
+  const grouped = useMemo(
+    () => groupFields(fields, settingsTabKey),
+    [fields, settingsTabKey],
+  )
   const tabs = useMemo(() => orderedTabs(grouped), [grouped])
-  const tabSubsections = subsections[activeTab] ?? []
+  const activeServerGroup = useMemo(
+    () => serverGroupForTabKey(activeTab, fields, settingsTabKey),
+    [activeTab, fields, settingsTabKey],
+  )
+  const tabSubsections = subsections[activeServerGroup] ?? []
   const hasSubsections = tabSubsections.length > 0
 
   const activeSubMeta = tabSubsections.find((s) => s.id === activeSubsection)
   const subsectionAvailable = !hasSubsections || (activeSubMeta?.available ?? true)
 
-  const showDiscordBots = activeTab === 'IM' && activeSubsection === 'discord'
-  const pollDiscordTransport = activeTab === 'IM'
+  const showDiscordBots = activeTab === 'im' && activeSubsection === 'discord'
+  const pollDiscordTransport = activeTab === 'im'
   const discordTransport = useDiscordTransportStatus(pollDiscordTransport)
 
   const activeFields = useMemo(() => {
@@ -534,12 +606,12 @@ export function SettingsPage() {
   )
 
   const showMeetingLimitsSave =
-    activeTab === '会议' && activeFields.some((f) => f.editable)
+    activeTab === 'meeting' && activeFields.some((f) => f.editable)
 
   const showDiscordGeneralSave = showDiscordBots && discordBots.length > 0 && editableCount > 0
 
   function applySettingsResponse(data: SettingsResponse) {
-    setFields(normalizeSettingsFields(data.fields ?? []))
+    setFields(normalizeSettingsFields(data.fields ?? [], t))
     setDiscordBots(data.discord_bots ?? [])
     setMeetPresets(data.meet_presets ?? [])
     setMeetPresetsDefaults(data.meet_presets_defaults ?? [])
@@ -571,9 +643,9 @@ export function SettingsPage() {
     }
     const ids = tabSubsections.map((s) => s.id)
     if (!ids.includes(activeSubsection)) {
-      setActiveSubsection(defaultSubsection(activeTab, subsections))
+      setActiveSubsection(defaultSubsection(activeServerGroup, subsections))
     }
-  }, [loading, activeTab, hasSubsections, tabSubsections, activeSubsection, subsections])
+  }, [loading, activeTab, hasSubsections, tabSubsections, activeSubsection, subsections, activeServerGroup])
 
   useEffect(() => {
     if (loading) return
@@ -591,11 +663,11 @@ export function SettingsPage() {
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError) {
-          setError(`请求失败 (${err.status})：${err.message}`)
+          setError(t('common.error.requestFailed', { status: err.status, message: err.message }))
         } else if (err instanceof Error) {
           setError(err.message)
         } else {
-          setError('无法加载设置')
+          setError(t('pages.settings.loadFailed'))
         }
       })
       .finally(() => {
@@ -604,7 +676,7 @@ export function SettingsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   function updateField(key: string, value: string) {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -621,27 +693,28 @@ export function SettingsPage() {
       }
       const resp = await saveSettings(payload)
       applySettingsResponse(resp)
+      applyLocaleFromFields(resp.fields ?? [])
       setSubsections(resp.subsections ?? {})
-      toast.success('已保存，新会议立即生效')
+      toast.success(t('pages.settings.saved'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   const panelTitle = hasSubsections && activeSubMeta
-    ? `${activeTab} · ${activeSubMeta.label}`
-    : activeTab
+    ? `${settingsTabLabel(activeTab)} · ${activeSubMeta.label}`
+    : settingsTabLabel(activeTab)
 
   return (
     <PageLayout
       header={
         <ProfilePageHeader
           role="principal"
-          eyebrow="Configuration"
-          title="设置"
-          description="在此调整 RoundTable 运行参数；保存后对新发起的会议立即生效。API 密钥等敏感项请在 deploy/.env 中配置。"
+          eyebrow={t('pages.settings.eyebrow')}
+          title={t('pages.settings.title')}
+          description={t('pages.settings.description')}
         />
       }
     >
@@ -649,8 +722,8 @@ export function SettingsPage() {
       {loading && (
         <ProfileStatePanel
           className="!rounded-xs"
-          title="加载中"
-          description="正在读取运行时配置…"
+          title={t('common.loading')}
+          description={t('pages.settings.loadingDescription')}
         />
       )}
 
@@ -658,7 +731,7 @@ export function SettingsPage() {
         <ProfileStatePanel
           className="!rounded-xs"
           variant="danger"
-          title="加载失败"
+          title={t('common.error.loadFailed')}
           description={error}
         />
       )}
@@ -672,7 +745,7 @@ export function SettingsPage() {
         >
           <div className="flex flex-col overflow-visible lg:flex-row lg:items-start lg:pl-3">
             <nav
-              aria-label="设置分类"
+              aria-label={t('pages.settings.navAriaLabel')}
               className={settingsSideTabListClass}
               style={{ width: SETTINGS_SIDE_TAB_WIDTH }}
             >
@@ -703,7 +776,7 @@ export function SettingsPage() {
                             !selected && 'text-text-secondary',
                           )}
                         >
-                          {tab}
+                          {settingsTabLabel(tab)}
                         </span>
                         {count > 0 ? (
                           <span
@@ -713,7 +786,7 @@ export function SettingsPage() {
                               selected && 'text-brand/70',
                             )}
                           >
-                            {count} 项
+                            {t('pages.settings.navItemCount', { count })}
                           </span>
                         ) : null}
                       </span>
@@ -724,7 +797,7 @@ export function SettingsPage() {
             </nav>
 
             <nav
-              aria-label="设置分类"
+              aria-label={t('pages.settings.navAriaLabel')}
               className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-black/[0.05] p-3 lg:hidden"
             >
               {tabs.map((tab) => {
@@ -752,7 +825,7 @@ export function SettingsPage() {
                           strokeWidth={1.75}
                           aria-hidden
                         />
-                        <span className="truncate">{tab}</span>
+                        <span className="truncate">{settingsTabLabel(tab)}</span>
                       </span>
                       <span className="text-xs font-normal tabular-nums opacity-60">
                         {count}
@@ -775,8 +848,9 @@ export function SettingsPage() {
                   items={tabSubsections}
                   activeId={activeSubsection}
                   onSelect={setActiveSubsection}
-                  groupLabel={activeTab}
-                  title={subsectionRailTitle(activeTab)}
+                  groupLabel={settingsTabLabel(activeTab)}
+                  title={subsectionRailTitle(activeTab, t)}
+                  comingSoonSuffix={t('pages.settings.comingSoonSuffix')}
                   discordRunning={
                     discordTransport.status != null ? discordTransport.ready : undefined
                   }
@@ -806,11 +880,11 @@ export function SettingsPage() {
                   <div className="mt-8">
                     <ProfileStatePanel
                       className="!rounded-xs"
-                      title="即将推出"
+                      title={t('pages.settings.comingSoonTitle')}
                       description={
-                        activeTab === 'LLM'
-                          ? '该 LLM Provider 尚未接入，敬请期待。'
-                          : '该 IM 平台尚未接入，敬请期待。'
+                        activeTab === 'llm'
+                          ? t('pages.settings.comingSoonLlm')
+                          : t('pages.settings.comingSoonIm')
                       }
                     />
                   </div>
@@ -818,17 +892,13 @@ export function SettingsPage() {
 
                 {subsectionAvailable && activeFields.length > 0 && (
                   <div className="mt-8 space-y-10">
-                    {activeTab === '会议' ? (
-                      groupMeetingFields(activeFields).map((section) =>
+                    {activeTab === 'meeting' ? (
+                      groupMeetingFields(activeFields, t).map((section) =>
                         section.title ? (
                           <SettingsSectionBlock
                             key={section.title}
                             title={section.title}
-                            description={
-                              MEETING_SECTION_DESC[
-                                section.title as (typeof MEETING_SECTION_ORDER)[number]
-                              ]
-                            }
+                            description={section.description}
                           >
                             {section.fields.map((field) => (
                               <SettingsFieldRow
@@ -836,6 +906,7 @@ export function SettingsPage() {
                                 field={field}
                                 draft={draft}
                                 onChange={updateField}
+                                t={t}
                               />
                             ))}
                           </SettingsSectionBlock>
@@ -847,13 +918,14 @@ export function SettingsPage() {
                                 field={field}
                                 draft={draft}
                                 onChange={updateField}
+                                t={t}
                               />
                             ))}
                           </div>
                         ),
                       )
                     ) : (
-                      fieldSections(activeFields).map((section) => (
+                      fieldSections(activeFields, t).map((section) => (
                         <div key={section.title || 'default'}>
                           {section.title && (
                             <h3 className={cn(heColumnTitleBrand, 'mb-6')}>{section.title}</h3>
@@ -865,6 +937,7 @@ export function SettingsPage() {
                                 field={field}
                                 draft={draft}
                                 onChange={updateField}
+                                t={t}
                               />
                             ))}
                           </div>
@@ -887,12 +960,12 @@ export function SettingsPage() {
                       className={cn(hePressable, 'gap-2 rounded-xs px-5')}
                     >
                       <Save className="size-4" />
-                      {saving ? '保存中…' : '保存配置'}
+                      {saving ? t('common.saving') : t('pages.settings.save')}
                     </Button>
                   </div>
                 )}
 
-                {subsectionAvailable && activeTab === '会议' && meetPresets.length > 0 && (
+                {subsectionAvailable && activeTab === 'meeting' && meetPresets.length > 0 && (
                   <div className={cn(showMeetingLimitsSave || activeFields.length > 0 ? 'mt-10' : 'mt-8')}>
                     <MeetPresetsPanel
                       presets={meetPresets}
@@ -908,7 +981,7 @@ export function SettingsPage() {
                   </div>
                 )}
 
-                {subsectionAvailable && activeTab === '会议' && (
+                {subsectionAvailable && activeTab === 'meeting' && (
                   <div className="mt-10 border-t border-black/[0.05] pt-10">
                     <MeetCastsPanel
                       casts={meetCasts}
@@ -938,7 +1011,7 @@ export function SettingsPage() {
                             className={cn(hePressable, 'gap-2 rounded-xs px-5')}
                           >
                             <Save className="size-4" />
-                            {saving ? '保存中…' : '保存配置'}
+                            {saving ? t('common.saving') : t('pages.settings.save')}
                           </Button>
                         ) : undefined
                       }
@@ -953,8 +1026,8 @@ export function SettingsPage() {
                   <div className="mt-8">
                     <ProfileStatePanel
                       className="!rounded-xs"
-                      title="暂无配置项"
-                      description="当前分类下没有可展示的设置。"
+                      title={t('pages.settings.emptyNoFieldsTitle')}
+                      description={t('pages.settings.emptyNoFieldsDescription')}
                     />
                   </div>
                 )}
@@ -963,8 +1036,8 @@ export function SettingsPage() {
                   <div className="mt-8">
                     <ProfileStatePanel
                       className="!rounded-xs"
-                      title="暂无 Bot 配置"
-                      description="无法加载 Discord Bot 列表。"
+                      title={t('pages.settings.emptyNoBotsTitle')}
+                      description={t('pages.settings.emptyNoBotsDescription')}
                     />
                   </div>
                 )}
@@ -977,7 +1050,7 @@ export function SettingsPage() {
                       className={cn(hePressable, 'gap-2 rounded-xs px-5')}
                     >
                       <Save className="size-4" />
-                      {saving ? '保存中…' : '保存配置'}
+                      {saving ? t('common.saving') : t('pages.settings.save')}
                     </Button>
                   </div>
                 )}

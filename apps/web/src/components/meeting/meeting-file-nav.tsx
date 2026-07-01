@@ -7,6 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import {
   heFileNavItem,
   heFileNavItemSelected,
@@ -17,16 +18,12 @@ import {
 import {
   groupMeetingFileNames,
   isPrimaryDeliverable,
-  meetingFileCaption,
   meetingFileCategory,
   meetingFileHasTitle,
-  meetingFileLabel,
-  MEETING_FILE_CATEGORY_LABELS,
   type MeetingFileCategory,
   type MeetingModeKind,
 } from '@/lib/meeting-labels'
 import { cn } from '@/lib/utils'
-import { formatMarkdownReadingStats } from '@/lib/markdown-reading-stats'
 
 const FILE_CATEGORY_ORDER: MeetingFileCategory[] = ['overview', 'deliverable', 'process']
 
@@ -55,10 +52,6 @@ interface FileNavSectionProps {
   onSelect: (path: string) => void
 }
 
-function sectionCountLabel(count: number): string {
-  return `共 ${count} 份`
-}
-
 function FileNavSectionHeader({
   category,
   count,
@@ -72,6 +65,7 @@ function FileNavSectionHeader({
   collapsible?: boolean
   onToggle?: () => void
 }) {
+  const { t } = useI18n()
   const isDeliverable = category === 'deliverable'
   const isProcess = category === 'process'
   const Icon = FILE_CATEGORY_ICONS[category]
@@ -95,7 +89,7 @@ function FileNavSectionHeader({
           isProcess && 'text-text-secondary',
         )}
       >
-        {MEETING_FILE_CATEGORY_LABELS[category]}
+        {t(`meeting.fileCategory.${category}`)}
       </span>
     </span>
   )
@@ -109,7 +103,7 @@ function FileNavSectionHeader({
         !isDeliverable && !isProcess && 'text-text-tertiary/70',
       )}
     >
-      {sectionCountLabel(count)}
+      {t('meetingUi.fileNav.sectionCount', { count })}
     </span>
   )
 
@@ -151,6 +145,8 @@ const heFieldLabelStyle =
   'text-xs font-medium uppercase tracking-[0.12em] text-text-tertiary'
 
 function FileNavActiveStats({ content }: { content: string }) {
+  const { formatMarkdownReadingStats } = useI18n()
+
   return (
     <>
       <span
@@ -179,6 +175,7 @@ function FileNavItem({
   modeKind?: MeetingModeKind
   onSelect: (path: string) => void
 }) {
+  const { t, meetingFileCaption, meetingFileLabel } = useI18n()
   const isActive = activeFile === name
   const isPrimary =
     category === 'deliverable' && isPrimaryDeliverable(name, modeKind)
@@ -220,7 +217,7 @@ function FileNavItem({
                   'ml-auto shrink-0',
                 )}
               >
-                主交付
+                {t('meetingUi.fileNav.primaryDeliverable')}
               </span>
             )}
           </span>

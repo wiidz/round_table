@@ -11,14 +11,8 @@ import {
   UserCheck,
 } from 'lucide-react'
 
-import {
-  buildMeetingFlow,
-  meetingFlowStepStatusLabel,
-  type MeetingFlowStep,
-  type MeetingFlowStepKind,
-  type MeetingFlowStepStatus,
-} from '@/lib/meeting-flow'
-import { meetingFileLabel } from '@/lib/meeting-labels'
+import { useI18n } from '@/hooks/use-i18n'
+import type { MeetingFlowStep, MeetingFlowStepKind, MeetingFlowStepStatus } from '@/lib/meeting-flow'
 import { hePanelShell, hePressable, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
@@ -74,11 +68,17 @@ function FlowStepRow({
   modeKind,
   isLast,
   onOpenFile,
+  statusLabel,
+  meetingFileLabel,
+  viewLabel,
 }: {
   step: MeetingFlowStep
   modeKind?: MeetingDetail['mode_kind']
   isLast: boolean
   onOpenFile?: (path: string) => void
+  statusLabel: (status: MeetingFlowStepStatus) => string
+  meetingFileLabel: (path: string, modeKind?: MeetingDetail['mode_kind']) => string
+  viewLabel: string
 }) {
   const Icon = STEP_ICONS[step.kind]
   const canOpen = Boolean(step.filePath && onOpenFile)
@@ -120,7 +120,7 @@ function FlowStepRow({
             )}
           >
             <StatusIcon status={step.status} />
-            {meetingFlowStepStatusLabel(step.status)}
+            {statusLabel(step.status)}
           </span>
         </div>
 
@@ -138,7 +138,7 @@ function FlowStepRow({
             }}
           >
             <span className="truncate font-mono">{step.filePath}</span>
-            {canOpen && <span className="shrink-0 text-brand">查看</span>}
+            {canOpen && <span className="shrink-0 text-brand">{viewLabel}</span>}
           </button>
         )}
 
@@ -159,23 +159,31 @@ interface MeetingFlowViewerProps {
 }
 
 export function MeetingFlowViewer({ detail, className, onOpenFile }: MeetingFlowViewerProps) {
+  const { t, buildMeetingFlow, meetingFlowStepStatusLabel, meetingFileLabel } = useI18n()
   const flow = buildMeetingFlow(detail)
   const completedCount = flow.steps.filter((s) => s.status === 'completed').length
+  const modeSubtitle =
+    flow.modeKind === 'deliberation'
+      ? t('meetingUi.flow.subtitleDeliberation')
+      : t('meetingUi.flow.subtitleDecision')
 
   return (
     <section className={cn(hePanelShell, 'overflow-visible p-6 sm:p-8', className)}>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
-            会议流程
+            {t('meetingUi.flow.title')}
           </p>
           <p className="text-sm text-text-secondary">
-            从会前准备到结案的 Engine 标准路径
-            {flow.modeKind === 'deliberation' ? '（研讨型）' : '（裁决型）'}
+            {t('meetingUi.flow.subtitle')}
+            {modeSubtitle}
           </p>
         </div>
         <p className="text-[12px] tabular-nums text-text-tertiary">
-          {completedCount}/{flow.steps.length} 已完成
+          {t('meetingUi.flow.completed', {
+            done: completedCount,
+            total: flow.steps.length,
+          })}
         </p>
       </div>
 
@@ -187,6 +195,9 @@ export function MeetingFlowViewer({ detail, className, onOpenFile }: MeetingFlow
             modeKind={flow.modeKind}
             isLast={index === flow.steps.length - 1}
             onOpenFile={onOpenFile}
+            statusLabel={meetingFlowStepStatusLabel}
+            meetingFileLabel={meetingFileLabel}
+            viewLabel={t('meetingUi.flow.view')}
           />
         ))}
       </ol>

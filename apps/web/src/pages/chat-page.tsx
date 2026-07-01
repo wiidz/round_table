@@ -5,8 +5,10 @@ import {
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
 import { useChatSocket } from '@/hooks/use-chat-socket'
+import { useI18n } from '@/hooks/use-i18n'
 
 export function ChatPage() {
+  const { t } = useI18n()
   const { connectionState, sessionId, messages, lastError, typingStates, sendMessage, reconnect } =
     useChatSocket()
 
@@ -26,8 +28,8 @@ export function ChatPage() {
             <ProfilePageHeader
               role="participant"
               eyebrow="Chat"
-              title="聊天"
-              description="浏览器 Transport：Setup 默认列表，会议进行中自动切圆桌；768px 以下窄屏会议期降级为发言记录列表。"
+              title={t('chat.page.title')}
+              description={t('chat.page.description')}
             />
           }
           left={left}
@@ -40,8 +42,8 @@ export function ChatPage() {
           {connectionState === 'error' && (
             <ProfileStatePanel
               variant="danger"
-              title="连接失败"
-              description={lastError ?? '无法连接聊天服务，请确认 API 已启动。'}
+              title={t('chat.page.connectionFailed')}
+              description={lastError ?? t('chat.page.cannotConnect')}
             />
           )}
           <div className="relative h-full min-h-0">{main}</div>

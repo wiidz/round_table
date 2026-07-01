@@ -1,18 +1,10 @@
 import { FileText, LayoutDashboard } from 'lucide-react'
 
+import { useI18n } from '@/hooks/use-i18n'
 import { hePressable, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
 export type MeetingDetailView = 'overview' | 'documents'
-
-const TABS: {
-  id: MeetingDetailView
-  label: string
-  icon: typeof LayoutDashboard
-}[] = [
-  { id: 'overview', label: '概览', icon: LayoutDashboard },
-  { id: 'documents', label: '文档', icon: FileText },
-]
 
 interface MeetingDetailViewTabsProps {
   value: MeetingDetailView
@@ -27,6 +19,17 @@ export function MeetingDetailViewTabs({
   onChange,
   className,
 }: MeetingDetailViewTabsProps) {
+  const { t } = useI18n()
+
+  const tabs: {
+    id: MeetingDetailView
+    label: string
+    icon: typeof LayoutDashboard
+  }[] = [
+    { id: 'overview', label: t('meeting.tabs.overview'), icon: LayoutDashboard },
+    { id: 'documents', label: t('meeting.tabs.documents'), icon: FileText },
+  ]
+
   return (
     <div
       className={cn(
@@ -34,9 +37,9 @@ export function MeetingDetailViewTabs({
         className,
       )}
       role="tablist"
-      aria-label="会议详情视图"
+      aria-label={t('meeting.tabs.ariaLabel')}
     >
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const selected = value === tab.id
         const Icon = tab.icon
         return (

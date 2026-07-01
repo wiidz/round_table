@@ -6,8 +6,9 @@ import {
   sequenceBadgeToneFromHistoryItem,
   TranscriptSequenceBadge,
 } from '@/components/round-table/transcript-sequence-badge'
+import { useI18n } from '@/hooks/use-i18n'
 import { condenseMessage } from '@/lib/condense-message'
-import { assignsTurn, messageAvatar, messageLabel } from '@/lib/chat-display'
+import { assignsTurn } from '@/lib/chat-display'
 import { formatChatTime } from '@/lib/format-date'
 import {
   buildMessageSequenceMap,
@@ -39,6 +40,8 @@ function SpeakerFilterChips({
   filterSpeakerId: string | null
   onChange: (id: string | null) => void
 }) {
+  const { t } = useI18n()
+
   if (speakers.length <= 1) return null
 
   return (
@@ -53,7 +56,7 @@ function SpeakerFilterChips({
             : 'bg-black/[0.04] text-text-tertiary hover:text-text-secondary',
         )}
       >
-        全部
+        {t('transcript.list.all')}
       </button>
       {speakers.map((speaker) => (
         <button
@@ -87,11 +90,12 @@ function HistoryBubbleItem({
   active: boolean
   onSelect: () => void
 }) {
+  const { locale, t, messageLabel, messageAvatar } = useI18n()
   const isUser = message.role === 'user'
   const label = messageLabel(message)
   const avatar = messageAvatar(message)
   const { summary } = condenseMessage(message.content, 120)
-  const timeLabel = formatChatTime(message.createdAt)
+  const timeLabel = formatChatTime(message.createdAt, locale)
   const showSequence = assignsTurn(message.role) && sequence != null
 
   return (
@@ -137,7 +141,7 @@ function HistoryBubbleItem({
             )}
           >
             <p className={cn('line-clamp-3 whitespace-pre-wrap', isUser ? 'text-white' : 'text-text-primary')}>
-              {summary || '（空）'}
+              {summary || t('transcript.list.emptyContent')}
             </p>
             {timeLabel && (
               <span
@@ -164,6 +168,7 @@ export function TranscriptHistoryList({
   onSelect,
   className,
 }: TranscriptHistoryListProps) {
+  const { t } = useI18n()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [pinnedBottom, setPinnedBottom] = useState(true)
   const [newBelow, setNewBelow] = useState(0)
@@ -218,14 +223,16 @@ export function TranscriptHistoryList({
 
   const visibleCount = filterSpeakerId ? visibleMessages.length : messages.length
   const countLabel = filterSpeakerId
-    ? `共 ${visibleCount}/${messages.length} 条`
-    : `共 ${messages.length} 条`
+    ? t('transcript.list.count', { visible: visibleCount, total: messages.length })
+    : t('transcript.list.countAll', { total: messages.length })
 
   return (
     <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
       <div className="shrink-0 border-b border-black/[0.06] px-4 py-4 sm:px-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[15px] font-semibold tracking-[-0.02em] text-text-primary">发言记录</h2>
+          <h2 className="text-[15px] font-semibold tracking-[-0.02em] text-text-primary">
+            {t('transcript.list.title')}
+          </h2>
           <span className="shrink-0 text-[12px] tabular-nums text-text-tertiary">{countLabel}</span>
         </div>
         <SpeakerFilterChips
@@ -245,7 +252,7 @@ export function TranscriptHistoryList({
       >
         {visibleMessages.length === 0 && (
           <p className="py-6 text-center text-[12px] text-text-tertiary">
-            {filterSpeakerId ? '该发言人暂无消息' : '暂无消息'}
+            {filterSpeakerId ? t('transcript.list.noSpeakerMessages') : t('transcript.list.noMessages')}
           </p>
         )}
         {visibleMessages.map((message) => (
@@ -266,7 +273,7 @@ export function TranscriptHistoryList({
           onClick={scrollToBottom}
           className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-surface px-3 py-1 text-[12px] text-brand shadow-md ring-1 ring-black/[0.08]"
         >
-          ↓ 新消息
+          {t('transcript.list.newMessages')}
         </button>
       )}
     </div>

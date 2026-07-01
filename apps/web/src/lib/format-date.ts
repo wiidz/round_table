@@ -1,3 +1,6 @@
+import type { AppLocale } from '@/lib/locale'
+import { localeIntlTag } from '@/lib/i18n/translate'
+
 /** Format ISO / RFC3339 timestamp as local YYYY-MM-DD. */
 export function formatDateYMD(value: string): string {
   if (!value) return ''
@@ -24,8 +27,12 @@ export function formatDateTimeYMDHMS(value: string): string {
 }
 
 /** Short time label for chat bubbles (local HH:mm). */
-export function formatChatTime(value: string | number | Date): string {
+export function formatChatTime(
+  value: string | number | Date,
+  locale?: AppLocale,
+): string {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  const tag = locale ? localeIntlTag(locale) : 'zh-CN'
+  return date.toLocaleTimeString(tag, { hour: '2-digit', minute: '2-digit' })
 }

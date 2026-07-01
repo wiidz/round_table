@@ -3,16 +3,14 @@ import { Pencil, Trash2 } from 'lucide-react'
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/hooks/use-i18n'
 import {
   hePanelShell,
   hePanelShellHover,
   hePressable,
   heSpring,
 } from '@/lib/highend-styles'
-import {
-  PARTICIPANT_STANDARD_FILES,
-  profileFileCaption,
-} from '@/lib/profile-labels'
+import { PARTICIPANT_STANDARD_FILES } from '@/lib/i18n/profile-labels'
 import { cn } from '@/lib/utils'
 
 import type { ParticipantIndex } from '@/types/participant'
@@ -26,6 +24,7 @@ export function ParticipantGridCard({
   onEdit: (p: ParticipantIndex) => void
   onDelete: (p: ParticipantIndex) => void
 }) {
+  const { t, profileFileCaption } = useI18n()
   const name = p.display_name?.trim() || p.id
   const discordBind = p.im_bindings?.find((b) => b.platform === 'discord')
   const discordBot = discordBind?.application_id || discordBind?.bot_id
@@ -77,7 +76,7 @@ export function ParticipantGridCard({
             variant="ghost"
             size="icon"
             className="size-8 rounded-lg text-text-tertiary hover:text-text-primary"
-            aria-label={`编辑 ${name}`}
+            aria-label={t('profile.filesEditor.editAria', { name })}
             onClick={() => onEdit(p)}
           >
             <Pencil className="size-3.5" />
@@ -87,7 +86,7 @@ export function ParticipantGridCard({
             variant="ghost"
             size="icon"
             className="size-8 rounded-lg text-text-tertiary hover:text-destructive"
-            aria-label={`删除 ${name}`}
+            aria-label={t('profile.filesEditor.deleteAria', { name })}
             onClick={() => onDelete(p)}
           >
             <Trash2 className="size-3.5" />
@@ -121,7 +120,7 @@ export function ParticipantGridCard({
             })}
           </div>
           <p className="text-[11px] tabular-nums text-text-tertiary">
-            档案 {fileCount}/{totalFiles}
+            {t('profile.filesEditor.filesCount', { present: fileCount, total: totalFiles })}
           </p>
         </div>
       </Link>
