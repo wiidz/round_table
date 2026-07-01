@@ -9,6 +9,7 @@ data/
 ├── _templates/                    # ✅ 入库 — 首次 Ensure 时 seed
 │   ├── workspaces/                # MEETING.md 等 bootstrap 模板
 │   ├── profiles/                  # SOUL / AGENTS 模板
+│   ├── briefs/                    # BRIEF.yaml 模板（ADR-0014）
 │   ├── knowledge/                 # memory 模板
 │   └── scenarios/                 # 端到端测试场景（profile + README）
 │       └── 3-round-debate/        # make meet-3round
@@ -17,6 +18,7 @@ data/
 │   ├── participants/{id}/
 │   ├── principals/{id}/
 │   └── moderator/
+├── briefs/{template_id}/          # 个人简报模板 BRIEF.yaml（ADR-0014，gitignore）
 └── knowledge/                     # 长期记忆（ADR-0006）
     ├── participants/{id}/
     ├── principals/{id}/
@@ -27,6 +29,7 @@ data/
 |----|-----|----------|
 | workspaces | ADR-0009 | 单次 Meeting |
 | profiles | ADR-0010 | 长期，跨 Meeting |
+| briefs | ADR-0014 | 长期，Brief 模板 |
 | knowledge | ADR-0006 | 长期，默认按 owner 隔离 |
 
 ---
