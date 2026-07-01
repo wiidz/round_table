@@ -1,54 +1,58 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Save } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { ArrowLeft, Pencil, Save, X } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { fetchBriefTemplate, saveBriefTemplate } from '@/api/brief-templates'
+import { createBriefTemplate, fetchBriefTemplate, saveBriefTemplate } from '@/api/brief-templates'
 import { ApiError } from '@/api/client'
-import {
-  ProfileStatePanel,
-} from '@/components/profile/profile-page-header'
+import { BriefTemplateFormFields } from '@/components/brief/brief-template-form-fields'
+import { BriefTemplatePageHeader } from '@/components/brief/brief-template-meta-fields'
+import { BriefTemplatePreview } from '@/components/brief/brief-template-preview'
+import { ProfileStatePanel } from '@/components/profile/profile-page-header'
 import { Button } from '@/components/ui/button'
 import {
   heEyebrowBrand,
-  heFieldSurface,
-  hePageDesc,
-  hePageTitle,
   hePanelShell,
   hePressable,
   heSpring,
-  heTextarea,
 } from '@/lib/highend-styles'
+import {
+  documentsEqual,
+  emptyBriefDocument,
+  normalizeBriefDocument,
+} from '@/lib/brief-template-document'
 import { cn } from '@/lib/utils'
 
-import type { BriefTemplateDetail } from '@/types/brief-template'
-
-function formatLaunchPreview(detail: BriefTemplateDetail): string {
-  const lines: string[] = []
-  if (detail.launch.topic) lines.push(`主题：${detail.launch.topic}`)
-  if (detail.launch.brief.goal) lines.push(`目标：${detail.launch.brief.goal}`)
-  if (detail.launch.brief.agenda?.length) {
-    lines.push(`议程：${detail.launch.brief.agenda.join(' · ')}`)
-  }
-  if (detail.launch.meeting.mode) lines.push(`模式：${detail.launch.meeting.mode}`)
-  return lines.join('\n')
-}
+import type { BriefTemplateDetail, BriefTemplateDocument } from '@/types/brief-template'
 
 export function BriefTemplateDetailPage() {
+  const navigate = useNavigate()
   const { id: rawId } = useParams()
   const id = rawId ? decodeURIComponent(rawId) : ''
 
   const [detail, setDetail] = useState<BriefTemplateDetail | null>(null)
-  const [draft, setDraft] = useState('')
+  const [savedDocument, setSavedDocument] = useState<BriefTemplateDocument>(
+    emptyBriefDocument(),
+  )
+  const [formDocument, setFormDocument] = useState<BriefTemplateDocument>(emptyBriefDocument())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mode, setMode] = useState<'view' | 'edit'>('view')
+
+  const isBuiltin = detail?.source === 'builtin'
 
   const load = useCallback(async () => {
     const data = await fetchBriefTemplate(id)
+    const doc = normalizeBriefDocument(data.document ?? emptyBriefDocument(data.title))
     setDetail(data)
-    setDraft(data.content)
+    setSavedDocument(doc)
+    setFormDocument(doc)
     setError(null)
+  }, [id])
+
+  useEffect(() => {
+    setMode('view')
   }, [id])
 
   useEffect(() => {
@@ -74,16 +78,41 @@ export function BriefTemplateDetailPage() {
     }
   }, [id, load])
 
-  const readonly = detail?.source === 'builtin'
-  const dirty = detail != null && draft !== detail.content
+  const dirty = !documentsEqual(formDocument, savedDocument)
+  const headerDocument = mode === 'edit' ? formDocument : savedDocument
+
+  function handleStartEdit() {
+    setFormDocument(savedDocument)
+    setMode('edit')
+  }
+
+  function handleCancelEdit() {
+    setFormDocument(savedDocument)
+    setMode('view')
+  }
 
   async function handleSave() {
-    if (!id || readonly) return
     setSaving(true)
     try {
-      await saveBriefTemplate(id, draft)
-      setDetail((prev) => (prev ? { ...prev, content: draft } : prev))
-      toast.success('已保存 BRIEF.yaml')
+      const normalized = normalizeBriefDocument(formDocument)
+      if (!normalized.meta.title) {
+        toast.error('请填写模板名称')
+        return
+      }
+
+      if (isBuiltin) {
+        const res = await createBriefTemplate({ document: normalized })
+        toast.success(`已另存为自定义模板（${res.id}）`)
+        navigate(`/brief-templates/${encodeURIComponent(res.id)}`)
+        return
+      }
+
+      await saveBriefTemplate(id, { document: normalized })
+      setSavedDocument(normalized)
+      setFormDocument(normalized)
+      setMode('view')
+      await load()
+      toast.success('已保存模板')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '保存失败')
     } finally {
@@ -107,22 +136,8 @@ export function BriefTemplateDetailPage() {
         返回简报模板列表
       </Link>
 
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className={hePageTitle}>{detail?.title ?? id}</h1>
-          <span className={heEyebrowBrand}>Meeting Brief</span>
-          {detail && (
-            <span className="rounded-full bg-black/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
-              {detail.source === 'builtin' ? '内置 · 只读' : '自定义'}
-            </span>
-          )}
-        </div>
-        {detail?.description && <p className={hePageDesc}>{detail.description}</p>}
-        <p className="font-mono text-xs text-text-tertiary">{id} · BRIEF.yaml</p>
-      </header>
-
       {loading && (
-        <ProfileStatePanel title="加载中" description="正在读取 BRIEF.yaml…" />
+        <ProfileStatePanel title="加载中" description="正在读取模板…" />
       )}
 
       {!loading && error && (
@@ -130,49 +145,80 @@ export function BriefTemplateDetailPage() {
       )}
 
       {!loading && !error && detail && (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
-          <div className={cn(hePanelShell, 'flex flex-col gap-4 p-6 sm:p-8')}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-medium text-text-primary">BRIEF.yaml</p>
-              {readonly && (
-                <span className="text-xs text-text-tertiary">
-                  内置模板不可编辑；可复制内容后保存为自定义模板 ID
+        <>
+          <header className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={heEyebrowBrand}>Meeting Brief · 简报模板</span>
+                <span className="rounded-full bg-black/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
+                  {detail.source === 'builtin' ? '内置' : '自定义'}
                 </span>
+                {!isBuiltin && (
+                  <span className="font-mono text-[11px] text-text-tertiary/80">{id}</span>
+                )}
+              </div>
+
+              {mode === 'view' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleStartEdit}
+                  className={cn(hePressable, 'shrink-0 gap-2 !rounded-xs px-4')}
+                >
+                  <Pencil className="size-4" />
+                  编辑
+                </Button>
               )}
             </div>
-            <div className={heFieldSurface}>
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                readOnly={readonly}
-                spellCheck={false}
-                className={cn(heTextarea, readonly && 'opacity-80')}
-              />
-            </div>
-            {!readonly && (
-              <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle/80 pt-4">
-                <Button
-                  onClick={handleSave}
-                  disabled={!dirty || saving}
-                  className={cn(hePressable, 'gap-2 rounded-full px-5')}
-                >
-                  <Save className="size-4" />
-                  {saving ? '保存中…' : '保存模板'}
-                </Button>
-                {dirty && (
-                  <span className="text-xs font-medium text-warning">有未保存的修改</span>
-                )}
+
+            <BriefTemplatePageHeader document={headerDocument} />
+          </header>
+
+          <div className={cn(hePanelShell, 'overflow-visible')}>
+            {mode === 'view' ? (
+              <div className="p-5 sm:p-7">
+                <BriefTemplatePreview document={savedDocument} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-8 p-6 sm:p-8">
+                <p className="text-[12px] leading-relaxed text-text-tertiary">
+                  编辑模板信息与会议预填字段；保存时由服务端生成 BRIEF.yaml。
+                  {isBuiltin && ' 内置模板另存时将按模板名称自动生成 ID。'}
+                </p>
+
+                <BriefTemplateFormFields
+                  document={formDocument}
+                  readonly={false}
+                  onChange={setFormDocument}
+                />
+
+                <div className="flex flex-wrap items-center gap-3 border-t border-black/[0.05] pt-4">
+                  <Button
+                    onClick={() => void handleSave()}
+                    disabled={saving || (!isBuiltin && !dirty)}
+                    className={cn(hePressable, 'gap-2 rounded-full px-5')}
+                  >
+                    <Save className="size-4" />
+                    {saving ? '保存中…' : isBuiltin ? '另存为自定义模板' : '保存模板'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={saving}
+                    onClick={handleCancelEdit}
+                    className={cn(hePressable, 'gap-2 !rounded-xs px-4')}
+                  >
+                    <X className="size-4" />
+                    取消
+                  </Button>
+                  {dirty && !isBuiltin && (
+                    <span className="text-xs font-medium text-warning">有未保存的修改</span>
+                  )}
+                </div>
               </div>
             )}
           </div>
-
-          <aside className={cn(hePanelShell, 'space-y-3 p-5')}>
-            <p className="text-[13px] font-semibold text-text-primary">预填预览</p>
-            <pre className="whitespace-pre-wrap text-[12px] leading-relaxed text-text-secondary">
-              {formatLaunchPreview(detail) || '解析后将用于 MeetingCreated 预填'}
-            </pre>
-          </aside>
-        </div>
+        </>
       )}
     </div>
   )

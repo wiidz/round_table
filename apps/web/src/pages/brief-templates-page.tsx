@@ -1,20 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 
 import { fetchBriefTemplates } from '@/api/brief-templates'
 import { ApiError } from '@/api/client'
 import {
-  ProfileListCard,
-  ProfileListSkeleton,
-} from '@/components/profile/profile-list-card'
+  BriefTemplateGridCard,
+  BriefTemplateGridSkeleton,
+} from '@/components/brief/brief-template-grid-card'
 import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
+import { heSubsectionTitleNeutral } from '@/lib/highend-styles'
 
 import type { BriefTemplateIndex } from '@/types/brief-template'
 
-function sourceLabel(source: BriefTemplateIndex['source']): string {
-  return source === 'builtin' ? '内置' : '自定义'
+function TemplateSection({
+  title,
+  hint,
+  templates,
+}: {
+  title: string
+  hint?: string
+  templates: BriefTemplateIndex[]
+}) {
+  if (templates.length === 0) return null
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className={heSubsectionTitleNeutral}>{title}</h2>
+        {hint && <p className="mt-1 text-[12px] text-text-tertiary">{hint}</p>}
+      </div>
+      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {templates.map((item) => (
+          <li key={item.id} className="min-h-0">
+            <BriefTemplateGridCard template={item} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 export function BriefTemplatesPage() {
@@ -49,25 +74,26 @@ export function BriefTemplatesPage() {
     }
   }, [])
 
+  const { builtin, custom } = useMemo(() => {
+    const builtinItems: BriefTemplateIndex[] = []
+    const customItems: BriefTemplateIndex[] = []
+    for (const item of templates) {
+      if (item.source === 'builtin') builtinItems.push(item)
+      else customItems.push(item)
+    }
+    return { builtin: builtinItems, custom: customItems }
+  }, [templates])
+
   return (
     <div className="space-y-8">
       <ProfilePageHeader
         role="principal"
         eyebrow="Meeting Brief"
         title="简报模板 · Brief Template"
-        description={
-          <>
-            可复用的会议简报（ADR-0014）：主题、目标、议程与范围。创建 Meeting 前选用模板预填，或从历史{' '}
-            <code className="rounded-md bg-black/[0.04] px-1.5 py-0.5 font-mono text-[12px] ring-1 ring-inset ring-black/[0.05]">
-              MEETING.md
-            </code>{' '}
-            克隆。内置模板只读；自定义模板保存在{' '}
-            <code className="font-mono text-xs">data/briefs/</code>。
-          </>
-        }
+        description="可复用的会议意图：主题、目标、议程与范围。内置模板可另存为自定义副本后再改。"
       />
 
-      {loading && <ProfileListSkeleton />}
+      {loading && <BriefTemplateGridSkeleton />}
 
       {!loading && error && (
         <ProfileStatePanel variant="danger" title="加载失败" description={error} />
@@ -76,25 +102,23 @@ export function BriefTemplatesPage() {
       {!loading && !error && templates.length === 0 && (
         <ProfileStatePanel
           title="暂无简报模板"
-          description="请确认 data/_templates/briefs/ 下存在 BRIEF.yaml，或在此创建自定义模板。"
+          description="请确认 data/_templates/briefs/ 下存在 BRIEF.yaml。"
         />
       )}
 
       {!loading && !error && templates.length > 0 && (
-        <ul className="space-y-4">
-          {templates.map((item) => (
-            <li key={item.id}>
-              <ProfileListCard
-                role="principal"
-                href={`/brief-templates/${encodeURIComponent(item.id)}`}
-                title={item.title}
-                subtitle={item.description || item.id}
-                files={[{ name: 'BRIEF.yaml', present: true }]}
-                meta={`${sourceLabel(item.source)} · ${item.id}`}
-              />
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-10">
+          <TemplateSection
+            title="内置模板"
+            hint="只读起点；编辑后请另存为自定义模板。"
+            templates={builtin}
+          />
+          <TemplateSection
+            title="自定义模板"
+            hint="保存在 data/briefs/，可直接修改并保存。"
+            templates={custom}
+          />
+        </div>
       )}
     </div>
   )

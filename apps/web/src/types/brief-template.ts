@@ -31,8 +31,22 @@ export interface BriefTemplateIndex {
   updated_at: string
 }
 
+export interface BriefTemplateMeta {
+  title: string
+  description?: string
+  owner?: string
+}
+
+export interface BriefTemplateDocument {
+  meta: BriefTemplateMeta
+  topic?: string
+  brief: BriefBody
+  meeting?: MeetingDefaults
+}
+
 export interface BriefTemplateDetail extends BriefTemplateIndex {
   content: string
+  document: BriefTemplateDocument
   launch: LaunchDraft
 }
 

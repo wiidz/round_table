@@ -1,6 +1,7 @@
 import { apiFetch } from '@/api/client'
 import type {
   BriefTemplateDetail,
+  BriefTemplateDocument,
   BriefTemplatesResponse,
   CloneBriefResponse,
 } from '@/types/brief-template'
@@ -13,11 +14,19 @@ export function fetchBriefTemplate(id: string) {
   return apiFetch<BriefTemplateDetail>(`/brief-templates/${encodeURIComponent(id)}`)
 }
 
-export function saveBriefTemplate(id: string, content: string) {
+export function createBriefTemplate(payload: { document: BriefTemplateDocument }) {
+  return apiFetch<{ id: string; status: string }>('/brief-templates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function saveBriefTemplate(id: string, payload: { document: BriefTemplateDocument }) {
   return apiFetch<{ status: string }>(`/brief-templates/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(payload),
   })
 }
 
