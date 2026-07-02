@@ -19,7 +19,7 @@ import { ApiError } from '@/api/client'
 import { useI18n } from '@/hooks/use-i18n'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { hePanelShell, heSpring } from '@/lib/highend-styles'
-import { headingsEqual, type MarkdownHeading } from '@/lib/markdown-headings'
+import { extractMarkdownHeadings } from '@/lib/markdown-headings'
 import { hasWorkspaceTranscript } from '@/lib/minutes-to-messages'
 import { parseMeetingBriefPreview } from '@/lib/meeting-brief-preview'
 import {
@@ -66,7 +66,6 @@ export function MeetingFilesViewer({
   const [viewMode, setViewMode] = useState<MarkdownViewMode>('preview')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [articleHeadings, setArticleHeadings] = useState<MarkdownHeading[]>([])
   const [downloading, setDownloading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -91,6 +90,16 @@ export function MeetingFilesViewer({
     [detail, modeKind],
   )
 
+  const activeFileContent = useMemo(() => {
+    if (view !== 'documents' || !activeFile || !detail?.files) return ''
+    return detail.files[activeFile] ?? ''
+  }, [view, activeFile, detail?.files])
+
+  const articleHeadings = useMemo(
+    () => extractMarkdownHeadings(activeFileContent),
+    [activeFileContent],
+  )
+
   const setView = useCallback(
     (next: MeetingDetailView) => {
       setSearchParams(
@@ -108,14 +117,6 @@ export function MeetingFilesViewer({
     },
     [setSearchParams],
   )
-
-  const handleHeadingsCollected = useCallback((next: MarkdownHeading[]) => {
-    setArticleHeadings((prev) => (headingsEqual(prev, next) ? prev : next))
-  }, [])
-
-  useEffect(() => {
-    setArticleHeadings([])
-  }, [activeFile])
 
   useEffect(() => {
     let cancelled = false
@@ -315,10 +316,11 @@ export function MeetingFilesViewer({
         view === 'overview' ? (
           <MeetingDetailSidebar {...sidebarProps} />
         ) : (
-          <MarkdownTocAside headings={articleHeadings} />
+          <MarkdownTocAside key={activeFile} headings={articleHeadings} />
         )
       }
       sidebarFrom={view === 'documents' ? '96rem' : 'xl'}
+      sideColumnWidth="wide"
     >
       {sidebarProps && (
         <div className={cn('mb-5', mobileSidebarClass)}>
@@ -356,9 +358,6 @@ export function MeetingFilesViewer({
           viewMode={viewMode}
           modeKind={modeKind}
           externalToc={documentsWideLayout}
-          onHeadingsCollected={
-            documentsWideLayout ? handleHeadingsCollected : undefined
-          }
           onSelectFile={setActiveFile}
           onViewModeChange={setViewMode}
         />

@@ -10,6 +10,11 @@ import {
 } from 'lucide-react'
 
 import { useI18n } from '@/hooks/use-i18n'
+import {
+  MeetingFlowOutcomeBanner,
+  meetingFlowProgressBarClass,
+  meetingFlowProgressLabel,
+} from '@/components/meeting/meeting-flow-outcome'
 import type {
   MeetingFlow,
   MeetingFlowStep,
@@ -36,6 +41,8 @@ function stepStatusDotClass(status: MeetingFlowStepStatus): string {
       return 'bg-success'
     case 'active':
       return 'bg-brand ring-2 ring-brand/25'
+    case 'interrupted':
+      return 'bg-danger ring-2 ring-danger/25'
     case 'skipped':
       return 'bg-text-tertiary/30'
     default:
@@ -62,7 +69,10 @@ function CompactFlowStep({
     <li className="relative flex gap-2.5 pb-3 last:pb-0">
       {!isLast && (
         <span
-          className="absolute left-[11px] top-6 bottom-0 w-px bg-black/[0.07]"
+          className={cn(
+            'absolute left-[11px] top-6 bottom-0 w-px',
+            step.status === 'interrupted' ? 'bg-danger/25' : 'bg-black/[0.07]',
+          )}
           aria-hidden
         />
       )}
@@ -125,6 +135,7 @@ function StepContent({
             'size-3 shrink-0',
             step.status === 'completed' && 'text-success',
             step.status === 'active' && 'text-brand',
+            step.status === 'interrupted' && 'text-danger',
             step.status === 'pending' && 'text-text-tertiary/60',
             step.status === 'skipped' && 'text-text-tertiary/50',
           )}
@@ -133,14 +144,23 @@ function StepContent({
         <p
           className={cn(
             'truncate text-[12px] font-medium',
-            step.status === 'active' ? 'text-text-primary' : 'text-text-secondary',
+            step.status === 'active' && 'text-text-primary',
+            step.status === 'interrupted' && 'text-danger',
+            step.status !== 'active' &&
+              step.status !== 'interrupted' &&
+              'text-text-secondary',
             clickable && 'group-hover/step:text-brand',
           )}
         >
           {step.title}
         </p>
       </div>
-      <p className="mt-0.5 text-[10px] text-text-tertiary">
+      <p
+        className={cn(
+          'mt-0.5 text-[10px]',
+          step.status === 'interrupted' ? 'font-medium text-danger' : 'text-text-tertiary',
+        )}
+      >
         {statusLabel(step.status)}
         {clickable && step.filePath ? clickToView : ''}
       </p>
@@ -189,10 +209,21 @@ export function MeetingFlowDock({
           </div>
           <p className="mt-0.5 text-[10px] text-text-tertiary">{modeLabel}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-black/[0.03] px-2 py-0.5 text-[10px] font-medium tabular-nums text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
-          {completedCount}/{flow.steps.length}
+        <span
+          className={cn(
+            'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums ring-1 ring-inset',
+            flow.outcome === 'completed' &&
+              'bg-success-soft/60 text-success ring-success/20',
+            flow.outcome === 'aborted' && 'bg-danger-soft/60 text-danger ring-danger/20',
+            flow.outcome === 'running' &&
+              'bg-black/[0.03] text-text-tertiary ring-black/[0.05]',
+          )}
+        >
+          {meetingFlowProgressLabel(t, flow, completedCount)}
         </span>
       </div>
+
+      <MeetingFlowOutcomeBanner flow={flow} />
 
       <div
         className="mb-3 h-1 overflow-hidden rounded-full bg-black/[0.05]"
@@ -203,12 +234,15 @@ export function MeetingFlowDock({
         aria-label={t('meetingUi.flow.progressAriaLabel')}
       >
         <div
-          className="h-full rounded-full bg-brand transition-[width] duration-500"
+          className={cn(
+            'h-full rounded-full transition-[width] duration-500',
+            meetingFlowProgressBarClass(flow.outcome),
+          )}
           style={{ width: `${(completedCount / Math.max(flow.steps.length, 1)) * 100}%` }}
         />
       </div>
 
-      {activeStep && (
+      {activeStep && flow.outcome === 'running' && (
         <p className="mb-3 rounded-xs bg-brand-soft/50 px-2.5 py-2 text-[11px] leading-relaxed text-text-secondary ring-1 ring-inset ring-primary/10">
           {t('meetingUi.flow.currentStep', { title: activeStep.title })}
         </p>

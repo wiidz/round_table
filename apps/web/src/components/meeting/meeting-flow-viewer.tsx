@@ -6,11 +6,16 @@ import {
   Flag,
   Layers,
   MessageCircle,
+  OctagonX,
   Scan,
   Sparkles,
   UserCheck,
 } from 'lucide-react'
 
+import {
+  MeetingFlowOutcomeBanner,
+  meetingFlowProgressLabel,
+} from '@/components/meeting/meeting-flow-outcome'
 import { useI18n } from '@/hooks/use-i18n'
 import type { MeetingFlowStep, MeetingFlowStepKind, MeetingFlowStepStatus } from '@/lib/meeting-flow'
 import { hePanelShell, hePressable, heSpring } from '@/lib/highend-styles'
@@ -33,6 +38,8 @@ function statusTone(status: MeetingFlowStepStatus): string {
       return 'text-success'
     case 'active':
       return 'text-brand'
+    case 'interrupted':
+      return 'text-danger'
     case 'skipped':
       return 'text-text-tertiary'
     default:
@@ -46,6 +53,8 @@ function statusBadgeClass(status: MeetingFlowStepStatus): string {
       return 'bg-success-soft text-success ring-success/20'
     case 'active':
       return 'bg-brand-soft text-brand ring-primary/20'
+    case 'interrupted':
+      return 'bg-danger-soft text-danger ring-danger/20'
     case 'skipped':
       return 'bg-black/[0.03] text-text-tertiary ring-black/[0.06]'
     default:
@@ -59,6 +68,9 @@ function StatusIcon({ status }: { status: MeetingFlowStepStatus }) {
   }
   if (status === 'active') {
     return <Circle className="size-4 fill-brand/15 text-brand" aria-hidden />
+  }
+  if (status === 'interrupted') {
+    return <OctagonX className="size-4 text-danger" aria-hidden />
   }
   return <CircleDashed className="size-4 text-text-tertiary/70" aria-hidden />
 }
@@ -97,6 +109,7 @@ function FlowStepRow({
           'relative z-[1] flex size-8 shrink-0 items-center justify-center rounded-full bg-surface ring-1 ring-inset',
           step.status === 'active' && 'ring-primary/25',
           step.status === 'completed' && 'ring-success/25',
+          step.status === 'interrupted' && 'ring-danger/25',
           step.status === 'pending' && 'ring-black/[0.06]',
         )}
       >
@@ -179,13 +192,24 @@ export function MeetingFlowViewer({ detail, className, onOpenFile }: MeetingFlow
             {modeSubtitle}
           </p>
         </div>
-        <p className="text-[12px] tabular-nums text-text-tertiary">
-          {t('meetingUi.flow.completed', {
-            done: completedCount,
-            total: flow.steps.length,
-          })}
+        <p
+          className={cn(
+            'text-[12px] tabular-nums',
+            flow.outcome === 'completed' && 'font-medium text-success',
+            flow.outcome === 'aborted' && 'font-medium text-danger',
+            flow.outcome === 'running' && 'text-text-tertiary',
+          )}
+        >
+          {flow.outcome === 'completed' || flow.outcome === 'aborted'
+            ? meetingFlowProgressLabel(t, flow, completedCount)
+            : t('meetingUi.flow.completed', {
+                done: completedCount,
+                total: flow.steps.length,
+              })}
         </p>
       </div>
+
+      <MeetingFlowOutcomeBanner flow={flow} className="mb-6" />
 
       <ol className="list-none">
         {flow.steps.map((step, index) => (

@@ -85,6 +85,7 @@ export const meeting = {
     stepActive: '进行中',
     stepSkipped: '已跳过',
     stepPending: '待进行',
+    stepInterrupted: '中断于此',
   },
   meta: {
     participants: '{n} 人',

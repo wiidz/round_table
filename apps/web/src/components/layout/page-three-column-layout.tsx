@@ -4,11 +4,18 @@ import { heScrollbar } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
 export const pageSideColumnClass = 'w-[16.5rem] shrink-0'
+export const pageSideColumnWideClass = 'w-[18rem] shrink-0'
+
+/** 侧栏吸顶：grid 列需配合 items-start，避免 stretch 吃掉 sticky */
+export const pageStickyAsideClass = 'sticky top-20 self-start'
+
+export const pageStickyAsideScrollClass =
+  'max-h-[calc(100vh-7rem)] overflow-y-auto overscroll-contain'
 
 export type PageSidebarBreakpoint = 'xl' | '96rem'
 
-/** compact：固定 16.5rem 侧栏；gutter：侧栏填满 main 两侧留白（保留 grid gap） */
-export type PageSideColumnWidth = 'compact' | 'gutter'
+/** compact：16.5rem；wide：18rem（会议详情配置侧栏）；gutter：侧栏填满 main 两侧留白 */
+export type PageSideColumnWidth = 'compact' | 'wide' | 'gutter'
 
 function sidebarVisibleClass(from: PageSidebarBreakpoint): string {
   return from === '96rem' ? 'hidden min-[96rem]:block' : 'hidden xl:block'
@@ -21,9 +28,15 @@ function wideGridClass(from: PageSidebarBreakpoint, sideWidth: PageSideColumnWid
       : 'xl:grid xl:h-full xl:w-full xl:max-w-none xl:items-stretch xl:grid-cols-[minmax(12rem,1fr)_minmax(0,72rem)_minmax(12rem,1fr)]'
   }
 
+  if (sideWidth === 'wide') {
+    return from === '96rem'
+      ? 'min-[96rem]:grid min-[96rem]:mx-auto min-[96rem]:w-fit min-[96rem]:max-w-full min-[96rem]:max-w-none min-[96rem]:items-start min-[96rem]:grid-cols-[18rem_minmax(0,72rem)_18rem]'
+      : 'xl:grid xl:mx-auto xl:w-fit xl:max-w-full xl:max-w-none xl:items-start xl:grid-cols-[18rem_minmax(0,72rem)_18rem]'
+  }
+
   return from === '96rem'
-    ? 'min-[96rem]:grid min-[96rem]:mx-auto min-[96rem]:w-fit min-[96rem]:max-w-full min-[96rem]:max-w-none min-[96rem]:grid-cols-[16.5rem_minmax(0,72rem)_16.5rem]'
-    : 'xl:grid xl:mx-auto xl:w-fit xl:max-w-full xl:max-w-none xl:grid-cols-[16.5rem_minmax(0,72rem)_16.5rem]'
+    ? 'min-[96rem]:grid min-[96rem]:mx-auto min-[96rem]:w-fit min-[96rem]:max-w-full min-[96rem]:max-w-none min-[96rem]:items-start min-[96rem]:grid-cols-[16.5rem_minmax(0,72rem)_16.5rem]'
+    : 'xl:grid xl:mx-auto xl:w-fit xl:max-w-full xl:max-w-none xl:items-start xl:grid-cols-[16.5rem_minmax(0,72rem)_16.5rem]'
 }
 
 interface PageThreeColumnLayoutProps {
@@ -67,17 +80,17 @@ export function PageThreeColumnLayout({
     fillHeight && 'flex min-h-0 flex-1 flex-col',
   )
 
-  const asideScrollClass = cn(
-    'max-h-[calc(100vh-7rem)] overflow-y-auto',
-    heScrollbar,
-  )
+  const asideColumnClass = gutterSide
+    ? 'min-w-0 h-full'
+    : sideColumnWidth === 'wide'
+      ? pageSideColumnWideClass
+      : pageSideColumnClass
 
-  const asideColumnClass = gutterSide ? 'min-w-0 h-full' : pageSideColumnClass
-  const asideStickyClass = gutterSide ? undefined : 'lg:sticky lg:top-20'
+  const asideInnerClass = gutterSide ? 'h-full min-h-0' : 'space-y-5'
 
-  const asideInnerClass = gutterSide
-    ? 'h-full min-h-0'
-    : cn('space-y-5', asideScrollClass)
+  const asideStickyClass = gutterSide
+    ? undefined
+    : cn(pageStickyAsideClass, pageStickyAsideScrollClass, heScrollbar)
 
   const mainClass = cn(
     'min-w-0 w-full',

@@ -161,7 +161,7 @@ export function scrollToHeading(
   scrollEndTimer = window.setTimeout(finish, 1000)
 }
 
-/** @deprecated Prefer headings collected during Markdown render */
+/** Parse h1–h3 from Markdown source (ids align with MarkdownDocument render order). */
 export function extractMarkdownHeadings(content: string): MarkdownHeading[] {
   const registry = createHeadingIdRegistry()
   let inFence = false

@@ -37,8 +37,15 @@ export const briefAgendaItemShell = 'flex gap-3 rounded-xs bg-black/[0.025] px-3
 
 export const briefConfigPanelShell = 'space-y-3'
 
+/** 会议详情 · 配置侧栏板块宽度 */
+export const meetingDetailConfigPanelClass = 'w-[18rem] max-w-full'
+
 /** 会议配置键值行：标签列约 8 汉字宽；label 与控件首行顶对齐 */
 export const briefMeetingConfigRowGrid =
   'grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-start'
+
+/** 会议详情 · 配置行：标签列约 4 汉字宽 */
+export const meetingDetailConfigRowGrid =
+  'grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-[4rem_minmax(0,1fr)] sm:items-start'
 
 export const briefMeetingConfigLabelClass = briefFieldCaptionClass

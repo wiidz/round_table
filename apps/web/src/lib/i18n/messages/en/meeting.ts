@@ -86,6 +86,7 @@ export const meeting = {
     stepActive: 'In progress',
     stepSkipped: 'Skipped',
     stepPending: 'Pending',
+    stepInterrupted: 'Interrupted here',
   },
   meta: {
     participants: '{n} participants',

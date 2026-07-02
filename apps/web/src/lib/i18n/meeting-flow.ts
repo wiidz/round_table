@@ -1,8 +1,9 @@
 import { getTranslator } from '@/lib/i18n'
 import type { AppLocale } from '@/lib/locale'
 import {
-  isMeetingFinishedStatus,
+  isMeetingAbortedStatus,
   isMeetingRunningStatus,
+  isMeetingSuccessfullyCompletedStatus,
 } from '@/lib/meeting-flow'
 import type { MeetingDetail } from '@/types/meeting'
 
@@ -14,7 +15,14 @@ export type MeetingFlowStepKind =
   | 'confirmation'
   | 'closing'
 
-export type MeetingFlowStepStatus = 'pending' | 'active' | 'completed' | 'skipped'
+export type MeetingFlowStepStatus =
+  | 'pending'
+  | 'active'
+  | 'completed'
+  | 'skipped'
+  | 'interrupted'
+
+export type MeetingFlowOutcome = 'running' | 'completed' | 'aborted'
 
 export interface MeetingFlowStep {
   id: string
@@ -30,6 +38,9 @@ export interface MeetingFlow {
   steps: MeetingFlowStep[]
   modeKind?: MeetingModeKind
   roundLabel: string
+  outcome: MeetingFlowOutcome
+  /** 中断时停在哪一步（若有） */
+  interruptedStepId?: string
 }
 
 function roundFilePath(n: number): string {
@@ -85,6 +96,37 @@ function applyRunningActiveStep(steps: MeetingFlowStep[]): void {
   }
 }
 
+function applyAbortedMeetingSteps(
+  steps: MeetingFlowStep[],
+  files: Record<string, string>,
+): string | undefined {
+  for (const step of steps) {
+    if (step.status === 'completed' || step.status === 'skipped') continue
+    if (step.filePath && stepCompletedByArtifact(files, step.filePath)) {
+      step.status = 'completed'
+    }
+  }
+
+  const interruptIndex = steps.findIndex(
+    (s) => s.status !== 'completed' && s.status !== 'skipped',
+  )
+  if (interruptIndex < 0) return undefined
+
+  steps[interruptIndex].status = 'interrupted'
+  return steps[interruptIndex].id
+}
+
+function resolveMeetingFlowOutcome(
+  aborted: boolean,
+  successfullyCompleted: boolean,
+  running: boolean,
+): MeetingFlowOutcome {
+  if (aborted) return 'aborted'
+  if (successfullyCompleted) return 'completed'
+  if (running) return 'running'
+  return 'running'
+}
+
 function applyFinishedMeetingSteps(
   steps: MeetingFlowStep[],
   files: Record<string, string>,
@@ -116,8 +158,10 @@ export function buildMeetingFlow(locale: AppLocale, detail: MeetingDetail): Meet
   const freeDialogue = detail.free_dialogue ?? false
   const confirmationRequired =
     parseConfirmationRequired(meetingMd) || hasFile(files, 'confirmation/brief.md')
-  const finished = isMeetingFinishedStatus(detail.status)
+  const aborted = isMeetingAbortedStatus(detail.status)
+  const successfullyCompleted = isMeetingSuccessfullyCompletedStatus(detail.status)
   const running = isMeetingRunningStatus(detail.status)
+  const outcome = resolveMeetingFlowOutcome(aborted, successfullyCompleted, running)
 
   const steps: MeetingFlowStep[] = []
   const preMeetingPath = 'pre-meeting/perspectives.md'
@@ -189,14 +233,23 @@ export function buildMeetingFlow(locale: AppLocale, detail: MeetingDetail): Meet
       modeKind === 'decision'
         ? t('meeting.flow.closingDecision')
         : t('meeting.flow.closingDeliberation'),
-    status: finished || stepCompletedByArtifact(files, closingPath) ? 'completed' : 'pending',
+    status:
+      (successfullyCompleted && !aborted) || stepCompletedByArtifact(files, closingPath)
+        ? 'completed'
+        : 'pending',
     filePath: hasFile(files, closingPath) ? closingPath : undefined,
   })
 
-  applyFinishedMeetingSteps(steps, files, finished)
-  if (running) applyRunningActiveStep(steps)
+  let interruptedStepId: string | undefined
+  if (aborted) {
+    interruptedStepId = applyAbortedMeetingSteps(steps, files)
+  } else if (successfullyCompleted) {
+    applyFinishedMeetingSteps(steps, files, true)
+  } else if (running) {
+    applyRunningActiveStep(steps)
+  }
 
-  return { steps, modeKind, roundLabel }
+  return { steps, modeKind, roundLabel, outcome, interruptedStepId }
 }
 
 export function meetingFlowStepStatusLabel(
@@ -211,6 +264,8 @@ export function meetingFlowStepStatusLabel(
       return t('meeting.flow.stepActive')
     case 'skipped':
       return t('meeting.flow.stepSkipped')
+    case 'interrupted':
+      return t('meeting.flow.stepInterrupted')
     default:
       return t('meeting.flow.stepPending')
   }

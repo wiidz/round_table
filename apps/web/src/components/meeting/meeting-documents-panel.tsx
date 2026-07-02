@@ -1,4 +1,8 @@
 import { MeetingFileNav } from '@/components/meeting/meeting-file-nav'
+import {
+  pageStickyAsideClass,
+  pageStickyAsideScrollClass,
+} from '@/components/layout/page-three-column-layout'
 import { MarkdownReader } from '@/components/markdown/markdown-reader'
 import {
   MarkdownViewToggle,
@@ -9,12 +13,12 @@ import { useI18n } from '@/hooks/use-i18n'
 import {
   heFieldHint,
   heFieldSurface,
+  heScrollbar,
   heTextarea,
 } from '@/lib/highend-styles'
 import { meetingFileCategory, type MeetingModeKind } from '@/lib/meeting-labels'
 import { cn } from '@/lib/utils'
 
-import type { MarkdownHeading } from '@/lib/markdown-headings'
 import type { MeetingDetail } from '@/types/meeting'
 
 interface MeetingDocumentsPanelProps {
@@ -25,7 +29,6 @@ interface MeetingDocumentsPanelProps {
   modeKind?: MeetingModeKind
   /** 宽屏三栏时由右侧 aside 渲染文章目录 */
   externalToc?: boolean
-  onHeadingsCollected?: (headings: MarkdownHeading[]) => void
   onSelectFile: (path: string) => void
   onViewModeChange: (mode: MarkdownViewMode) => void
   className?: string
@@ -38,7 +41,6 @@ export function MeetingDocumentsPanel({
   viewMode,
   modeKind,
   externalToc = false,
-  onHeadingsCollected,
   onSelectFile,
   onViewModeChange,
   className,
@@ -65,8 +67,14 @@ export function MeetingDocumentsPanel({
           description={t('meetingUi.documents.emptyDescription', { id: detail.id })}
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
-          <aside>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+          <aside
+            className={cn(
+              pageStickyAsideClass,
+              pageStickyAsideScrollClass,
+              heScrollbar,
+            )}
+          >
             <MeetingFileNav
               names={fileNames}
               activeFile={activeFile}
@@ -102,7 +110,6 @@ export function MeetingDocumentsPanel({
                   content={content}
                   constrained={false}
                   tocInGutter={externalToc}
-                  onHeadingsCollected={onHeadingsCollected}
                 />
               ) : (
                 <textarea

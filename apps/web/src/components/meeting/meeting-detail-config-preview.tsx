@@ -1,7 +1,7 @@
 import { BriefMeetingExpertsList } from '@/components/brief/brief-meeting-experts-list'
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import { BriefMeetingConfigRow } from '@/components/brief/brief-meeting-config-row'
-import { briefConfigPanelShell } from '@/components/brief/brief-template-sections'
+import { briefConfigPanelShell, meetingDetailConfigPanelClass } from '@/components/brief/brief-template-sections'
 import { useI18n } from '@/hooks/use-i18n'
 import { getBriefMeetingConfigLabels, getBriefSections } from '@/lib/i18n/brief-sections'
 import { meetingModeKind, type MeetingModeKind } from '@/lib/meeting-labels'
@@ -88,7 +88,7 @@ export function MeetingDetailConfigPreview({
   const expertsEmptyLabel = expertEmptyLabel(experts)
 
   return (
-    <aside className={cn(hePanelShell, 'overflow-visible p-4', className)}>
+    <aside className={cn(hePanelShell, meetingDetailConfigPanelClass, 'overflow-visible p-4', className)}>
       <div className="mb-3">
         <BriefSectionHeading
           title={sections.meeting.title}
@@ -97,16 +97,19 @@ export function MeetingDetailConfigPreview({
       </div>
       <div className={briefConfigPanelShell}>
         <BriefMeetingConfigRow
+          layout="detail"
           label={configLabels.mode}
           value={
             isDeliberation ? t('brief.config.modeDeliberation') : t('brief.config.modeDecision')
           }
         />
         <BriefMeetingConfigRow
+          layout="detail"
           label={configLabels.confirmation}
           value={confirmationLabel()}
         />
         <BriefMeetingConfigRow
+          layout="detail"
           label={configLabels.maxRounds}
           value={
             detail.max_rounds && detail.max_rounds > 0
@@ -116,15 +119,18 @@ export function MeetingDetailConfigPreview({
         />
         {synthesisLabel && (
           <BriefMeetingConfigRow
+            layout="detail"
             label={configLabels.minSynthesis}
             value={synthesisLabel}
           />
         )}
         <BriefMeetingConfigRow
+          layout="detail"
           label={configLabels.freeDialogue}
           value={freeDialogueLabel()}
         />
         <BriefMeetingConfigRow
+          layout="detail"
           label={configLabels.experts}
           valueAlign="start"
           value={

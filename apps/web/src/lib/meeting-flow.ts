@@ -5,6 +5,7 @@ import type { MeetingDetail } from '@/types/meeting'
 
 export type {
   MeetingFlow,
+  MeetingFlowOutcome,
   MeetingFlowStep,
   MeetingFlowStepKind,
   MeetingFlowStepStatus,
@@ -14,7 +15,12 @@ export { parseConfirmationRequired } from '@/lib/i18n/meeting-flow'
 
 const fallbackLocale: AppLocale = 'zh'
 
-export function isMeetingFinishedStatus(status?: string): boolean {
+export function isMeetingAbortedStatus(status?: string): boolean {
+  const s = status?.trim() ?? ''
+  return s === '已中断' || s === 'aborted' || s === 'Aborted'
+}
+
+export function isMeetingSuccessfullyCompletedStatus(status?: string): boolean {
   const s = status?.trim() ?? ''
   return (
     s === '已结束' ||
@@ -22,11 +28,12 @@ export function isMeetingFinishedStatus(status?: string): boolean {
     s === '已归档' ||
     s === 'Archived' ||
     s === '共识达成' ||
-    s === 'Consensus' ||
-    s === '已中断' ||
-    s === 'aborted' ||
-    s === 'Aborted'
+    s === 'Consensus'
   )
+}
+
+export function isMeetingFinishedStatus(status?: string): boolean {
+  return isMeetingSuccessfullyCompletedStatus(status) || isMeetingAbortedStatus(status)
 }
 
 export function isMeetingRunningStatus(status?: string): boolean {

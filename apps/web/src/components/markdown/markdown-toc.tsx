@@ -11,7 +11,7 @@ import {
 } from '@/lib/markdown-headings'
 import { cn } from '@/lib/utils'
 
-const TOC_MIN_HEADINGS = 2
+const TOC_MIN_HEADINGS = 1
 
 function useActiveHeadingId(headings: MarkdownHeading[]) {
   const [activeId, setActiveId] = useState(headings[0]?.id ?? '')
@@ -118,7 +118,7 @@ export function MarkdownTocAside({ headings }: MarkdownTocProps) {
     <nav
       aria-label={t('common.markdown.tocAriaLabel')}
       className={cn(
-        'sticky top-20 flex max-h-[calc(100vh-7rem)] w-full flex-col rounded-xl p-3.5',
+        'flex max-h-[calc(100vh-7rem)] w-full flex-col rounded-xl p-3.5',
         'bg-surface/92 backdrop-blur-sm',
         'shadow-[var(--panel-shell-shadow)] ring-1 ring-inset ring-black/[0.06]',
       )}
