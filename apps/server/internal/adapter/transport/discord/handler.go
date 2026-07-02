@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"round_table/apps/server/internal/adapter/profile"
 	"round_table/apps/server/internal/adapter/transport"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	"round_table/apps/server/internal/domain/meeting"
@@ -13,6 +14,7 @@ import (
 type CommandHandler struct {
 	Prefix       string
 	Registry     *principalbind.Registry
+	Profiles     profile.Port
 	Meet         *MeetRunner
 	Participants *ParticipantAdmin
 	Reception    *Reception
@@ -202,18 +204,10 @@ func (h *CommandHandler) handlePrincipal(msg transport.Inbound, args []string) (
 		return principalUsageText(loc, h.Prefix), nil
 	}
 	scope := principalbind.ScopeKey(msg.Platform, msg.GuildID, msg.AuthorID)
-	display := msg.AuthorName
-	if display == "" {
-		display = msg.AuthorID
-	}
 
 	switch strings.ToLower(args[0]) {
 	case "bind", "register":
-		b, err := h.Registry.Bind(scope, msg.Platform, msg.AuthorID, display)
-		if err != nil {
-			return principalBindFailedText(loc, err), nil
-		}
-		return principalBindOKText(loc, b.PrincipalID, b.DisplayName, scopeLabel(loc, msg.GuildID == "")), nil
+		return bindPrincipalInbound(h.Registry, h.Profiles, msg, loc)
 
 	case "whoami", "me", "status":
 		b, ok := h.Registry.Get(scope)

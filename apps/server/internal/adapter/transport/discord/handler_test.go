@@ -105,7 +105,7 @@ func TestCommandHandler_naturalMeetTrigger(t *testing.T) {
 	if err != nil || !strings.Contains(reply, "会议简报") {
 		t.Fatalf("reply=%q err=%v", reply, err)
 	}
-	for _, skip := range []string{"-", "-", "-"} {
+	for _, skip := range []string{"0", "跳过", "skip"} {
 		reply, err = h.Handle(context.Background(), transport.Inbound{
 			Platform: "discord", GuildID: "g1", AuthorID: "u1",
 			ChannelID: "ch1", Content: skip,

@@ -21,3 +21,8 @@ export function localeFromSettingsFields(fields: SettingsFieldState[]): AppLocal
 export function defaultLocale(): AppLocale {
   return DEFAULT_LOCALE
 }
+
+/** USER.md Language field value from app locale (settings ROUND_TABLE_LOCALE). */
+export function localeToUserLanguage(locale: AppLocale): string {
+  return locale === 'en' ? 'en' : 'zh-CN'
+}

@@ -30,6 +30,12 @@ export const settings = {
     neverFetched: 'Never fetched',
     addBot: 'Add bot',
     addParticipantBot: 'Add participant bot',
+    addBotDialogTitle: 'New bot',
+    addBotDialogDescription:
+      'Choose a sidebar label first; after creation, fill in the token and bind an expert.',
+    addBotNameLabel: 'Name',
+    addBotNamePlaceholder: 'e.g. Design bot',
+    addBotNameHint: 'Sidebar label; add token and bind experts after creation',
     navAriaLabel: 'Discord bot list',
     moderatorTitle: 'Moderator',
     moderatorSubtitle:

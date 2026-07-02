@@ -13,7 +13,7 @@ export const brief = {
     },
     meeting: {
       title: 'Meeting configuration',
-      description: 'Mode, rounds, confirmation, experts, and runtime params.',
+      description: 'Mode, rounds, confirmation, experts; leave blank to set at meeting time.',
     },
   },
   topic: {
@@ -24,6 +24,7 @@ export const brief = {
     topic: 'Topic',
     goal: 'Meeting goal',
     goalEmpty: 'No meeting goal yet',
+    goalPlaceholder: 'Leave empty to set at meeting time',
     agendaAdd: 'Add agenda item',
     agendaItem: 'Item {index}',
     agendaDelete: 'Delete item {index}',
@@ -40,6 +41,11 @@ export const brief = {
     descriptionLabel: 'Template description',
     descriptionPlaceholder:
       'Describe use case, e.g. executable consensus for go/no-go topics',
+  },
+  meetingInfo: {
+    sectionTitle: 'Meeting info',
+    sectionHint:
+      'Prefill topic, agenda, scope, and meeting config; blanks can be set at meeting time.',
   },
   scope: {
     inScope: 'In scope',
@@ -68,8 +74,10 @@ export const brief = {
     maxRoundsValue: '{n} rounds',
     freeDialogueQuestions: '{n} questions',
     minSynthesisHint: 'Deliberation mode only',
-    expertsHint: 'Multi-select; empty means all experts',
-    expertsEmpty: 'All experts (default)',
+    deferToMeeting: 'Set at meeting time',
+    deferHint: 'Leave blank to choose in the meeting wizard',
+    expertsHint: 'Multi-select; leave blank to choose experts when starting the meeting',
+    expertsEmpty: 'Set at meeting time',
   },
   gridCard: {
     noDescription: 'No description; click to edit template.',
@@ -94,7 +102,7 @@ export const brief = {
   fieldHintAria: '{label} help',
   participants: {
     loading: 'Loading experts…',
-    placeholderEmpty: 'Search experts (empty = all experts)',
+    placeholderEmpty: 'Search experts (leave blank to set at meeting time)',
     placeholderMore: 'Search to add more experts',
     searchPlaceholder: 'Search by name, ID, or expertise',
     remove: 'Remove {name}',
@@ -108,7 +116,17 @@ export const brief = {
     sectionCustomHint: 'Stored in data/briefs/; edit and save directly.',
     loadFailed: 'Unable to load brief templates',
     emptyTitle: 'No brief templates',
-    emptyDescription: 'Ensure BRIEF.yaml exists under data/_templates/briefs/.',
+    emptyDescription:
+      'Ensure BRIEF.yaml exists under data/_templates/briefs/, or create a custom template.',
+    add: 'New template',
+    create: 'Create',
+    created: 'Template created',
+    createDialogTitle: 'New brief template',
+    createDialogDescription:
+      'Enter a name to start editing; save requires at least one prefill field besides the name.',
+    createTitleHint: 'Shown in list and detail; used to generate the directory name on save',
+    contentRequired: 'Enter at least one prefill field besides the template name',
+    editHintNew: ' New templates need at least one prefill field before saving.',
     detailBack: 'Back to brief templates',
     unsavedChanges: 'Unsaved changes',
     editHint: 'Edit template metadata and meeting prefill fields; server generates BRIEF.yaml on save.',

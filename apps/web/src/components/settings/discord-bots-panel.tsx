@@ -5,23 +5,28 @@ import { toast } from 'sonner'
 import { refreshDiscordBotProfiles, saveDiscordBots } from '@/api/settings'
 import { fetchParticipants } from '@/api/participants'
 import { FieldHintPopover, SettingsFieldRow, SettingsSwitch } from '@/components/settings/field-hint-popover'
+import { DiscordBotCreateDialog } from '@/components/settings/discord-bot-create-dialog'
 import { SearchableSelect } from '@/components/settings/searchable-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/hooks/use-i18n'
 import {
+  SideTabWorkspace,
+  SideTabWorkspaceAddTab,
+  SideTabWorkspaceNav,
+  SideTabWorkspacePanel,
+  SideTabWorkspaceTab,
+} from '@/components/layout/side-tab-workspace'
+import {
   heColumnTitleAI,
   heColumnTitleBrand,
   heFileBadge,
   heFormEmbed,
-  heFieldReadonly,
   hePressable,
   heSectionDesc,
   heSectionTitle,
   heSubsectionTitleNeutral,
-  sideTabButtonMotion,
   sideTabIconMotion,
-  sideTabInactiveBorderClass,
   sideTabLabelMotion,
 } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
@@ -54,53 +59,8 @@ import { resolveDiscordBotTab, type DiscordBotTabKey } from '@/lib/discord-bot-n
 
 const APP_ID_PATTERN = /^\d{17,20}$/
 
-const BOT_SIDE_TAB_WIDTH = '10rem'
-
-const botSideTabListClass = cn(
-  'flex shrink-0 flex-col gap-2 self-start overflow-visible',
-  'max-h-[min(32rem,calc(100vh-14rem))] overflow-y-auto bg-transparent pt-8 pb-1',
-)
-
 const botTabAvatar = cn(
   'flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xs p-0.5',
-)
-
-/** 右侧表单 panel：四角圆角，左侧无 ring，与激活 Tab 衔接 */
-const botFormPanelShell = cn(
-  'relative z-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-canvas',
-  'shadow-[var(--field-inset-shadow)]',
-  'ring-1 ring-inset ring-t ring-r ring-b ring-[var(--field-ring)]',
-  '-ml-px',
-)
-
-/** 未激活 ml-3 内缩；激活 ml-0 全宽突出（不用 -ml-3，避免滚动容器裁切） */
-function botSideTabButtonClass(selected: boolean, configured: boolean) {
-  return cn(
-    sideTabButtonMotion,
-    'flex min-h-[3rem] w-full max-w-full flex-row items-center gap-2.5 rounded-l-lg rounded-r-none',
-    'border border-r-0 border-l-[3px] cursor-pointer py-2 pl-2 text-left',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2',
-    selected
-      ? cn(
-          'relative z-10 ml-0 min-h-[3.25rem] pl-2 pr-2',
-          'border border-r-0 border-l-[3px] border-l-primary border-t-black/[0.12] border-b-black/[0.12] !bg-canvas font-semibold',
-        )
-      : cn(
-          'z-0 ml-3 w-[calc(100%-0.75rem)]',
-          sideTabInactiveBorderClass,
-          'border-l-transparent bg-black/[0.04] font-medium text-[13px] text-text-secondary',
-          'hover:bg-black/[0.06] hover:text-text-primary',
-        ),
-    !configured && !selected && 'opacity-75',
-  )
-}
-
-const botSideTabAddClass = cn(
-  sideTabButtonMotion,
-  'z-0 ml-3 flex min-h-[3rem] w-[calc(100%-0.75rem)] flex-row items-center gap-2.5 rounded-l-lg rounded-r-none',
-  'border border-r-0 border-l-transparent bg-black/[0.04] px-2 py-2',
-  sideTabInactiveBorderClass,
-  'text-[13px] text-text-tertiary hover:bg-black/[0.06] hover:text-text-secondary',
 )
 
 function tokenForSave(draft: string, configured: boolean, t: Translator): string | undefined {
@@ -137,13 +97,12 @@ function BotTab({
   const fallback = (displayLabel || '?').slice(0, 1).toUpperCase()
 
   return (
-    <button
-      type="button"
+    <SideTabWorkspaceTab
       title={`${displayLabel} (${displayRoleId})`}
       aria-label={displayLabel}
-      aria-selected={selected}
+      selected={selected}
+      className={!configured && !selected ? 'opacity-75' : undefined}
       onClick={onSelect}
-      className={botSideTabButtonClass(selected, configured)}
     >
       <span className="relative shrink-0">
         <span
@@ -194,7 +153,7 @@ function BotTab({
           {displayRoleId}
         </span>
       </span>
-    </button>
+    </SideTabWorkspaceTab>
   )
 }
 
@@ -218,12 +177,14 @@ function toParticipantDrafts(bots: DiscordBotState[]): ParticipantDraft[] {
     }))
 }
 
-function newParticipant(): ParticipantDraft {
+function newParticipant(displayName?: string): ParticipantDraft {
+  const name = displayName?.trim()
   return {
     application_id: '',
     token: '',
     configured: false,
     bound_participant_id: '',
+    ...(name ? { display_name: name } : {}),
   }
 }
 
@@ -372,7 +333,7 @@ function BotSettingsForm({
                 : t('settings.discord.tokenPlaceholderNew')
             }
             autoComplete="off"
-            className="!rounded-xs font-mono text-sm"
+            className="font-mono text-sm"
             onChange={(e) => onTokenChange(e.target.value)}
           />
         </SettingsFieldRow>
@@ -386,7 +347,7 @@ function BotSettingsForm({
             value={discordApplicationId ?? ''}
             placeholder={discordProfileHint}
             disabled
-            className={cn(heFieldReadonly, 'font-mono text-sm')}
+            className="font-mono text-sm"
           />
         </SettingsFieldRow>
         <SettingsFieldRow label={t('settings.discord.usernameLabel')} htmlFor={`discord-name-${formKey}`}>
@@ -395,7 +356,7 @@ function BotSettingsForm({
             value={discordUsername ?? ''}
             placeholder={discordProfileHint}
             disabled
-            className={cn(heFieldReadonly, 'text-sm')}
+            className="text-sm"
           />
         </SettingsFieldRow>
       </SettingsBlock>
@@ -760,7 +721,7 @@ function DiscordGeneralSection({
           value={guildId}
           placeholder={t('settings.discord.guildIdPlaceholder')}
           autoComplete="off"
-          className="!rounded-xs font-mono text-sm"
+          className="font-mono text-sm"
           onChange={(e) => onGuildIdChange(e.target.value)}
         />
       </SettingsFieldRow>
@@ -802,6 +763,7 @@ export function DiscordBotsPanel({
   )
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   const lastProfileFetchedAt = useMemo(() => {
     const times = bots
@@ -957,12 +919,13 @@ export function DiscordBotsPanel({
     }
   }
 
-  function addParticipant() {
+  function handleCreateBot(displayName: string) {
     setParticipants((prev) => {
-      const next = [...prev, newParticipant()]
+      const next = [...prev, newParticipant(displayName)]
       setActiveTab(`participant-${next.length - 1}`)
       return next
     })
+    setCreateDialogOpen(false)
   }
 
   async function handleRefreshProfiles() {
@@ -1041,12 +1004,8 @@ export function DiscordBotsPanel({
       </header>
 
       <div className="min-w-0">
-      <div className="flex min-h-0 min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-0">
-        <nav
-          aria-label={t('settings.discord.navAriaLabel')}
-          className={botSideTabListClass}
-          style={{ width: BOT_SIDE_TAB_WIDTH }}
-        >
+      <SideTabWorkspace>
+        <SideTabWorkspaceNav aria-label={t('settings.discord.navAriaLabel')}>
           <BotTab
             label={moderator.label ?? moderator.display_name ?? t('settings.discord.moderatorTitle')}
             roleId={moderator.id}
@@ -1075,22 +1034,20 @@ export function DiscordBotsPanel({
             )
           })}
 
-          <button
-            type="button"
+          <SideTabWorkspaceAddTab
             title={t('settings.discord.addParticipantBot')}
             aria-label={t('settings.discord.addParticipantBot')}
-            onClick={addParticipant}
-            className={botSideTabAddClass}
+            onClick={() => setCreateDialogOpen(true)}
           >
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xs border border-dashed border-black/[0.12] bg-black/[0.02]">
               <Plus className="size-4" />
             </span>
             <span className="truncate font-medium">{t('settings.discord.addBot')}</span>
-          </button>
-        </nav>
+          </SideTabWorkspaceAddTab>
+        </SideTabWorkspaceNav>
 
         {(activeTab === 'moderator' || activeParticipant) && (
-          <div className={botFormPanelShell}>
+          <SideTabWorkspacePanel>
             <div className="space-y-8 p-5 sm:p-6">
       {activeTab === 'moderator' && (
         <BotSettingsForm
@@ -1155,11 +1112,17 @@ export function DiscordBotsPanel({
         />
       )}
             </div>
-          </div>
+          </SideTabWorkspacePanel>
         )}
-      </div>
+      </SideTabWorkspace>
       </div>
       </section>
+
+      <DiscordBotCreateDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSubmit={handleCreateBot}
+      />
     </div>
   )
 }

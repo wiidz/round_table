@@ -36,13 +36,16 @@ const (
 	setupStepCustomConfirmation
 	setupStepCustomFree
 	setupStepCustomConfirm
+	setupStepPickTemplate
 )
 
 type meetSetupSession struct {
-	channelID string
-	authorID  string
-	config    meetLaunchConfig
-	step      setupStep
+	channelID            string
+	authorID             string
+	config               meetLaunchConfig
+	step                 setupStep
+	briefTemplateID      string
+	templateLocksMeeting bool
 }
 
 type meetSetupSessions struct {

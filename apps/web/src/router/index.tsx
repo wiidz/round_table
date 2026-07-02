@@ -12,7 +12,7 @@ import { MeetingsPage } from '@/pages/meetings-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { ParticipantDetailPage } from '@/pages/participant-detail-page'
 import { ParticipantsPage } from '@/pages/participants-page'
-import { PrincipalDetailPage } from '@/pages/principal-detail-page'
+import { PrincipalEditPage } from '@/pages/principal-edit-page'
 import { PrincipalsPage } from '@/pages/principals-page'
 import { SettingsPage } from '@/pages/settings-page'
 
@@ -27,7 +27,7 @@ export const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           { path: 'meetings', element: <MeetingsPage /> },
           { path: 'principals', element: <PrincipalsPage /> },
-          { path: 'principals/:id', element: <PrincipalDetailPage /> },
+          { path: 'principals/edit', element: <PrincipalEditPage /> },
           { path: 'brief-templates', element: <BriefTemplatesPage /> },
           { path: 'brief-templates/:id', element: <BriefTemplateDetailPage /> },
           { path: 'participants', element: <ParticipantsPage /> },

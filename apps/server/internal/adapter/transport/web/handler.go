@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	profFS "round_table/apps/server/internal/adapter/profile/fs"
+	brieffs "round_table/apps/server/internal/adapter/brief/fs"
 	discordtransport "round_table/apps/server/internal/adapter/transport/discord"
 	"round_table/apps/server/internal/adapter/transport"
 	"round_table/apps/server/internal/domain/meeting"
@@ -38,6 +39,7 @@ func NewHandler(cfg config.Config, configSvc *config.Service, hub *Hub) *Handler
 		Cfg:       cfg,
 		ConfigSvc: configSvc,
 		Discord:   dc,
+		Briefs:    brieffs.NewStore(cfg.Brief.Root, cfg.Brief.Templates),
 		Bots:      pool,
 		Principal: discordtransport.NewChannelPrincipal(pool, loc),
 	}

@@ -9,8 +9,17 @@ import (
 
 func (h *Handler) handlePutPrincipalUserProfile(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.profile.EnsurePrincipal(id); err != nil {
+	manifest, err := h.profile.EnsurePrincipalPersonas(id)
+	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	active := manifest.ActivePersonaID
+	if active == "" && len(manifest.Personas) > 0 {
+		active = manifest.Personas[0].ID
+	}
+	if active == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no active persona"})
 		return
 	}
 
@@ -20,8 +29,8 @@ func (h *Handler) handlePutPrincipalUserProfile(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	content := profile.RenderUserMD(payload)
-	if err := h.profile.WritePrincipalFile(id, profile.FileUser, []byte(content)); err != nil {
+	userProfile, err := h.profile.WritePrincipalPersonaUserProfile(id, active, payload)
+	if err != nil {
 		status := http.StatusBadRequest
 		if err == profile.ErrNotFound {
 			status = http.StatusNotFound
@@ -32,6 +41,6 @@ func (h *Handler) handlePutPrincipalUserProfile(w http.ResponseWriter, r *http.R
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":       "ok",
-		"user_profile": profile.ParseUserMD(content),
+		"user_profile": userProfile,
 	})
 }

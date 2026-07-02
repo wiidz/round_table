@@ -16,12 +16,14 @@ import {
   type MarkdownViewMode,
 } from '@/components/markdown/markdown-view-toggle'
 import { ApiError } from '@/api/client'
+import { SettingsFieldRow } from '@/components/settings/field-hint-popover'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { useI18n } from '@/hooks/use-i18n'
 import {
   heColumnTitleAI,
   heColumnTitleBrand,
-  heFieldSurface,
+  heInputReadonly,
   heFilePill,
   heFilePillSelected,
   hePageDesc,
@@ -29,7 +31,6 @@ import {
   hePanelShell,
   hePressable,
   heSpring,
-  heTextarea,
   heEyebrowAI,
   heEyebrowBrand,
 } from '@/lib/highend-styles'
@@ -303,41 +304,39 @@ export function ProfileFilesEditor({
             </aside>
 
             <div className="flex min-w-0 flex-col gap-4">
-              <div className="space-y-1">
-                <p className="font-mono text-[12px] text-text-secondary">
-                  {profileFileCaption(activeFile)}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {fileHints[activeFile] ?? t('profile.filesEditor.defaultHint')}
-                  {!Object.hasOwn(files, activeFile) && t('profile.filesEditor.createOnSave')}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <MarkdownViewToggle mode={viewMode} onChange={setViewMode} />
-                {dirty && (
-                  <span className="text-xs font-medium text-warning">
-                    {viewMode === 'preview'
-                      ? t('profile.filesEditor.unsavedPreview')
-                      : t('profile.filesEditor.unsaved')}
-                  </span>
-                )}
-              </div>
-
-              <div className={cn(heFieldSurface, 'relative overflow-visible')}>
-                {viewMode === 'preview' ? (
-                  <div className="p-5 sm:p-6">
-                    <MarkdownReader content={draft} constrained={false} />
+              <SettingsFieldRow
+                label={profileFileCaption(activeFile)}
+                hint={
+                  (fileHints[activeFile] ?? t('profile.filesEditor.defaultHint')) +
+                  (!Object.hasOwn(files, activeFile) ? t('profile.filesEditor.createOnSave') : '')
+                }
+              >
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <MarkdownViewToggle mode={viewMode} onChange={setViewMode} />
+                    {dirty && (
+                      <span className="text-xs font-medium text-warning">
+                        {viewMode === 'preview'
+                          ? t('profile.filesEditor.unsavedPreview')
+                          : t('profile.filesEditor.unsaved')}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    spellCheck={false}
-                    className={heTextarea}
-                  />
-                )}
-              </div>
+
+                  {viewMode === 'preview' ? (
+                    <div className={cn(heInputReadonly, 'p-5 sm:p-6')}>
+                      <MarkdownReader content={draft} constrained={false} />
+                    </div>
+                  ) : (
+                    <Textarea
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      spellCheck={false}
+                      className="min-h-[420px] font-mono text-[14px] leading-[1.75]"
+                    />
+                  )}
+                </div>
+              </SettingsFieldRow>
 
               {viewMode === 'source' && (
                 <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle/80 pt-4">

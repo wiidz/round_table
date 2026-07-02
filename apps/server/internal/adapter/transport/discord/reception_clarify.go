@@ -67,6 +67,10 @@ func (r *Reception) HandleClarifyFollowUp(ctx context.Context, msg transport.Inb
 		r.clarifies.clear(msg.ChannelID)
 		return receptionClarifyCancelledText(loc), nil
 	}
+	if reply, ok := tryPrincipalNatural(msg, r.Registry, r.Profiles, loc); ok {
+		r.clarifies.clear(msg.ChannelID)
+		return reply, nil
+	}
 	d := r.mergeClarifyReply(sess, body)
 	r.clarifies.clear(msg.ChannelID)
 	if isReceptionMutatingTool(d.Tool) {
@@ -130,6 +134,9 @@ func inferReceptionPendingTool(userText string) receptionTool {
 	if s == "" {
 		return receptionToolNone
 	}
+	if matchesPrincipalBindIntent(s) {
+		return receptionToolNone
+	}
 	if matchesProfileUpdateIntent(s) {
 		return receptionToolUpdateParticipantProfile
 	}
@@ -151,6 +158,9 @@ func inferReceptionPendingTool(userText string) receptionTool {
 }
 
 func matchesCreateExpertIntent(s string) bool {
+	if matchesPrincipalBindIntent(s) {
+		return false
+	}
 	if matchesProfileUpdateIntent(s) {
 		return false
 	}
@@ -176,6 +186,9 @@ func containsAnySubstring(s string, parts ...string) bool {
 
 func extractCreateDisplayName(body string) string {
 	body = strings.TrimSpace(body)
+	if matchesPrincipalBindIntent(body) {
+		return ""
+	}
 	for _, prefix := range []string{"新增专家", "创建专家", "添加专家", "新建专家", "增加专家", "加一个专家"} {
 		if strings.HasPrefix(body, prefix) {
 			if rest := trimExpertQuotes(strings.TrimSpace(strings.TrimPrefix(body, prefix))); rest != "" {

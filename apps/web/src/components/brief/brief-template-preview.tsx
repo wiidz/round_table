@@ -4,6 +4,7 @@ import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import {
   briefAgendaItemShell,
   briefFieldCaptionClass,
+  briefTemplateBodyGridClass,
   briefTemplateLeftColumnClass,
   briefTemplateRightColumnClass,
 } from '@/components/brief/brief-template-sections'
@@ -14,9 +15,6 @@ import { normalizeBriefDocument } from '@/lib/brief-template-document'
 import { cn } from '@/lib/utils'
 
 import type { BriefTemplateDocument } from '@/types/brief-template'
-
-export const briefTemplateBodyGridClass =
-  'grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)] lg:gap-x-5'
 
 export function BriefTemplatePreview({ document }: { document: BriefTemplateDocument }) {
   const { t, locale } = useI18n()

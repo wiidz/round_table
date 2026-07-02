@@ -2,11 +2,10 @@ import type { ReactNode } from 'react'
 import { CircleHelp } from 'lucide-react'
 
 import { useI18n } from '@/hooks/use-i18n'
-import { heFieldLabel, heSpring } from '@/lib/highend-styles'
+import { heFieldLabel, heFormFieldRowGrid, heFormLabelColumnClass, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
-export const settingsFieldRowGrid =
-  'grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-[minmax(8rem,11rem)_1fr] sm:items-start'
+export const settingsFieldRowGrid = heFormFieldRowGrid
 
 export function FieldHintPopover({
   content,
@@ -85,7 +84,7 @@ export function SettingsFieldRow({
 
   return (
     <div className={settingsFieldRowGrid}>
-      <div className="space-y-2">
+      <div className={cn(heFormLabelColumnClass, 'space-y-2')}>
         <SettingsFieldLabel htmlFor={htmlFor} label={label} required={required} />
         {labelExtra}
       </div>

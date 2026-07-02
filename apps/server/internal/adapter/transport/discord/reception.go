@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"round_table/apps/server/internal/adapter/model"
+	"round_table/apps/server/internal/adapter/profile"
 	"round_table/apps/server/internal/adapter/transport"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	"round_table/apps/server/internal/platform/config"
@@ -18,6 +19,7 @@ type Reception struct {
 	ModelName    string
 	Enabled      bool
 	Registry     *principalbind.Registry
+	Profiles     profile.Port
 	Meet         *MeetRunner
 	Participants *ParticipantAdmin
 	Phase        func(channelID string) ChannelInputPhase
@@ -55,6 +57,10 @@ func (r *Reception) TryHandle(ctx context.Context, msg transport.Inbound) (strin
 	}
 	if r.confirms.pending(msg.ChannelID) || r.clarifies.pending(msg.ChannelID) {
 		return "", nil
+	}
+
+	if reply, ok := tryPrincipalNatural(msg, r.Registry, r.Profiles, r.loc()); ok {
+		return reply, nil
 	}
 
 	if reply, err := r.tryProfileUpdateFastPath(ctx, msg, body); err != nil || reply != "" {

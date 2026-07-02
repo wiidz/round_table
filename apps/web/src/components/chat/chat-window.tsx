@@ -243,10 +243,7 @@ export function ChatWindow({
     <div
       className={cn(
         hePanelShell,
-        'relative flex h-full min-h-0 flex-col overflow-hidden',
-        roundtableSidePanel
-          ? 'h-full min-h-[28rem] lg:min-h-[calc(100vh-14rem)]'
-          : undefined,
+        'relative flex h-full min-h-0 flex-1 flex-col overflow-hidden',
       )}
     >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.05] px-5 py-4">

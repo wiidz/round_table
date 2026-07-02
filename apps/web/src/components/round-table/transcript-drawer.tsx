@@ -39,7 +39,7 @@ export function TranscriptDrawer({ message, sequence, onClose }: TranscriptDrawe
     <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
       <button
         type="button"
-        className="absolute inset-0 bg-black/25 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-black/25 backdrop-blur-[2px]"
         aria-label={t('transcript.drawer.close')}
         onClick={onClose}
       />

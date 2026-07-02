@@ -56,7 +56,7 @@ Rules:
 - meeting_status: user asks current state, progress, 会议状态, 开到哪了
 - get_artifact: user wants summary, minutes, draft, open questions, conclusion, 纪要, 草案, 待决, 结论, 总结一下
 - artifact: required for get_artifact; map 纪要/minutes/summary→minutes, 草案/draft→draft, 待决/open→open, 结论/conclusion→conclusion
-- create_participant: 新增/创建/添加专家; fill display_name (required), optional participant_id, expertise
+- create_participant: 新增/创建/添加专家（参会 Agent roster）; fill display_name (required), optional participant_id, expertise. NOT 绑定委托人/Principal bind.
 - update_participant: 修改/编辑专家; participant_ref required; optional display_name, expertise, participant_id (new id)
 - delete_participant: 删除/移除专家; participant_ref required
 - update_participant_profile: 给专家写/编辑 SOUL、AGENTS、TOOLS 档案; participant_ref + profile_file required; profile_content optional (ask follow-up if missing). NOT create_participant.
@@ -69,7 +69,7 @@ func receptionSystemPrompt(loc Locale) string {
 	if loc == LocaleZH {
 		return `你是 RoundTable Discord 主持人 Bot 的「接待路由」模块。
 根据 Principal 的自然语言选择 tool，输出 JSON。
-不要编造会议内容。写操作会进入确认流程，你只负责解析意图与参数。给专家写 SOUL/AGENTS/TOOLS 用 update_participant_profile，不是 create_participant。` + "\n\n" + receptionJSONSchema
+不要编造会议内容。写操作会进入确认流程，你只负责解析意图与参数。给专家写 SOUL/AGENTS/TOOLS 用 update_participant_profile，不是 create_participant。绑定委托人/Principal 由规则处理，不要选 create_participant。` + "\n\n" + receptionJSONSchema
 	}
 	return `You are the RoundTable Discord host bot reception router.
 Choose a tool and output JSON only. Do not invent meeting content. Mutating tools enter a 1/0 confirm flow.` + "\n\n" + receptionJSONSchema

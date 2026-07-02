@@ -30,6 +30,11 @@ export const settings = {
     neverFetched: '从未拉取',
     addBot: '添加 Bot',
     addParticipantBot: '添加参与 Bot',
+    addBotDialogTitle: '新建 Bot',
+    addBotDialogDescription: '为侧栏起一个名称，创建后再填写 Token 并绑定专家。',
+    addBotNameLabel: '名称',
+    addBotNamePlaceholder: '例如 设计 Bot',
+    addBotNameHint: '侧栏展示名称；创建后再填写 Token 并绑定专家',
     navAriaLabel: 'Discord Bot 列表',
     moderatorTitle: '主持人',
     moderatorSubtitle:

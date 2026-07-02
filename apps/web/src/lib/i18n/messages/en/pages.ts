@@ -60,7 +60,7 @@ export const pages = {
   },
   principals: {
     description:
-      'Manage Principal identity and USER.md preference profiles (ADR-0010). One USER.md per person for language, acceptance habits, and background; use brief templates for per-meeting intent.',
+      'Manage Principal preference profiles. Create multiple domain-specific profiles and switch manually; meetings use the active profile.',
     loadFailed: 'Unable to load principal list',
     emptyTitle: 'No principal profiles yet',
     emptyDescription:

@@ -28,7 +28,7 @@ export const PARTICIPANT_FILE_HINTS: Record<string, string> = {
 
 export const PRINCIPAL_FILE_HINTS: Record<string, string> = {
   'USER.md':
-    'Principal 偏好与背景（语言、Confirmation 审阅习惯、行业约束）。Moderator 服务你的长期设定，不是单次会议议题。',
+    'Principal 偏好与背景（界面语言、确认审阅习惯、行业约束）。Moderator 服务你的长期设定，不是单次会议议题。',
 }
 
 export function participantFileHints(locale: AppLocale): Record<string, string> {

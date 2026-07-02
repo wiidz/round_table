@@ -13,6 +13,7 @@ import (
 	"time"
 
 	profFS "round_table/apps/server/internal/adapter/profile/fs"
+	brieffs "round_table/apps/server/internal/adapter/brief/fs"
 	discordtransport "round_table/apps/server/internal/adapter/transport/discord"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	"round_table/apps/server/internal/platform/bootstrap"
@@ -137,15 +138,17 @@ func main() {
 		ConfigSvc: configSvc,
 		Discord:   dc,
 		Registry:  reg,
+		Briefs:    brieffs.NewStore(base.Brief.Root, base.Brief.Templates),
 		Bots:      pool,
 		Principal: discordtransport.NewChannelPrincipal(pool, loc),
 	}
 
 	var participantAdmin *discordtransport.ParticipantAdmin
+	profileStore := profFS.NewStore(base.Profile.Root, base.Profile.Templates)
 	if configSvc != nil {
 		participantAdmin = &discordtransport.ParticipantAdmin{
 			ConfigSvc: configSvc,
-			Profile:   profFS.NewStore(base.Profile.Root, base.Profile.Templates),
+			Profile:   profileStore,
 			Locale:    func() discordtransport.Locale { return discordtransport.ParseLocale(loc) },
 			Prefix:    strings.TrimSpace(dc.CommandPrefix),
 		}
@@ -162,6 +165,7 @@ func main() {
 	})
 
 	cmd := discordtransport.NewCommandHandler(dc.CommandPrefix, reg, meet)
+	cmd.Profiles = profileStore
 	cmd.Participants = participantAdmin
 
 	modelPort, modelName := bootstrap.NewModelPortOptional(base)
@@ -171,6 +175,7 @@ func main() {
 			ModelName:    modelName,
 			Enabled:      true,
 			Registry:     reg,
+			Profiles:     profileStore,
 			Meet:         meet,
 			Participants: participantAdmin,
 			Phase: func(channelID string) discordtransport.ChannelInputPhase {

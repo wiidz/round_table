@@ -63,6 +63,10 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/principals", h.handleListPrincipals)
 	mux.HandleFunc("GET /api/principals/{id}", h.handleGetPrincipal)
 	mux.HandleFunc("PUT /api/principals/{id}/user-profile", h.handlePutPrincipalUserProfile)
+	mux.HandleFunc("GET /api/principals/{id}/personas/{personaId}", h.handleGetPrincipalPersona)
+	mux.HandleFunc("POST /api/principals/{id}/personas", h.handlePostPrincipalPersona)
+	mux.HandleFunc("PUT /api/principals/{id}/personas/active", h.handlePutPrincipalActivePersona)
+	mux.HandleFunc("PUT /api/principals/{id}/personas/{personaId}/user-profile", h.handlePutPrincipalPersonaUserProfile)
 	mux.HandleFunc("PUT /api/principals/{id}/files/{filename}", h.handlePutPrincipalFile)
 	mux.HandleFunc("GET /api/brief-templates", h.handleListBriefTemplates)
 	mux.HandleFunc("POST /api/brief-templates", h.handlePostBriefTemplate)
@@ -166,6 +170,12 @@ func (h *Handler) handleGetMeeting(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleListPrincipals(w http.ResponseWriter, _ *http.Request) {
+	if h.bindings != nil {
+		for _, b := range h.bindings.AllBindings() {
+			_ = h.profile.EnsurePrincipal(b.PrincipalID)
+			_, _ = h.profile.EnsurePrincipalPersonas(b.PrincipalID)
+		}
+	}
 	list, err := h.profile.ListPrincipals()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
@@ -186,11 +196,7 @@ func (h *Handler) handleListPrincipals(w http.ResponseWriter, _ *http.Request) {
 
 func (h *Handler) handleGetPrincipal(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := h.profile.EnsurePrincipal(id); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-	detail, err := h.profile.ReadPrincipalDetail(id)
+	detail, err := h.profile.ReadPrincipalDetailWithPersonas(id)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err == profile.ErrNotFound {
@@ -202,12 +208,6 @@ func (h *Handler) handleGetPrincipal(w http.ResponseWriter, r *http.Request) {
 	if names := h.bindingDisplayNames(); names != nil {
 		detail.DisplayName = names[detail.ID]
 	}
-	content := ""
-	if detail.Files != nil {
-		content = detail.Files[profile.FileUser]
-	}
-	detail.UserProfile = profile.ParseUserMD(content)
-	detail.Files = nil
 	writeJSON(w, http.StatusOK, detail)
 }
 

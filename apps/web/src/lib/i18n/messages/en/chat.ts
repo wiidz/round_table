@@ -42,7 +42,7 @@ export const chat = {
     post: 'Finished',
   },
   transcript: {
-    emptyHint: 'Send "meeting status" or "start a meeting", or ask a question.',
+    emptyHint: 'Send "start a meeting" or "!rt meet -template <id> <topic>"; you can pick a brief template when starting.',
   },
   page: {
     title: 'Chat',

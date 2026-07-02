@@ -61,28 +61,37 @@ func parseParticipantItem(item string) (engine.ParticipantInput, error) {
 }
 
 type meetParseResult struct {
-	Topic string
-	Mode  string
+	Topic      string
+	Mode       string
+	TemplateID string
 }
 
 func parseMeetArgs(args []string, defaultMode string) (meetParseResult, error) {
 	mode := defaultMode
+	templateID := ""
 	var topicParts []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
-		if a == "-mode" || a == "--mode" {
+		switch a {
+		case "-mode", "--mode":
 			if i+1 >= len(args) {
 				return meetParseResult{}, errMeetModeFlag
 			}
 			mode = args[i+1]
 			i++
-			continue
+		case "-template", "--template", "-brief-template", "--brief-template", "-t":
+			if i+1 >= len(args) {
+				return meetParseResult{}, errMeetTemplateFlag
+			}
+			templateID = strings.TrimSpace(args[i+1])
+			i++
+		default:
+			topicParts = append(topicParts, a)
 		}
-		topicParts = append(topicParts, a)
 	}
 	topic := strings.TrimSpace(strings.Join(topicParts, " "))
-	if topic == "" {
+	if topic == "" && templateID == "" {
 		return meetParseResult{}, errMeetTopicRequired
 	}
-	return meetParseResult{Topic: topic, Mode: mode}, nil
+	return meetParseResult{Topic: topic, Mode: mode, TemplateID: templateID}, nil
 }

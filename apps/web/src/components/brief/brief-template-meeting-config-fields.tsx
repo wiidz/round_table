@@ -11,17 +11,16 @@ import { FieldHintPopover } from '@/components/settings/field-hint-popover'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/hooks/use-i18n'
 import { getBriefMeetingConfigLabels, getBriefSections } from '@/lib/i18n/brief-sections'
-import { heFieldSurface } from '@/lib/highend-styles'
-import { emptyBriefDocument } from '@/lib/brief-template-document'
-import type { BriefTemplateDocument } from '@/types/brief-template'
+import { heInputEditable } from '@/lib/highend-styles'
+import type { BriefTemplateDocument, MeetingDefaults } from '@/types/brief-template'
 import { cn } from '@/lib/utils'
 
 const SELECT_CHEVRON =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")"
 
 const selectClassName = cn(
-  heFieldSurface,
-  'h-10 w-full cursor-pointer appearance-none bg-surface px-3 pr-9 text-sm text-text-primary',
+  heInputEditable,
+  'h-10 w-full cursor-pointer appearance-none px-3 pr-9 text-sm text-text-primary',
 )
 
 const selectStyle = {
@@ -46,10 +45,10 @@ function BriefMeetingConfigFieldRow({
 
   return (
     <div className={briefMeetingConfigRowGrid}>
-      <label htmlFor={htmlFor} className={briefMeetingConfigLabelClass}>
+      <label htmlFor={htmlFor} className={cn(briefMeetingConfigLabelClass, 'break-words pt-2 sm:max-w-[6rem] sm:pt-2.5')}>
         {label}
       </label>
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 items-start gap-1.5">
         <div className="min-w-0 flex-1">{children}</div>
         {hint && (
           <FieldHintPopover
@@ -69,6 +68,31 @@ interface BriefTemplateMeetingConfigFieldsProps {
   className?: string
 }
 
+function patchMeetingDocument(
+  document: BriefTemplateDocument,
+  partial: Partial<MeetingDefaults>,
+): BriefTemplateDocument {
+  const nextMeeting: MeetingDefaults = { ...document.meeting }
+  for (const [key, value] of Object.entries(partial) as [keyof MeetingDefaults, MeetingDefaults[keyof MeetingDefaults]][]) {
+    if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) {
+      delete nextMeeting[key]
+    } else {
+      nextMeeting[key] = value as never
+    }
+  }
+  return {
+    ...document,
+    meeting: Object.keys(nextMeeting).length > 0 ? nextMeeting : undefined,
+  }
+}
+
+function parseOptionalInt(raw: string): number | undefined {
+  const trimmed = raw.trim()
+  if (!trimmed) return undefined
+  const n = Number.parseInt(trimmed, 10)
+  return Number.isNaN(n) ? undefined : n
+}
+
 export function BriefTemplateMeetingConfigFields({
   document,
   readonly,
@@ -78,12 +102,12 @@ export function BriefTemplateMeetingConfigFields({
   const { t, locale } = useI18n()
   const sections = getBriefSections(locale)
   const configLabels = getBriefMeetingConfigLabels(locale)
+  const meeting = document.meeting
+  const mode = meeting?.mode ?? ''
+  const showMinSynthesis = mode === 'deliberation'
 
-  function patchMeeting(partial: Partial<NonNullable<BriefTemplateDocument['meeting']>>) {
-    onChange({
-      ...document,
-      meeting: { ...emptyBriefDocument().meeting, ...document.meeting, ...partial },
-    })
+  function patchMeeting(partial: Partial<MeetingDefaults>) {
+    onChange(patchMeetingDocument(document, partial))
   }
 
   return (
@@ -93,15 +117,27 @@ export function BriefTemplateMeetingConfigFields({
         description={sections.meeting.description}
       />
       <div className={briefConfigPanelShell}>
-        <BriefMeetingConfigFieldRow label={configLabels.mode} htmlFor="brief-mode">
+        <BriefMeetingConfigFieldRow
+          label={configLabels.mode}
+          htmlFor="brief-mode"
+          hint={t('brief.config.deferHint')}
+        >
           <select
             id="brief-mode"
-            value={document.meeting?.mode ?? 'decision'}
+            value={mode}
             disabled={readonly}
             className={selectClassName}
             style={selectStyle}
-            onChange={(e) => patchMeeting({ mode: e.target.value })}
+            onChange={(e) =>
+              patchMeeting({
+                mode: e.target.value || undefined,
+                ...(e.target.value !== 'deliberation'
+                  ? { min_rounds_before_synthesis: undefined }
+                  : {}),
+              })
+            }
           >
+            <option value="">{t('brief.config.deferToMeeting')}</option>
             <option value="decision">{t('brief.config.modeDecision')}</option>
             <option value="deliberation">{t('brief.config.modeDeliberation')}</option>
           </select>
@@ -109,15 +145,17 @@ export function BriefTemplateMeetingConfigFields({
         <BriefMeetingConfigFieldRow
           label={configLabels.confirmation}
           htmlFor="brief-confirmation"
+          hint={t('brief.config.deferHint')}
         >
           <select
             id="brief-confirmation"
-            value={document.meeting?.confirmation_mode ?? 'required'}
+            value={meeting?.confirmation_mode ?? ''}
             disabled={readonly}
             className={selectClassName}
             style={selectStyle}
-            onChange={(e) => patchMeeting({ confirmation_mode: e.target.value })}
+            onChange={(e) => patchMeeting({ confirmation_mode: e.target.value || undefined })}
           >
+            <option value="">{t('brief.config.deferToMeeting')}</option>
             <option value="required">{t('brief.config.confirmationRequired')}</option>
             <option value="skip">{t('brief.config.confirmationSkip')}</option>
           </select>
@@ -125,50 +163,51 @@ export function BriefTemplateMeetingConfigFields({
         <BriefMeetingConfigFieldRow
           label={configLabels.maxRounds}
           htmlFor="brief-max-rounds"
+          hint={t('brief.config.deferHint')}
         >
           <Input
             id="brief-max-rounds"
             type="number"
             min={1}
-            value={document.meeting?.max_rounds ?? 3}
+            value={meeting?.max_rounds ?? ''}
             readOnly={readonly}
-            onChange={(e) =>
-              patchMeeting({ max_rounds: Number.parseInt(e.target.value, 10) || 1 })
-            }
+            placeholder={t('brief.config.deferToMeeting')}
+            onChange={(e) => patchMeeting({ max_rounds: parseOptionalInt(e.target.value) })}
           />
         </BriefMeetingConfigFieldRow>
-        <BriefMeetingConfigFieldRow
-          label={configLabels.minSynthesis}
-          htmlFor="brief-min-synthesis"
-          hint={t('brief.config.minSynthesisHint')}
-        >
-          <Input
-            id="brief-min-synthesis"
-            type="number"
-            min={1}
-            value={document.meeting?.min_rounds_before_synthesis ?? 2}
-            readOnly={readonly}
-            onChange={(e) =>
-              patchMeeting({
-                min_rounds_before_synthesis: Number.parseInt(e.target.value, 10) || 1,
-              })
-            }
-          />
-        </BriefMeetingConfigFieldRow>
+        {showMinSynthesis && (
+          <BriefMeetingConfigFieldRow
+            label={configLabels.minSynthesis}
+            htmlFor="brief-min-synthesis"
+            hint={t('brief.config.minSynthesisHint')}
+          >
+            <Input
+              id="brief-min-synthesis"
+              type="number"
+              min={1}
+              value={meeting?.min_rounds_before_synthesis ?? ''}
+              readOnly={readonly}
+              placeholder={t('brief.config.deferToMeeting')}
+              onChange={(e) =>
+                patchMeeting({ min_rounds_before_synthesis: parseOptionalInt(e.target.value) })
+              }
+            />
+          </BriefMeetingConfigFieldRow>
+        )}
         <BriefMeetingConfigFieldRow
           label={configLabels.freeDialogue}
           htmlFor="brief-free-dialogue"
+          hint={t('brief.config.deferHint')}
         >
           <Input
             id="brief-free-dialogue"
             type="number"
             min={0}
-            value={document.meeting?.free_dialogue_max_questions ?? 1}
+            value={meeting?.free_dialogue_max_questions ?? ''}
             readOnly={readonly}
+            placeholder={t('brief.config.deferToMeeting')}
             onChange={(e) =>
-              patchMeeting({
-                free_dialogue_max_questions: Number.parseInt(e.target.value, 10) || 0,
-              })
+              patchMeeting({ free_dialogue_max_questions: parseOptionalInt(e.target.value) })
             }
           />
         </BriefMeetingConfigFieldRow>
@@ -179,7 +218,7 @@ export function BriefTemplateMeetingConfigFields({
         >
           <ParticipantMultiSelect
             id="brief-participants"
-            value={document.meeting?.participant_ids ?? []}
+            value={meeting?.participant_ids ?? []}
             disabled={readonly}
             onChange={(participant_ids) => patchMeeting({ participant_ids })}
           />

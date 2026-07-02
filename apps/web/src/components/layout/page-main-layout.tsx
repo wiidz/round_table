@@ -21,6 +21,8 @@ interface PageLayoutProps {
   children: ReactNode
   sidebarFrom?: PageSidebarBreakpoint
   sideColumnWidth?: PageSideColumnWidth
+  /** main 纵向撑满（聊天等全高页） */
+  fillHeight?: boolean
   className?: string
   bodyClassName?: string
 }
@@ -36,6 +38,7 @@ export function PageLayout({
   children,
   sidebarFrom,
   sideColumnWidth,
+  fillHeight,
   className,
   bodyClassName,
 }: PageLayoutProps) {
@@ -47,6 +50,7 @@ export function PageLayout({
         right={right}
         sidebarFrom={sidebarFrom}
         sideColumnWidth={sideColumnWidth}
+        fillHeight={fillHeight}
         className={bodyClassName}
       >
         {children}

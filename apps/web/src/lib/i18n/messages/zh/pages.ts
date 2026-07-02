@@ -61,7 +61,7 @@ export const pages = {
   },
   principals: {
     description:
-      '管理委托人（Principal）身份与 USER.md 偏好档案（ADR-0010）。每人仅一份 USER.md，描述语言、验收习惯与背景；单次会议意图请用简报模板。',
+      '管理委托人（Principal）偏好档案。可为不同领域准备多份档案并手动切换；会议将使用当前选中的档案。',
     loadFailed: '无法加载委托人列表',
     emptyTitle: '暂无委托人档案',
     emptyDescription:

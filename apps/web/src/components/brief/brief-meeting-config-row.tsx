@@ -22,7 +22,7 @@ export function BriefMeetingConfigRow({
         valueAlign === 'start' && 'sm:items-start',
       )}
     >
-      <p className={briefMeetingConfigLabelClass}>{label}</p>
+      <p className={cn(briefMeetingConfigLabelClass, 'break-words pt-2 sm:max-w-[6rem] sm:pt-2.5')}>{label}</p>
       {typeof value === 'string' ? (
         <p
           className={cn(

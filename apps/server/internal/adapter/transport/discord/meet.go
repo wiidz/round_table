@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"round_table/apps/server/internal/adapter/brief"
 	"round_table/apps/server/internal/adapter/transport"
 	principalbind "round_table/apps/server/internal/adapter/transport/principal"
 	"round_table/apps/server/internal/domain/meeting"
@@ -27,6 +28,7 @@ type MeetRunner struct {
 	ConfigSvc *config.Service
 	Discord   config.DiscordTransport
 	Registry  *principalbind.Registry
+	Briefs    brief.Port
 	Bots      *BotPool
 	Principal *ChannelPrincipal
 	sessions  meetSessions
@@ -107,6 +109,20 @@ func (r *MeetRunner) BeginSetupFromTrigger(msg transport.Inbound) (string, error
 	}
 
 	cfg := r.defaultLaunchConfig("", "")
+	if r.shouldOfferTemplatePick() {
+		templates, err := r.listBriefTemplates()
+		if err != nil {
+			return "", err
+		}
+		r.setups.put(msg.ChannelID, meetSetupSession{
+			channelID: msg.ChannelID,
+			authorID:  msg.AuthorID,
+			config:    cfg,
+			step:      setupStepPickTemplate,
+		})
+		return formatPickTemplatePrompt(loc, templates), nil
+	}
+
 	r.setups.put(msg.ChannelID, meetSetupSession{
 		channelID: msg.ChannelID,
 		authorID:  msg.AuthorID,
@@ -124,13 +140,45 @@ func (r *MeetRunner) BeginSetup(msg transport.Inbound, parsed meetParseResult) (
 	}
 
 	cfg := r.defaultLaunchConfig(parsed.Topic, parsed.Mode)
+	if parsed.TemplateID != "" {
+		return r.beginSetupWithTemplate(msg, cfg, parsed.TemplateID, loc)
+	}
+
 	r.setups.put(msg.ChannelID, meetSetupSession{
 		channelID: msg.ChannelID,
 		authorID:  msg.AuthorID,
 		config:    cfg,
 		step:      setupStepBriefGoal,
 	})
-	return formatAskBriefGoalPrompt(loc, cfg.Topic), nil
+	return formatAskBriefGoalPrompt(loc, cfg.Topic, cfg.Brief, false), nil
+}
+
+func (r *MeetRunner) beginSetupWithTemplate(msg transport.Inbound, cfg meetLaunchConfig, templateID string, loc Locale) (string, error) {
+	if r.briefStore() == nil {
+		return meetTemplateUnavailableText(loc), nil
+	}
+	applied, _, locksMeeting, err := r.applyBriefTemplate(cfg, templateID)
+	if err != nil {
+		return meetTemplateNotFoundText(loc, templateID, err), nil
+	}
+	if topic := strings.TrimSpace(cfg.Topic); topic != "" {
+		applied.Topic = topic
+	}
+	detail, _ := r.readBriefTemplate(templateID)
+	step, body := nextStepAfterTemplateApply(applied, locksMeeting, loc, r)
+	reply := body
+	if detail.ID != "" {
+		reply = formatBriefTemplateApplied(loc, detail.Title, detail.ID) + "\n\n" + body
+	}
+	r.setups.put(msg.ChannelID, meetSetupSession{
+		channelID:            msg.ChannelID,
+		authorID:             msg.AuthorID,
+		config:               applied,
+		step:                 step,
+		briefTemplateID:      templateID,
+		templateLocksMeeting: locksMeeting,
+	})
+	return reply, nil
 }
 
 func (r *MeetRunner) checkBeginSetup(msg transport.Inbound, loc Locale) (string, bool) {
@@ -175,6 +223,37 @@ func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
 		return meetSetupNotOwnerText(loc), nil
 	}
 
+	if sess.step == setupStepPickTemplate {
+		templates, err := r.listBriefTemplates()
+		if err != nil {
+			return "", err
+		}
+		templateID, err := resolveTemplateChoice(msg.Content, templates)
+		if err != nil {
+			return meetSetupParseErrorText(loc, err), nil
+		}
+		if templateID == "" {
+			sess.step = setupStepAskTopic
+			r.setups.put(msg.ChannelID, sess)
+			return formatAskTopicPrompt(loc), nil
+		}
+		applied, _, locksMeeting, err := r.applyBriefTemplate(sess.config, templateID)
+		if err != nil {
+			return meetTemplateNotFoundText(loc, templateID, err), nil
+		}
+		sess.config = applied
+		sess.briefTemplateID = templateID
+		sess.templateLocksMeeting = locksMeeting
+		step, body := nextStepAfterTemplateApply(applied, locksMeeting, loc, r)
+		sess.step = step
+		r.setups.put(msg.ChannelID, sess)
+		detail, _ := r.readBriefTemplate(templateID)
+		if detail.ID != "" {
+			return formatBriefTemplateApplied(loc, detail.Title, detail.ID) + "\n\n" + body, nil
+		}
+		return body, nil
+	}
+
 	if sess.step == setupStepAskTopic {
 		topic := strings.TrimSpace(msg.Content)
 		if topic == "" {
@@ -196,7 +275,7 @@ func (r *MeetRunner) HandleSetupReply(msg transport.Inbound) (string, error) {
 		sess.config.ParticipantsSummary = summarizeParticipantIDs(r.dc().MeetParticipants, ids)
 		sess.step = setupStepBriefGoal
 		r.setups.put(msg.ChannelID, sess)
-		return formatAskBriefGoalPrompt(loc, sess.config.Topic), nil
+		return formatAskBriefGoalPrompt(loc, sess.config.Topic, sess.config.Brief, sess.briefTemplateID != ""), nil
 	}
 
 	if sess.step == setupStepBriefGoal {

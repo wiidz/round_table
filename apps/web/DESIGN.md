@@ -325,13 +325,19 @@ Principal / Participant 列表与档案编辑采用 CRM Console 4.0 **High-End F
 |------|------|
 | 页面壳 | `bg-surface` + `ring-[var(--panel-shell-ring)]`，无灰边；圆角 `1.75rem` |
 | 字段编辑区 | `bg-canvas` 嵌入底 + `--field-inset-shadow` + inset ring |
+| **Input / Textarea（可编辑）** | `bg-surface` + `rounded-xs` + inset ring + field inset shadow |
+| **Input / Textarea（只读 / disabled）** | `bg-black/5%` 灰底 + `rounded-lg`（大于可编辑）+ inset ring `black/6%`；文字 `text-tertiary` |
+| **委托人档案偏好区** | 白底 `SideTabWorkspacePanel`，**不要**再套 `heFormEmbed` 灰底卡片 |
+| **字段说明 ?** | 控件右侧 `FieldHintPopover`；hover / focus 显示 tooltip；设置表单用 `SettingsFieldRow` 的 `hint` |
+| **表单 label 列宽** | 左列固定约 **8 个汉字**（`6rem` / `heFormFieldRowGrid`） |
+| **表单 label 字间距** | `tracking-[0.06em]`（`heFieldLabel` / `briefFieldCaptionClass`） |
 | 交互 focus | **品牌橙** ring（人的编辑操作） |
 | Principal Eyebrow | 品牌橙 pill · `Decision Owner` |
 | Participant Eyebrow | AI 紫 pill · `Expert Profile`（标识专家身份，非表单 focus） |
 | 文件 Pill | 选中：品牌橙 soft + inset ring；未选中：浅灰底 |
 | 动效 | `500ms` 弹簧曲线；尊重 `prefers-reduced-motion` |
 
-实现：`src/lib/highend-styles.ts`、`src/components/profile/*`
+实现：`src/lib/highend-styles.ts`（`heInputEditable` / `heInputReadonly` / `heFormFieldRowGrid`）、`src/components/ui/input.tsx`、`src/components/ui/textarea.tsx`、`src/components/settings/field-hint-popover.tsx`
 
 ---
 
@@ -342,7 +348,10 @@ Principal / Participant 列表与档案编辑采用 CRM Console 4.0 **High-End F
 | `src/styles/theme.css` | Light / Dark CSS 变量 |
 | `src/index.css` | Tailwind v4 + `@theme inline` 映射 |
 | `src/hooks/use-theme.ts` | 主题切换与持久化 |
-| `src/lib/highend-styles.ts` | High-End Flat 类名 token |
+| `src/lib/highend-styles.ts` | High-End Flat 类名 token（含 `heInputEditable` / `heInputReadonly`） |
+| `src/components/ui/input.tsx` | 全站单行输入；自动只读/可编辑样式；可选 `hint` |
+| `src/components/ui/textarea.tsx` | 全站多行输入；同上 |
+| `src/components/settings/field-hint-popover.tsx` | `SettingsFieldRow` + 字段右侧 `?` tooltip |
 | `src/components/profile/` | Profile 列表/页头组件 |
 | `index.html` | 首屏防 FOUC |
 

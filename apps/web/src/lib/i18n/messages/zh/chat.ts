@@ -42,7 +42,7 @@ export const chat = {
     post: '已结束',
   },
   transcript: {
-    emptyHint: '发送「会议状态」或「开个会」，或直接提问。',
+    emptyHint: '发送「开个会」或「!rt meet -template 模板ID 主题」；开会前也可选简报模板。',
   },
   page: {
     title: '聊天',

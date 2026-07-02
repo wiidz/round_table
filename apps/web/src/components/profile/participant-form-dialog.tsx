@@ -2,10 +2,19 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { SearchableSelect } from '@/components/settings/searchable-select'
+import { SettingsFieldRow } from '@/components/settings/field-hint-popover'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/hooks/use-i18n'
-import { heFieldSurface, hePressable, heSpring } from '@/lib/highend-styles'
+import { hePressable, heSubsectionTitleNeutral } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 import type {
   ParticipantIMBinding,
@@ -53,8 +62,6 @@ export function ParticipantFormDialog({
     setExpertise(initial?.expertise?.trim() ?? '')
     setDiscordBotId(discordBindingFromParticipant(initial?.im_bindings))
   }, [open, initial])
-
-  if (!open) return null
 
   function validateClient(): ParticipantRosterInput | null {
     const trimmedId = id.trim()
@@ -122,63 +129,80 @@ export function ParticipantFormDialog({
   const discordNone = t('profile.form.discordNone')
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 p-4 backdrop-blur-[2px]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="participant-form-title"
-      onClick={onClose}
+    <Dialog
+      open={open}
+      onClose={saving ? undefined : onClose}
+      closeOnOverlayClick={!saving}
+      closeOnEscape={!saving}
     >
-      <div
-        className={cn(
-          heFieldSurface,
-          'w-full max-w-md space-y-5 rounded-2xl bg-surface p-6 shadow-xl !rounded-xs',
-          heSpring,
-        )}
-        onClick={(e) => e.stopPropagation()}
+      <DialogContent
+        size="sm"
+        className="space-y-5"
+        aria-labelledby="participant-form-title"
       >
-        <header className="space-y-1">
-          <h2 id="participant-form-title" className="text-base font-semibold text-text-primary">
+        <DialogHeader>
+          <DialogTitle id="participant-form-title">
             {mode === 'create' ? t('profile.form.createTitle') : t('profile.form.editTitle')}
-          </h2>
-          <p className="text-[13px] text-text-secondary">{t('profile.form.description')}</p>
-        </header>
+          </DialogTitle>
+          <DialogDescription>{t('profile.form.description')}</DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-4">
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-text-tertiary">{t('profile.form.idLabel')}</span>
+        <div className="space-y-6">
+          <SettingsFieldRow
+            label={t('profile.form.idLabel')}
+            htmlFor="participant-form-id"
+            required
+            hint={t('profile.form.idHint')}
+          >
             <Input
+              id="participant-form-id"
               value={id}
               onChange={(e) => setId(e.target.value)}
               placeholder={t('profile.form.idPlaceholder')}
-              className="!rounded-xs font-mono"
+              className="font-mono"
               autoComplete="off"
+              readOnly={mode === 'edit'}
             />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-text-tertiary">{t('profile.form.nameLabel')}</span>
+          </SettingsFieldRow>
+
+          <SettingsFieldRow
+            label={t('profile.form.nameLabel')}
+            htmlFor="participant-form-name"
+            required
+            hint={t('profile.form.nameHint')}
+          >
             <Input
+              id="participant-form-name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={t('profile.form.namePlaceholder')}
-              className="!rounded-xs"
             />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-text-tertiary">{t('profile.form.expertiseLabel')}</span>
+          </SettingsFieldRow>
+
+          <SettingsFieldRow
+            label={t('profile.form.expertiseLabel')}
+            htmlFor="participant-form-expertise"
+            hint={t('profile.form.expertiseHint')}
+          >
             <Input
+              id="participant-form-expertise"
               value={expertise}
               onChange={(e) => setExpertise(e.target.value)}
               placeholder="research"
-              className="!rounded-xs"
             />
-          </label>
+          </SettingsFieldRow>
 
-          <fieldset className="space-y-2 border-t border-black/[0.05] pt-4">
-            <legend className="text-xs font-medium text-text-tertiary">{t('profile.form.imLegend')}</legend>
-            <label className="block space-y-1.5">
-              <span className="text-[11px] text-text-tertiary">{t('profile.form.discordBotLabel')}</span>
+          <fieldset className="space-y-4 border-t border-black/[0.05] pt-5">
+            <legend className={cn(heSubsectionTitleNeutral, 'mb-1')}>
+              {t('profile.form.imLegend')}
+            </legend>
+            <SettingsFieldRow
+              label={t('profile.form.discordBotLabel')}
+              htmlFor="participant-form-discord"
+              hint={t('profile.form.discordBotHint')}
+            >
               <SearchableSelect
+                id="participant-form-discord"
                 value={discordBotId}
                 placeholder={discordNone}
                 searchPlaceholder={t('profile.form.discordSearchPlaceholder')}
@@ -193,12 +217,12 @@ export function ParticipantFormDialog({
                 }))}
                 onChange={setDiscordBotId}
               />
-            </label>
+            </SettingsFieldRow>
             <p className="text-[11px] text-text-tertiary">{t('profile.form.imComingSoon')}</p>
           </fieldset>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
             {t('common.cancel')}
           </Button>
@@ -210,9 +234,9 @@ export function ParticipantFormDialog({
           >
             {saving ? t('common.saving') : t('common.save')}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

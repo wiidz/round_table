@@ -46,7 +46,8 @@ func WebHelpText(loc Locale) string {
 	if loc == LocaleZH {
 		return `📖 **RoundTable 浏览器聊天**
 
-- **新会议** / **开个会** / **!rt meet** — 发起会议（无需 Principal 绑定）
+- **新会议** / **开个会** / **!rt meet** — 发起会议（可选简报模板；无需 Principal 绑定）
+- **!rt meet -template 模板ID 主题** — 用简报模板预填开会
 - **会议状态** — 查看当前输入态
 - **!rt 专家 列表** — 专家名录
 - **获取纪要** / **获取草案** — 会议结束后拉取交付物
@@ -55,7 +56,8 @@ func WebHelpText(loc Locale) string {
 	}
 	return `📖 **RoundTable Web Chat**
 
-- **新会议** / **!rt meet** — start a meeting (no Principal bind)
+- **新会议** / **!rt meet** — start a meeting (optional brief template; no Principal bind)
+- **!rt meet -template id topic** — start with a brief template
 - **status** — input phase
 - **!rt expert list** — roster
 - **fetch minutes** / artifacts after meeting

@@ -9,6 +9,7 @@ import {
 
 import { useI18n } from '@/hooks/use-i18n'
 import {
+  heFieldLabel,
   heFileNavItem,
   heFileNavItemSelected,
   hePrimaryDeliverableBadge,
@@ -83,7 +84,7 @@ function FileNavSectionHeader({
       />
       <span
         className={cn(
-          heFieldLabelStyle,
+          heFieldLabel,
           'min-w-0 truncate',
           isDeliverable && 'text-brand',
           isProcess && 'text-text-secondary',
@@ -140,10 +141,6 @@ function FileNavSectionHeader({
     </div>
   )
 }
-
-const heFieldLabelStyle =
-  'text-xs font-medium uppercase tracking-[0.12em] text-text-tertiary'
-
 function FileNavActiveStats({ content }: { content: string }) {
   const { formatMarkdownReadingStats } = useI18n()
 

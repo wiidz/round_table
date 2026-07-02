@@ -175,6 +175,48 @@ func TestHandleListPrincipals(t *testing.T) {
 	}
 }
 
+func TestHandleListPrincipals_reconcilesBindings(t *testing.T) {
+	dir := t.TempDir()
+	templates := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(templates, "principals"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(templates, "principals", "USER.md"), []byte("# user"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bindingsFile := filepath.Join(t.TempDir(), "bindings.json")
+
+	h, err := NewHandler(config.Config{
+		Profile: config.Profile{Root: dir, Templates: templates},
+		Transport: config.Transport{
+			Discord: config.DiscordTransport{BindingsFile: bindingsFile},
+		},
+	}, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.bindings.Bind("discord:guild:g1", "discord", "alice", "Alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mux := http.NewServeMux()
+	h.Register(mux)
+	req := httptest.NewRequest(http.MethodGet, "/api/principals", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "discord:alice") {
+		t.Fatalf("body=%s", rec.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "principals", "discord:alice", "USER.md")); err != nil {
+		t.Fatalf("profile not reconciled: %v", err)
+	}
+}
+
 func TestHandlePostMeetingAbort(t *testing.T) {
 	dir := t.TempDir()
 	store := memory.New()

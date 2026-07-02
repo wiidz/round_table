@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, Pencil, Save, X } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { createBriefTemplate, fetchBriefTemplate, saveBriefTemplate } from '@/api/brief-templates'
@@ -19,6 +19,7 @@ import {
   heSpring,
 } from '@/lib/highend-styles'
 import {
+  briefTemplateHasSubstantiveContent,
   documentsEqual,
   emptyBriefDocument,
   normalizeBriefDocument,
@@ -31,6 +32,7 @@ export function BriefTemplateDetailPage() {
   const i18n = useI18n()
   const { t } = i18n
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { id: rawId } = useParams()
   const id = rawId ? decodeURIComponent(rawId) : ''
 
@@ -44,7 +46,8 @@ export function BriefTemplateDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<'view' | 'edit'>('view')
 
-  const isBuiltin = detail?.source === 'builtin'
+  const isNewDraft = id === 'new'
+  const isBuiltin = !isNewDraft && detail?.source === 'builtin'
 
   const load = useCallback(async () => {
     const data = await fetchBriefTemplate(id)
@@ -56,11 +59,40 @@ export function BriefTemplateDetailPage() {
   }, [id])
 
   useEffect(() => {
+    if (isNewDraft) return
     setMode('view')
-  }, [id])
+  }, [id, isNewDraft])
+
+  useEffect(() => {
+    if (isNewDraft || loading || error || !detail) return
+    if (searchParams.get('edit') !== '1') return
+    setFormDocument(savedDocument)
+    setMode('edit')
+    navigate(`/brief-templates/${encodeURIComponent(id)}`, { replace: true })
+  }, [isNewDraft, loading, error, detail, searchParams, savedDocument, navigate, id])
 
   useEffect(() => {
     if (!id) return
+    if (isNewDraft) {
+      const title = searchParams.get('title')?.trim() ?? ''
+      const doc = emptyBriefDocument(title)
+      setDetail({
+        id: '',
+        title: title || t('brief.meta.unnamed'),
+        source: 'custom',
+        content: '',
+        document: doc,
+        launch: { topic: '', brief: doc.brief, meeting: {} },
+        updated_at: new Date().toISOString(),
+      })
+      setSavedDocument(doc)
+      setFormDocument(doc)
+      setError(null)
+      setLoading(false)
+      setMode('edit')
+      return
+    }
+
     let cancelled = false
     setLoading(true)
     load()
@@ -80,7 +112,7 @@ export function BriefTemplateDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, load, t])
+  }, [id, isNewDraft, load, searchParams, t])
 
   const dirty = !documentsEqual(formDocument, savedDocument)
   const headerDocument = mode === 'edit' ? formDocument : savedDocument
@@ -91,6 +123,10 @@ export function BriefTemplateDetailPage() {
   }
 
   function handleCancelEdit() {
+    if (isNewDraft) {
+      navigate('/brief-templates')
+      return
+    }
     setFormDocument(savedDocument)
     setMode('view')
   }
@@ -103,10 +139,16 @@ export function BriefTemplateDetailPage() {
         toast.error(t('brief.page.titleRequired'))
         return
       }
+      if (!briefTemplateHasSubstantiveContent(normalized)) {
+        toast.error(t('brief.page.contentRequired'))
+        return
+      }
 
-      if (isBuiltin) {
+      if (isNewDraft || isBuiltin) {
         const res = await createBriefTemplate({ document: normalized })
-        toast.success(t('brief.page.savedAsCustom', { id: res.id }))
+        toast.success(
+          isNewDraft ? t('brief.page.created') : t('brief.page.savedAsCustom', { id: res.id }),
+        )
         navigate(`/brief-templates/${encodeURIComponent(res.id)}`)
         return
       }
@@ -146,14 +188,14 @@ export function BriefTemplateDetailPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className={heEyebrowBrand}>{i18n.briefTemplatePageEyebrow()}</span>
               <span className="rounded-full bg-black/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-text-tertiary ring-1 ring-inset ring-black/[0.05]">
-                {detail.source === 'builtin' ? t('common.builtin') : t('common.custom')}
+                {isNewDraft ? t('common.custom') : detail.source === 'builtin' ? t('common.builtin') : t('common.custom')}
               </span>
-              {!isBuiltin && (
+              {!isBuiltin && !isNewDraft && (
                 <span className="font-mono text-[11px] text-text-tertiary/80">{id}</span>
               )}
             </div>
 
-            {mode === 'view' && (
+            {mode === 'view' && !isNewDraft && (
               <Button
                 type="button"
                 variant="outline"
@@ -194,14 +236,17 @@ export function BriefTemplateDetailPage() {
         <>
           <div className={cn(hePanelShell, 'overflow-visible')}>
             {mode === 'view' ? (
+              !isNewDraft && (
               <div className="p-5 sm:p-7">
                 <BriefTemplatePreview document={savedDocument} />
               </div>
+              )
             ) : (
               <div className="flex flex-col gap-8 p-6 sm:p-8">
                 <p className="text-[12px] leading-relaxed text-text-tertiary">
                   {t('brief.page.editHint')}
                   {isBuiltin && t('brief.page.editHintBuiltin')}
+                  {isNewDraft && t('brief.page.editHintNew')}
                 </p>
 
                 <BriefTemplateFormFields
@@ -213,15 +258,17 @@ export function BriefTemplateDetailPage() {
                 <div className="flex flex-wrap items-center gap-3 border-t border-black/[0.05] pt-4">
                   <Button
                     onClick={() => void handleSave()}
-                    disabled={saving || (!isBuiltin && !dirty)}
+                    disabled={saving || (!isBuiltin && !isNewDraft && !dirty)}
                     className={cn(hePressable, 'gap-2 rounded-full px-5')}
                   >
                     <Save className="size-4" />
                     {saving
                       ? t('common.saving')
-                      : isBuiltin
-                        ? t('brief.page.saveAsCustom')
-                        : t('brief.page.save')}
+                      : isNewDraft
+                        ? t('brief.page.create')
+                        : isBuiltin
+                          ? t('brief.page.saveAsCustom')
+                          : t('brief.page.save')}
                   </Button>
                   <Button
                     type="button"

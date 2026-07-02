@@ -1,7 +1,10 @@
 import { useMemo, useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { fetchBriefTemplates } from '@/api/brief-templates'
 import { ApiError } from '@/api/client'
+import { BriefTemplateCreateDialog } from '@/components/brief/brief-template-create-dialog'
 import {
   BriefTemplateGridCard,
   BriefTemplateGridSkeleton,
@@ -11,8 +14,10 @@ import {
   ProfilePageHeader,
   ProfileStatePanel,
 } from '@/components/profile/profile-page-header'
+import { Button } from '@/components/ui/button'
 import { useI18n } from '@/hooks/use-i18n'
-import { heSubsectionTitleNeutral } from '@/lib/highend-styles'
+import { hePressable, heSubsectionTitleNeutral } from '@/lib/highend-styles'
+import { cn } from '@/lib/utils'
 
 import type { BriefTemplateIndex } from '@/types/brief-template'
 
@@ -47,9 +52,11 @@ function TemplateSection({
 export function BriefTemplatesPage() {
   const i18n = useI18n()
   const { t } = i18n
+  const navigate = useNavigate()
   const [templates, setTemplates] = useState<BriefTemplateIndex[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -88,50 +95,71 @@ export function BriefTemplatesPage() {
     return { builtin: builtinItems, custom: customItems }
   }, [templates])
 
+  async function handleCreate(title: string) {
+    setCreateDialogOpen(false)
+    navigate(`/brief-templates/new?title=${encodeURIComponent(title)}&edit=1`)
+  }
+
   return (
     <PageLayout
       header={
-        <ProfilePageHeader
-          role="principal"
-          eyebrow={i18n.briefTemplatePageEyebrow()}
-          title={i18n.briefTemplatePageTitle()}
-          description={t('brief.page.description')}
-        />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <ProfilePageHeader
+            role="principal"
+            eyebrow={i18n.briefTemplatePageEyebrow()}
+            title={i18n.briefTemplatePageTitle()}
+            description={t('brief.page.description')}
+          />
+          <Button
+            type="button"
+            onClick={() => setCreateDialogOpen(true)}
+            className={cn(hePressable, 'shrink-0 gap-2 rounded-xl px-4')}
+          >
+            <Plus className="size-4" />
+            {t('brief.page.add')}
+          </Button>
+        </div>
       }
     >
-    <div className="space-y-8">
-      {loading && <BriefTemplateGridSkeleton />}
+      <div className="space-y-8">
+        {loading && <BriefTemplateGridSkeleton />}
 
-      {!loading && error && (
-        <ProfileStatePanel
-          variant="danger"
-          title={t('common.error.loadFailed')}
-          description={error}
-        />
-      )}
-
-      {!loading && !error && templates.length === 0 && (
-        <ProfileStatePanel
-          title={t('brief.page.emptyTitle')}
-          description={t('brief.page.emptyDescription')}
-        />
-      )}
-
-      {!loading && !error && templates.length > 0 && (
-        <div className="space-y-10">
-          <TemplateSection
-            title={t('brief.page.sectionBuiltin')}
-            hint={t('brief.page.sectionBuiltinHint')}
-            templates={builtin}
+        {!loading && error && (
+          <ProfileStatePanel
+            variant="danger"
+            title={t('common.error.loadFailed')}
+            description={error}
           />
-          <TemplateSection
-            title={t('brief.page.sectionCustom')}
-            hint={t('brief.page.sectionCustomHint')}
-            templates={custom}
+        )}
+
+        {!loading && !error && templates.length === 0 && (
+          <ProfileStatePanel
+            title={t('brief.page.emptyTitle')}
+            description={t('brief.page.emptyDescription')}
           />
-        </div>
-      )}
-    </div>
+        )}
+
+        {!loading && !error && templates.length > 0 && (
+          <div className="space-y-10">
+            <TemplateSection
+              title={t('brief.page.sectionBuiltin')}
+              hint={t('brief.page.sectionBuiltinHint')}
+              templates={builtin}
+            />
+            <TemplateSection
+              title={t('brief.page.sectionCustom')}
+              hint={t('brief.page.sectionCustomHint')}
+              templates={custom}
+            />
+          </div>
+        )}
+      </div>
+
+      <BriefTemplateCreateDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSubmit={handleCreate}
+      />
     </PageLayout>
   )
 }

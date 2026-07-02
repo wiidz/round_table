@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Save } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { fetchPrincipal, savePrincipalUserProfile } from '@/api/principals'
+import { fetchPrincipal, fetchPrincipalPersona, savePrincipalUserProfile, setActivePrincipalPersona } from '@/api/principals'
 import { ApiError } from '@/api/client'
+import { PrincipalPersonaWorkspace } from '@/components/profile/principal-persona-workspace'
 import {
   ProfilePageHeader,
   ProfileStatePanel,
@@ -14,50 +15,127 @@ import { SettingsFieldRow } from '@/components/settings/field-hint-popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useLocale } from '@/contexts/locale-context'
 import { useI18n } from '@/hooks/use-i18n'
 import {
+  applyPrincipalFieldPreset,
+  getPrincipalUserPresets,
+  principalPresetApplied,
+  type PrincipalUserPreset,
+} from '@/lib/i18n/principal-user-presets'
+import {
   heColumnTitleBrand,
-  hePanelShell,
+  heFileBadge,
   hePressable,
   heSpring,
 } from '@/lib/highend-styles'
+import { localeToUserLanguage } from '@/lib/locale'
 import { cn } from '@/lib/utils'
 import {
   EMPTY_PRINCIPAL_USER_PROFILE,
+  type PrincipalPersonaMeta,
   type PrincipalUserProfile,
 } from '@/types/principal'
 
 interface PrincipalUserEditorProps {
   id: string
+  initialPersonaId?: string
 }
 
-function profilesEqual(a: PrincipalUserProfile, b: PrincipalUserProfile): boolean {
+function profileContentEqual(a: PrincipalUserProfile, b: PrincipalUserProfile): boolean {
   return (
-    a.language === b.language &&
     (a.confirmation ?? '') === (b.confirmation ?? '') &&
     (a.context ?? '') === (b.context ?? '')
   )
 }
 
-export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
-  const { t, domainNavLabel, domainPageEyebrow } = useI18n()
+function PrincipalPresetButtons({
+  presets,
+  value,
+  onApply,
+}: {
+  presets: readonly PrincipalUserPreset[]
+  value: string
+  onApply: (snippet: string) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {presets.map((preset) => {
+        const applied = principalPresetApplied(value, preset.value)
+        return (
+          <button
+            key={preset.label}
+            type="button"
+            aria-pressed={applied}
+            className={cn(
+              'rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset',
+              hePressable,
+              heSpring,
+              applied
+                ? 'bg-surface/90 text-text-secondary ring-black/[0.08]'
+                : 'bg-black/[0.02] text-text-secondary ring-black/[0.05] hover:bg-brand-soft/50 hover:text-brand hover:ring-primary/25',
+            )}
+            onClick={() => onApply(preset.value)}
+          >
+            {preset.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function PrincipalUserEditor({ id, initialPersonaId }: PrincipalUserEditorProps) {
+  const { t, domainPageEyebrow } = useI18n()
+  const { locale } = useLocale()
+  const presets = useMemo(() => getPrincipalUserPresets(locale), [locale])
+  const languageCode = localeToUserLanguage(locale)
+  const languageDisplay =
+    locale === 'en'
+      ? `${t('pages.settings.localeEn')} (${languageCode})`
+      : `${t('pages.settings.localeZh')} (${languageCode})`
+
   const [displayName, setDisplayName] = useState('')
+  const [personas, setPersonas] = useState<PrincipalPersonaMeta[]>([])
+  const [editingPersonaId, setEditingPersonaId] = useState('')
+  const [activePersonaId, setActivePersonaId] = useState('')
   const [savedProfile, setSavedProfile] = useState<PrincipalUserProfile>(
     EMPTY_PRINCIPAL_USER_PROFILE,
   )
   const [form, setForm] = useState<PrincipalUserProfile>(EMPTY_PRINCIPAL_USER_PROFILE)
   const [loading, setLoading] = useState(true)
+  const [personaLoading, setPersonaLoading] = useState(false)
+  const [activating, setActivating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    const data = await fetchPrincipal(id)
+  const loadPersonaProfile = useCallback(async (personaId: string) => {
+    const data = await fetchPrincipalPersona(id, personaId)
     const profile = data.user_profile ?? EMPTY_PRINCIPAL_USER_PROFILE
-    setDisplayName(data.display_name ?? '')
     setSavedProfile(profile)
     setForm(profile)
-    setError(null)
   }, [id])
+
+  const load = useCallback(async () => {
+    const data = await fetchPrincipal(id)
+    setDisplayName(data.display_name ?? '')
+    setPersonas(data.personas ?? [])
+    setActivePersonaId(data.active_persona_id)
+    const personaId =
+      initialPersonaId && data.personas.some((p) => p.id === initialPersonaId)
+        ? initialPersonaId
+        : data.active_persona_id
+    setEditingPersonaId(personaId)
+    await loadPersonaProfile(personaId)
+    setError(null)
+  }, [id, initialPersonaId, loadPersonaProfile])
+
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, language: languageCode }))
+  }, [languageCode])
+
+  const dirty =
+    !profileContentEqual(form, savedProfile) || languageCode !== (savedProfile.language ?? '')
 
   useEffect(() => {
     let cancelled = false
@@ -81,14 +159,18 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
     }
   }, [load, t])
 
-  const dirty = !profilesEqual(form, savedProfile)
-
   async function handleSave() {
+    if (!editingPersonaId) return
     setSaving(true)
     try {
-      const res = await savePrincipalUserProfile(id, form)
-      setSavedProfile(res.user_profile)
-      setForm(res.user_profile)
+      const payload: PrincipalUserProfile = {
+        ...form,
+        language: languageCode,
+      }
+      const res = await savePrincipalUserProfile(id, payload, editingPersonaId)
+      const next = { ...res.user_profile, language: languageCode }
+      setSavedProfile(next)
+      setForm(next)
       toast.success(t('profile.principal.saveSuccess'))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
@@ -96,6 +178,43 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
       setSaving(false)
     }
   }
+
+  async function handleSelectEditingPersona(personaId: string) {
+    if (personaId === editingPersonaId) return
+    if (dirty) {
+      const ok = window.confirm(t('profile.filesEditor.switchConfirm'))
+      if (!ok) return
+    }
+    setPersonaLoading(true)
+    try {
+      setEditingPersonaId(personaId)
+      await loadPersonaProfile(personaId)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('profile.principal.loadFailed'))
+    } finally {
+      setPersonaLoading(false)
+    }
+  }
+
+  async function handleActivatePersona() {
+    if (!editingPersonaId || editingPersonaId === activePersonaId) return
+    setActivating(true)
+    try {
+      const res = await setActivePrincipalPersona(id, editingPersonaId)
+      setActivePersonaId(res.active_persona_id)
+      setPersonas(res.personas)
+      const title =
+        res.personas.find((p) => p.id === editingPersonaId)?.title ?? editingPersonaId
+      toast.success(t('profile.principal.persona.activated', { title }))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common.error.saveFailed'))
+    } finally {
+      setActivating(false)
+    }
+  }
+
+  const editingPersonaTitle =
+    personas.find((p) => p.id === editingPersonaId)?.title ?? editingPersonaId
 
   return (
     <PageLayout
@@ -110,13 +229,13 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
             )}
           >
             <ArrowLeft className="size-4" />
-            {t('profile.principal.backToList', { principal: domainNavLabel('principal') })}
+            {t('profile.principal.backToPreview')}
           </Link>
 
           <ProfilePageHeader
             role="principal"
             eyebrow={domainPageEyebrow('principal')}
-            title={displayName || id}
+            title={editingPersonaTitle || displayName || id}
             description={
               <>
                 {displayName && (
@@ -129,86 +248,152 @@ export function PrincipalUserEditor({ id }: PrincipalUserEditorProps) {
         </div>
       }
     >
-    <div className="space-y-8">
-      {loading && (
-        <ProfileStatePanel
-          title={t('common.loading')}
-          description={t('profile.state.loadingPrincipal')}
-        />
-      )}
+      <div className="space-y-8">
+        {loading && (
+          <ProfileStatePanel
+            title={t('common.loading')}
+            description={t('profile.state.loadingPrincipal')}
+          />
+        )}
 
-      {!loading && error && (
-        <ProfileStatePanel
-          variant="danger"
-          title={t('common.error.loadFailed')}
-          description={error}
-        />
-      )}
+        {!loading && error && (
+          <ProfileStatePanel
+            variant="danger"
+            title={t('common.error.loadFailed')}
+            description={error}
+          />
+        )}
 
-      {!loading && !error && (
-        <div className={cn(hePanelShell, 'flex flex-col gap-6 p-6 sm:p-8')}>
-          <div className="space-y-6">
-            <p className={heColumnTitleBrand}>{t('profile.principal.preferences')}</p>
-            <SettingsFieldRow
-              label={t('profile.principal.languageLabel')}
-              htmlFor="user-language"
-              hint={t('profile.principal.languageHint')}
-            >
-              <Input
-                id="user-language"
-                value={form.language}
-                placeholder="zh-CN"
-                onChange={(e) => setForm((prev) => ({ ...prev, language: e.target.value }))}
-              />
-            </SettingsFieldRow>
-            <SettingsFieldRow
-              label={t('profile.principal.confirmationLabel')}
-              htmlFor="user-confirmation"
-              hint={t('profile.principal.confirmationHint')}
-            >
-              <Input
-                id="user-confirmation"
-                value={form.confirmation ?? ''}
-                placeholder="review numbered lists carefully"
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, confirmation: e.target.value }))
-                }
-              />
-            </SettingsFieldRow>
-            <SettingsFieldRow
-              label={t('profile.principal.contextLabel')}
-              htmlFor="user-context"
-              hint={t('profile.principal.contextHint')}
-            >
-              <Textarea
-                id="user-context"
-                value={form.context ?? ''}
-                rows={5}
-                className="min-h-[8rem] font-sans text-sm"
-                placeholder={t('profile.principal.contextPlaceholder')}
-                onChange={(e) => setForm((prev) => ({ ...prev, context: e.target.value }))}
-              />
-            </SettingsFieldRow>
-          </div>
+        {!loading && !error && (
+          <PrincipalPersonaWorkspace
+            personas={personas}
+            selectedPersonaId={editingPersonaId}
+            activePersonaId={activePersonaId}
+            disabled={personaLoading || saving || activating}
+            onSelect={(personaId) => void handleSelectEditingPersona(personaId)}
+            panelActions={
+              editingPersonaId !== activePersonaId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={activating || personaLoading || saving}
+                  onClick={() => void handleActivatePersona()}
+                  className={cn(hePressable, 'rounded-xl px-4')}
+                >
+                  {activating
+                    ? t('profile.principal.persona.activating')
+                    : t('profile.principal.persona.activate')}
+                </Button>
+              ) : null
+            }
+          >
+            <div className="space-y-8">
+              <p className={heColumnTitleBrand}>{t('profile.principal.preferences')}</p>
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle/80 pt-4">
-            <Button
-              onClick={handleSave}
-              disabled={!dirty || saving}
-              className={cn(hePressable, 'gap-2 rounded-full px-5')}
-            >
-              <Save className="size-4" />
-              {saving ? t('common.saving') : t('profile.principal.save')}
-            </Button>
-            {dirty && (
-              <span className="text-xs font-medium text-warning">
-                {t('profile.filesEditor.unsaved')}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+              <SettingsFieldRow
+                label={t('profile.principal.languageLabel')}
+                htmlFor="user-language"
+                hint={t('profile.principal.languageHint')}
+                labelExtra={<span className={heFileBadge}>{t('common.readonly')}</span>}
+              >
+                <Input
+                  id="user-language"
+                  value={languageDisplay}
+                  readOnly
+                  tabIndex={-1}
+                />
+              </SettingsFieldRow>
+
+              <SettingsFieldRow
+                label={t('profile.principal.confirmationLabel')}
+                htmlFor="user-confirmation"
+                hint={t('profile.principal.confirmationHint')}
+              >
+                <div className="space-y-2.5">
+                  <Input
+                    id="user-confirmation"
+                    value={form.confirmation ?? ''}
+                    placeholder={t('profile.principal.confirmationPlaceholder')}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, confirmation: e.target.value }))
+                    }
+                  />
+                  <PrincipalPresetButtons
+                    presets={presets.confirmation}
+                    value={form.confirmation ?? ''}
+                    onApply={(snippet) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        confirmation: applyPrincipalFieldPreset(prev.confirmation ?? '', snippet),
+                      }))
+                    }
+                  />
+                </div>
+              </SettingsFieldRow>
+
+              <SettingsFieldRow
+                label={t('profile.principal.contextLabel')}
+                htmlFor="user-context"
+                hint={t('profile.principal.contextHint')}
+              >
+                <div className="space-y-2.5">
+                  <Textarea
+                    id="user-context"
+                    value={form.context ?? ''}
+                    rows={5}
+                    className="min-h-[8rem] font-sans text-sm"
+                    placeholder={t('profile.principal.contextPlaceholder')}
+                    onChange={(e) => setForm((prev) => ({ ...prev, context: e.target.value }))}
+                  />
+                  <PrincipalPresetButtons
+                    presets={presets.context}
+                    value={form.context ?? ''}
+                    onApply={(snippet) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        context: applyPrincipalFieldPreset(prev.context ?? '', snippet),
+                      }))
+                    }
+                  />
+                </div>
+              </SettingsFieldRow>
+
+              <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle/80 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+                className={cn(hePressable, 'rounded-full px-5')}
+              >
+                <Link
+                  to="/principals"
+                  onClick={(e) => {
+                    if (dirty && !window.confirm(t('profile.filesEditor.switchConfirm'))) {
+                      e.preventDefault()
+                    }
+                  }}
+                >
+                  {t('common.cancel')}
+                </Link>
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!dirty || saving}
+                className={cn(hePressable, 'gap-2 rounded-full px-5')}
+              >
+                <Save className="size-4" />
+                {saving ? t('common.saving') : t('profile.principal.save')}
+              </Button>
+              {dirty && (
+                <span className="text-xs font-medium text-warning">
+                  {t('profile.filesEditor.unsaved')}
+                </span>
+              )}
+              </div>
+            </div>
+          </PrincipalPersonaWorkspace>
+        )}
+      </div>
     </PageLayout>
   )
 }

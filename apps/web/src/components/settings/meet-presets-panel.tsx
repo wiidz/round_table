@@ -13,13 +13,17 @@ import { Input } from '@/components/ui/input'
 import { useI18n } from '@/hooks/use-i18n'
 import type { Translator } from '@/lib/i18n/translate'
 import {
-  heFieldSurface,
+  SideTabWorkspace,
+  SideTabWorkspaceNav,
+  SideTabWorkspacePanel,
+  SideTabWorkspaceTab,
+} from '@/components/layout/side-tab-workspace'
+import {
+  heInputEditable,
   hePressable,
   heSectionDesc,
   heSectionTitle,
   heSpring,
-  sideTabButtonMotion,
-  sideTabInactiveBorderClass,
   sideTabLabelMotion,
 } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
@@ -29,39 +33,7 @@ type PresetDraft = MeetPresetConfig
 
 type PresetTabKey = string
 
-const PRESET_SIDE_TAB_WIDTH = '10rem'
 const PANEL_MIN_EXTRA_REM = 4
-
-const presetSideTabListClass = cn(
-  'flex shrink-0 flex-col gap-2 self-start overflow-visible bg-transparent pt-8 pb-1',
-)
-
-const presetFormPanelShell = cn(
-  'relative z-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-canvas',
-  'shadow-[var(--field-inset-shadow)]',
-  'ring-1 ring-inset ring-t ring-r ring-b ring-[var(--field-ring)]',
-  '-ml-px',
-)
-
-function presetSideTabButtonClass(selected: boolean) {
-  return cn(
-    sideTabButtonMotion,
-    'flex min-h-[3rem] w-full max-w-full flex-row items-center gap-2.5 rounded-l-lg rounded-r-none',
-    'border border-r-0 border-l-[3px] cursor-pointer py-2 pl-2 text-left',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2',
-    selected
-      ? cn(
-          'relative z-10 ml-0 min-h-[3.25rem] pl-2 pr-2',
-          'border border-r-0 border-l-[3px] border-l-primary border-t-black/[0.12] border-b-black/[0.12] !bg-canvas font-semibold',
-        )
-      : cn(
-          'z-0 ml-3 w-[calc(100%-0.75rem)]',
-          sideTabInactiveBorderClass,
-          'border-l-transparent bg-black/[0.04] font-medium text-[13px] text-text-secondary',
-          'hover:bg-black/[0.06] hover:text-text-primary',
-        ),
-  )
-}
 
 function normalizeCommandKey(s: string): string {
   const trimmed = s.trim().replace(/\s+/g, '')
@@ -91,13 +63,11 @@ function PresetTab({
   const label = preset.name_zh || preset.id
 
   return (
-    <button
-      type="button"
+    <SideTabWorkspaceTab
       title={`${label} (${preset.id})`}
       aria-label={label}
-      aria-selected={selected}
+      selected={selected}
       onClick={onSelect}
-      className={presetSideTabButtonClass(selected)}
     >
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-none pl-1">
         <span
@@ -119,7 +89,7 @@ function PresetTab({
           {preset.command || preset.id}
         </span>
       </span>
-    </button>
+    </SideTabWorkspaceTab>
   )
 }
 
@@ -152,10 +122,9 @@ function MeetModeRadio({
             key={opt.value}
             htmlFor={optionId}
             className={cn(
-              heFieldSurface,
-              'flex min-w-[calc(50%-0.25rem)] flex-1 cursor-pointer items-center gap-2 bg-surface px-3 py-2.5 sm:min-w-0',
+              heInputEditable,
+              'flex min-w-[calc(50%-0.25rem)] flex-1 cursor-pointer items-center gap-2 px-3 py-2.5 sm:min-w-0',
               heSpring,
-              '!rounded-xs',
               selected && 'ring-2 ring-inset ring-primary/45 shadow-[var(--field-focus-shadow)]',
             )}
           >
@@ -336,12 +305,10 @@ export function MeetPresetsPanel({
         <p className={heSectionDesc}>{t('settings.meetPresets.description')}</p>
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-0">
-        <nav
+      <SideTabWorkspace>
+        <SideTabWorkspaceNav
           ref={tabsRef}
           aria-label={t('settings.meetPresets.navAriaLabel')}
-          className={presetSideTabListClass}
-          style={{ width: PRESET_SIDE_TAB_WIDTH }}
         >
           {orderedPresets.map((p) => (
             <PresetTab
@@ -351,11 +318,10 @@ export function MeetPresetsPanel({
               onSelect={() => setActiveId(p.id)}
             />
           ))}
-        </nav>
+        </SideTabWorkspaceNav>
 
         {active && (
-          <div
-            className={presetFormPanelShell}
+          <SideTabWorkspacePanel
             style={panelMinHeight != null ? { minHeight: panelMinHeight } : undefined}
           >
             <div className="space-y-8 p-5 sm:p-6">
@@ -394,7 +360,7 @@ export function MeetPresetsPanel({
                   maxLength={24}
                   placeholder={active.id}
                   onChange={(e) => patchActive({ command: e.target.value })}
-                  className="!rounded-xs max-w-[14rem] font-mono"
+                  className="max-w-[14rem] font-mono"
                 />
               </SettingsFieldRow>
 
@@ -411,7 +377,6 @@ export function MeetPresetsPanel({
                   maxLength={40}
                   placeholder={t('settings.meetPresets.nameZhPlaceholder')}
                   onChange={(e) => patchActive({ name_zh: e.target.value })}
-                  className="!rounded-xs"
                 />
               </SettingsFieldRow>
 
@@ -427,7 +392,6 @@ export function MeetPresetsPanel({
                   maxLength={48}
                   placeholder={t('settings.meetPresets.nameEnPlaceholder')}
                   onChange={(e) => patchActive({ name_en: e.target.value })}
-                  className="!rounded-xs"
                 />
               </SettingsFieldRow>
 
@@ -459,7 +423,7 @@ export function MeetPresetsPanel({
                       patchActive({ max_rounds: n })
                     }
                   }}
-                  className="!rounded-xs max-w-[8rem]"
+                  className="max-w-[8rem]"
                 />
               </SettingsFieldRow>
 
@@ -494,7 +458,7 @@ export function MeetPresetsPanel({
                       patchActive({ free_dialogue_questions: n })
                     }
                   }}
-                  className="!rounded-xs max-w-[8rem]"
+                  className="max-w-[8rem]"
                 />
               </SettingsFieldRow>
 
@@ -514,9 +478,9 @@ export function MeetPresetsPanel({
                 </Button>
               </div>
             </div>
-          </div>
+          </SideTabWorkspacePanel>
         )}
-      </div>
+      </SideTabWorkspace>
     </section>
   )
 }

@@ -7,7 +7,7 @@ import { BriefMeetingConfigRow } from '@/components/brief/brief-meeting-config-r
 import { briefConfigPanelShell } from '@/components/brief/brief-template-sections'
 import { useI18n } from '@/hooks/use-i18n'
 import { getBriefMeetingConfigLabels, getBriefSections } from '@/lib/i18n/brief-sections'
-import { normalizeBriefDocument } from '@/lib/brief-template-document'
+import { meetingFieldIsSet, normalizeBriefDocument } from '@/lib/brief-template-document'
 import { cn } from '@/lib/utils'
 
 import type { BriefTemplateDocument } from '@/types/brief-template'
@@ -23,8 +23,10 @@ export function BriefTemplateMeetingConfigPreview({
   const sections = getBriefSections(locale)
   const configLabels = getBriefMeetingConfigLabels(locale)
   const doc = normalizeBriefDocument(document)
-  const expertIds = doc.meeting?.participant_ids?.filter(Boolean) ?? []
-  const isDeliberation = doc.meeting?.mode === 'deliberation'
+  const meeting = doc.meeting
+  const defer = t('brief.config.deferToMeeting')
+  const expertIds = meeting?.participant_ids?.filter(Boolean) ?? []
+  const isDeliberation = meeting?.mode === 'deliberation'
 
   const [participantNames, setParticipantNames] = useState<Map<string, string>>(new Map())
 
@@ -66,43 +68,62 @@ export function BriefTemplateMeetingConfigPreview({
         <BriefMeetingConfigRow
           label={configLabels.mode}
           value={
-            isDeliberation ? t('brief.config.modeDeliberation') : t('brief.config.modeDecision')
+            !meetingFieldIsSet(meeting, 'mode')
+              ? defer
+              : isDeliberation
+                ? t('brief.config.modeDeliberation')
+                : t('brief.config.modeDecision')
           }
         />
         <BriefMeetingConfigRow
           label={configLabels.confirmation}
           value={
-            doc.meeting?.confirmation_mode === 'skip'
-              ? t('brief.config.confirmationSkipPrincipal')
-              : t('brief.config.confirmationRequired')
+            !meetingFieldIsSet(meeting, 'confirmation_mode')
+              ? defer
+              : meeting?.confirmation_mode === 'skip'
+                ? t('brief.config.confirmationSkipPrincipal')
+                : t('brief.config.confirmationRequired')
           }
         />
         <BriefMeetingConfigRow
           label={configLabels.maxRounds}
-          value={t('brief.config.maxRoundsValue', { n: doc.meeting?.max_rounds ?? 3 })}
+          value={
+            !meetingFieldIsSet(meeting, 'max_rounds')
+              ? defer
+              : t('brief.config.maxRoundsValue', { n: meeting!.max_rounds! })
+          }
         />
-        {isDeliberation && (
+        {(isDeliberation || meetingFieldIsSet(meeting, 'min_rounds_before_synthesis')) && (
           <BriefMeetingConfigRow
             label={configLabels.minSynthesis}
-            value={t('brief.config.minSynthesisFrom', {
-              n: doc.meeting?.min_rounds_before_synthesis ?? 2,
-            })}
+            value={
+              !meetingFieldIsSet(meeting, 'min_rounds_before_synthesis')
+                ? defer
+                : t('brief.config.minSynthesisFrom', {
+                    n: meeting!.min_rounds_before_synthesis!,
+                  })
+            }
           />
         )}
         <BriefMeetingConfigRow
           label={configLabels.freeDialogue}
-          value={t('brief.config.freeDialogueQuestions', {
-            n: doc.meeting?.free_dialogue_max_questions ?? 1,
-          })}
+          value={
+            !meetingFieldIsSet(meeting, 'free_dialogue_max_questions')
+              ? defer
+              : t('brief.config.freeDialogueQuestions', {
+                  n: meeting!.free_dialogue_max_questions!,
+                })
+          }
         />
         <BriefMeetingConfigRow
           label={configLabels.experts}
           valueAlign="start"
           value={
-            <BriefMeetingExpertsList
-              experts={experts}
-              emptyLabel={t('brief.config.expertsEmpty')}
-            />
+            !meetingFieldIsSet(meeting, 'participant_ids') ? (
+              defer
+            ) : (
+              <BriefMeetingExpertsList experts={experts} emptyLabel={defer} />
+            )
           }
         />
       </div>

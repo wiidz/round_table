@@ -144,6 +144,20 @@ func (r *MeetRunner) TryBeginNaturalMeet(msg transport.Inbound) (string, error) 
 	step := setupStepAskTopic
 	var reply string
 
+	if cfg.Topic == "" && parsed.Topic == "" && !parsed.HasParticipantHint && r.shouldOfferTemplatePick() {
+		templates, err := r.listBriefTemplates()
+		if err != nil {
+			return "", err
+		}
+		r.setups.put(msg.ChannelID, meetSetupSession{
+			channelID: msg.ChannelID,
+			authorID:  msg.AuthorID,
+			config:    cfg,
+			step:      setupStepPickTemplate,
+		})
+		return formatPickTemplatePrompt(loc, templates), nil
+	}
+
 	switch {
 	case cfg.Topic != "" && parsed.HasParticipantHint:
 		step = setupStepBriefGoal
@@ -170,9 +184,9 @@ func (r *MeetRunner) TryBeginNaturalMeet(msg transport.Inbound) (string, error) 
 
 func formatNaturalMeetBriefStartPrompt(loc Locale, cfg meetLaunchConfig) string {
 	if loc == LocaleZH {
-		return fmtNaturalMeetHeadZH(cfg) + "\n\n" + formatAskBriefGoalPrompt(loc, cfg.Topic)
+		return fmtNaturalMeetHeadZH(cfg) + "\n\n" + formatAskBriefGoalPrompt(loc, cfg.Topic, cfg.Brief, false)
 	}
-	return fmtNaturalMeetHeadEN(cfg) + "\n\n" + formatAskBriefGoalPrompt(loc, cfg.Topic)
+	return fmtNaturalMeetHeadEN(cfg) + "\n\n" + formatAskBriefGoalPrompt(loc, cfg.Topic, cfg.Brief, false)
 }
 
 func formatNaturalMeetReadyPrompt(loc Locale, cfg meetLaunchConfig, prefix string, presets []meetPreset) string {

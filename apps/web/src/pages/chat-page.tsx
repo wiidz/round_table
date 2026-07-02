@@ -36,8 +36,9 @@ export function ChatPage() {
           right={right}
           sidebarFrom="96rem"
           sideColumnWidth="gutter"
+          fillHeight
           className="h-[calc(100vh-7.5rem)] min-h-[28rem]"
-          bodyClassName="min-h-0 flex-1 min-[96rem]:h-full"
+          bodyClassName="min-h-0 flex-1"
         >
           {connectionState === 'error' && (
             <ProfileStatePanel
@@ -46,7 +47,7 @@ export function ChatPage() {
               description={lastError ?? t('chat.page.cannotConnect')}
             />
           )}
-          <div className="relative h-full min-h-0">{main}</div>
+          <div className="relative flex min-h-0 flex-1 flex-col">{main}</div>
           {drawer}
         </PageLayout>
       )}

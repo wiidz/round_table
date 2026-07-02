@@ -31,11 +31,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   heColumnTitleBrand,
-  heFieldReadonly,
-  heFieldSurface,
   heFileBadge,
   heFilePill,
   heFilePillSelected,
+  heInputControlTypography,
+  heInputEditable,
+  heInputReadonly,
   hePanelShell,
   hePressable,
   heSectionDesc,
@@ -314,12 +315,7 @@ function SettingsFieldInput({
   onChange: (value: string) => void
   t: Translator
 }) {
-  const inputClass = cn(
-    heFieldSurface,
-    'h-10 w-full bg-surface px-3 text-sm text-text-primary placeholder:text-text-tertiary',
-    heSpring,
-    '!rounded-xs',
-  )
+  const inputClass = cn(heInputEditable, heInputControlTypography, heSpring)
 
   if (isSwitchField(field)) {
     const checked = value === 'required'
@@ -345,10 +341,9 @@ function SettingsFieldInput({
               key={opt.value}
               htmlFor={optionId}
               className={cn(
-                heFieldSurface,
-                'flex min-w-[calc(50%-0.25rem)] flex-1 cursor-pointer items-center gap-2 bg-surface px-3 py-2.5 sm:min-w-0',
+                heInputEditable,
+                'flex min-w-[calc(50%-0.25rem)] flex-1 cursor-pointer items-center gap-2 px-3 py-2.5 sm:min-w-0',
                 heSpring,
-                '!rounded-xs',
                 selected && 'ring-2 ring-inset ring-primary/45 shadow-[var(--field-focus-shadow)]',
               )}
             >
@@ -413,7 +408,6 @@ function SettingsFieldInput({
         value={value}
         placeholder={field.placeholder}
         autoComplete="off"
-        className="!rounded-xs"
         onChange={(e) => onChange(e.target.value)}
       />
     )
@@ -427,7 +421,6 @@ function SettingsFieldInput({
       value={value}
       placeholder={field.placeholder}
       autoComplete="off"
-      className="!rounded-xs"
       onChange={(e) => onChange(e.target.value)}
     />
   )
@@ -468,12 +461,7 @@ function SettingsFieldRow({
       labelExtra={badges}
     >
       {field.secret ? (
-        <p
-          className={cn(
-            heFieldReadonly,
-            'px-3 py-2.5 text-sm ring-1 ring-inset',
-          )}
-        >
+        <p className={cn(heInputReadonly, 'px-3 py-2.5 text-sm')}>
           {field.configured
             ? t('pages.settings.field.secretConfigured')
             : t('pages.settings.field.secretMissing')}
@@ -492,7 +480,6 @@ function SettingsFieldRow({
           type="text"
           value={field.value ?? ''}
           readOnly
-          className={heFieldReadonly}
         />
       )}
     </SettingsFieldRowLayout>

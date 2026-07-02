@@ -238,7 +238,7 @@ export function SearchableSelect(props: SearchableSelectProps) {
           disabled={props.disabled}
           value={inputDisplayValue}
           placeholder={open ? searchPlaceholder : props.placeholder ?? defaultPlaceholder}
-          className="!rounded-xs pl-8 pr-8 text-sm"
+          className="pl-8 pr-8 text-sm"
           onFocus={() => {
             setOpen(true)
             if (!props.multiple) setQuery('')

@@ -14,12 +14,14 @@ type PrincipalIndex struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// PrincipalDetail includes markdown file contents for one Principal.
+// PrincipalDetail includes active persona preferences and all persona metadata.
 type PrincipalDetail struct {
-	ID          string            `json:"id"`
-	DisplayName string            `json:"display_name,omitempty"`
-	UserProfile UserProfile       `json:"user_profile"`
-	Files       map[string]string `json:"files,omitempty"`
+	ID              string                 `json:"id"`
+	DisplayName     string                 `json:"display_name,omitempty"`
+	ActivePersonaID string                 `json:"active_persona_id"`
+	Personas        []PrincipalPersonaMeta `json:"personas"`
+	UserProfile     UserProfile            `json:"user_profile"`
+	Files           map[string]string      `json:"files,omitempty"`
 }
 
 // ParticipantIndex summarizes one Participant profile directory.

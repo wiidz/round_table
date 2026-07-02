@@ -70,7 +70,15 @@ export const heColumnTitleAI = [
 ].join(' ')
 
 export const heFieldLabel =
-  'text-xs font-medium uppercase tracking-[0.12em] text-text-tertiary'
+  'text-xs font-medium uppercase tracking-[0.06em] text-text-tertiary break-words'
+
+/** Form 左列 label 宽约 8 个汉字（text-xs 0.75rem × 8 = 6rem） */
+export const heFormLabelColumnClass =
+  'w-full sm:w-[6rem] sm:max-w-[6rem] sm:shrink-0'
+
+/** SettingsFieldRow 等表单行：左 label + 右控件 */
+export const heFormFieldRowGrid =
+  'grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-start'
 
 /** Settings / form — section heading (16px semibold, DESIGN.md Section Title) */
 export const heSectionTitle =
@@ -130,21 +138,34 @@ export const heSubsectionTitleNeutral = [
   'text-[13px] font-medium tracking-[0.06em] text-text-secondary uppercase',
 ].join(' ')
 
-export const heFieldSurface = [
+/** Settings / form — editable control surface（Input、Select、单选卡片等） */
+export const heInputEditable = [
   'rounded-xs border-0 bg-surface box-border',
   'shadow-[var(--field-inset-shadow)]',
   'ring-1 ring-inset ring-[var(--field-ring)]',
   heSpring,
-  'focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary/45',
-  'focus-within:shadow-[var(--field-focus-shadow)]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/45',
+  'focus-visible:shadow-[var(--field-focus-shadow)]',
   'autofill:shadow-[inset_0_0_0_1000px_var(--surface)] autofill:[-webkit-text-fill-color:var(--text-primary)]',
 ].join(' ')
 
-/** Settings — non-editable field value (readOnly / disabled) */
-export const heFieldReadonly = [
-  '!rounded-xs !bg-black/[0.05] !text-text-tertiary',
-  '!shadow-none !ring-black/[0.02]',
+/** @deprecated 使用 heInputEditable；保留别名供复合字段容器（fieldset label 等） */
+export const heFieldSurface = heInputEditable
+
+/** Settings / form — readOnly / disabled 控件：灰底 + rounded-lg inset ring（大于可编辑的 rounded-xs） */
+export const heInputReadonly = [
+  'rounded-lg border-0 bg-black/[0.05] text-text-tertiary',
+  'shadow-none ring-1 ring-inset ring-black/[0.06]',
+  'cursor-default placeholder:text-text-tertiary/70',
+  'disabled:cursor-not-allowed disabled:opacity-100',
 ].join(' ')
+
+/** @deprecated 使用 heInputReadonly */
+export const heFieldReadonly = heInputReadonly
+
+/** Input / 单行控件共用字级与尺寸 */
+export const heInputControlTypography =
+  'h-10 w-full px-3 text-sm text-text-primary placeholder:text-text-tertiary'
 
 export const heTextarea = [
   'min-h-[420px] w-full resize-y border-0 bg-transparent p-4',
@@ -202,13 +223,113 @@ export const heEmptyPanel = [
   'px-8 py-10 text-center',
 ].join(' ')
 
+/** Modal backdrop — shared by AlertDialog overlay & centered Dialog */
+export const heDialogOverlayBackdrop =
+  'fixed inset-0 z-50 bg-black/25 backdrop-blur-[2px]'
+
+/** Modal backdrop + flex centering (custom Dialog shell) */
+export const heDialogOverlay = [
+  heDialogOverlayBackdrop,
+  'flex items-center justify-center p-4',
+].join(' ')
+
+/** Modal panel surface — align with AlertDialogContent (rounded-2xl) */
+export const heDialogContent = [
+  'w-full overflow-hidden rounded-2xl border-0 bg-surface',
+  'shadow-xl ring-1 ring-[var(--panel-shell-ring)]',
+  heSpring,
+].join(' ')
+
+/** 侧栏 Tab 未激活背景（与 settings / 工作区 Tab 统一） */
+export const sideTabInactiveBgClass = 'bg-black/[0.04]'
+
+/** 侧栏 Tab 列表首项距顶（CRM DetailDialog 同款，全站统一） */
+export const sideTabListTopPadding = 'pt-12'
+
+/** 内嵌工作区侧栏 Tab 列宽（委托人档案、Discord Bot、会议预设等） */
+export const SIDE_TAB_WORKSPACE_WIDTH = '10rem'
+
+/** 侧栏 Tab 列表基础布局 */
+export const sideTabListBaseClass = cn(
+  'flex shrink-0 flex-col gap-2 self-start overflow-visible bg-transparent',
+  sideTabListTopPadding,
+  'pb-1',
+)
+
+/** 内嵌工作区左侧 Tab 列（可滚动） */
+export const sideTabWorkspaceListClass = cn(
+  sideTabListBaseClass,
+  'max-h-[min(32rem,calc(100vh-14rem))] overflow-y-auto',
+)
+
+/**
+ * 内嵌工作区右侧面板：四角 rounded-xl，左侧无 ring 与 Tab 衔接；底色随 tone 与激活 Tab 一致。
+ */
+export function sideTabWorkspacePanelClass(tone: SideTabWorkspaceTone = 'canvas') {
+  return cn(
+    'overflow-hidden rounded-xl',
+    tone === 'surface' ? 'bg-surface' : 'bg-canvas',
+    tone === 'canvas' && 'shadow-[var(--field-inset-shadow)]',
+    'ring-1 ring-inset ring-t ring-r ring-b ring-[var(--field-ring)]',
+    '-ml-px',
+  )
+}
+
+export type SideTabWorkspaceTone = 'canvas' | 'surface'
+
+/** 内嵌工作区 Tab 按钮：未选中内缩 ml-3；选中 ml-0 与右侧面板底色衔接 */
+export function sideTabWorkspaceButtonClass(
+  selected: boolean,
+  extra?: string,
+  tone: SideTabWorkspaceTone = 'canvas',
+) {
+  const activeBg = tone === 'surface' ? '!bg-surface' : '!bg-canvas'
+
+  return cn(
+    sideTabButtonMotion,
+    'flex min-h-[3rem] w-full max-w-full flex-row items-center gap-2.5 rounded-l-lg rounded-r-none',
+    'border border-r-0 border-l-[3px] cursor-pointer py-2 pl-2 text-left',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2',
+    selected
+      ? cn(
+          'relative z-10 ml-0 min-h-[3.25rem] pl-2 pr-2',
+          'border border-r-0 border-l-[3px] border-l-primary border-t-black/[0.12] border-b-black/[0.12] font-semibold',
+          activeBg,
+        )
+      : cn(
+          'z-0 ml-3 w-[calc(100%-0.75rem)]',
+          sideTabInactiveBorderClass,
+          'border-l-transparent font-medium text-[13px] text-text-secondary',
+          sideTabInactiveBgClass,
+          'hover:bg-black/[0.06] hover:text-text-primary',
+        ),
+    extra,
+  )
+}
+
+/** 内嵌工作区「新建」Tab 按钮 */
+export const sideTabWorkspaceAddButtonClass = cn(
+  sideTabButtonMotion,
+  'z-0 ml-3 flex min-h-[3rem] w-[calc(100%-0.75rem)] flex-row items-center gap-2.5 rounded-l-lg rounded-r-none',
+  'border border-r-0 border-l-transparent px-2 py-2',
+  sideTabInactiveBorderClass,
+  sideTabInactiveBgClass,
+  'text-[13px] text-text-tertiary hover:bg-black/[0.06] hover:text-text-secondary',
+)
+
+/** 内嵌工作区行布局：左 Tab 列（10rem）+ 右面板；grid 避免 flex-1 挤没侧栏 */
+export const sideTabWorkspaceRowClass = cn(
+  'grid min-h-0 min-w-0 grid-cols-1 gap-4',
+  'sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-start sm:gap-0',
+)
+
 /** 设置页左侧悬浮 Tab 列宽（参考 CRM DetailDialog 侧栏） */
 export const SETTINGS_SIDE_TAB_WIDTH = '7.5rem'
 
 /** 设置页左侧 TabsList：浮在面板左缘外 */
 export const settingsSideTabListClass = cn(
-  'hidden shrink-0 flex-col gap-2 self-start overflow-visible lg:flex',
-  'pt-12',
+  sideTabListBaseClass,
+  'hidden lg:flex',
 )
 
 /** 设置页左侧 Tab 按钮：未选中内缩，选中向左/右延伸与主面板衔接 */
@@ -226,7 +347,8 @@ export function settingsSideTabButtonClass(selected: boolean) {
       : cn(
           'z-0 ml-3 w-[calc(100%-0.75rem)]',
           sideTabInactiveBorderClass,
-          'border-l-transparent bg-black/[0.04] font-medium text-[13px] text-text-secondary',
+          'border-l-transparent font-medium text-[13px] text-text-secondary',
+          sideTabInactiveBgClass,
           'hover:bg-black/[0.06] hover:text-text-primary',
         ),
     '[&_[data-tab-icon]>svg]:size-5 [&_[data-tab-icon]>svg]:shrink-0',

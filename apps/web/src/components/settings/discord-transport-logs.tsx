@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { RefreshCw, ScrollText, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -10,12 +9,12 @@ import {
 } from '@/api/settings'
 import { DiscordTransportStatusBadge } from '@/components/settings/discord-transport-status-badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useI18n } from '@/hooks/use-i18n'
 import { resolveDiscordTransportPhase } from '@/lib/discord-transport-phase'
 import {
   heFieldHint,
   heFormEmbed,
-  hePanelShell,
   hePressable,
   heSectionTitle,
   heSpring,
@@ -234,22 +233,13 @@ export function DiscordTransportLogsDialog() {
         {t('settings.discord.logsOpen')}
       </Button>
 
-      {open &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="discord-logs-title"
-            onClick={handleClose}
-          >
-            <div
-              className={cn(
-                hePanelShell,
-                'flex h-[min(48rem,calc(100vh-3rem))] w-full max-w-[56rem] flex-col overflow-hidden',
-              )}
-              onClick={(e) => e.stopPropagation()}
-            >
+      <Dialog open={open} onClose={handleClose}>
+        <DialogContent
+          size="lg"
+          padded={false}
+          className="flex h-[min(48rem,calc(100vh-3rem))] flex-col"
+          aria-labelledby="discord-logs-title"
+        >
               <div className="flex items-center justify-between gap-4 px-6 py-4">
                 <h2 id="discord-logs-title" className={heSectionTitle}>
                   {t('settings.discord.logsTitle')}
@@ -328,10 +318,8 @@ export function DiscordTransportLogsDialog() {
                   </p>
                 </div>
               )}
-            </div>
-          </div>,
-          document.body,
-        )}
+            </DialogContent>
+      </Dialog>
     </>
   )
 }

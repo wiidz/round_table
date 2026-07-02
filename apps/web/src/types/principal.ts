@@ -15,9 +15,18 @@ export interface PrincipalUserProfile {
   context?: string
 }
 
+export interface PrincipalPersonaMeta {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+}
+
 export interface PrincipalDetail {
   id: string
   display_name?: string
+  active_persona_id: string
+  personas: PrincipalPersonaMeta[]
   user_profile: PrincipalUserProfile
 }
 

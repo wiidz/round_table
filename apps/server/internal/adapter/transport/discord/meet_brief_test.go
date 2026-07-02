@@ -103,6 +103,51 @@ func TestFormatBriefSummaryBody_listsTopicsFully(t *testing.T) {
 	}
 }
 
+func TestBriefWizardGoalStepTemplateFlowWithoutGoal(t *testing.T) {
+	reply := formatAskBriefGoalPrompt(LocaleZH, "狂击骑士该不该淘汰", meetBrief{}, true)
+	if !strings.Contains(reply, "回复方式") {
+		t.Fatalf("should show action block: %q", reply)
+	}
+	if !strings.Contains(reply, "不会修改上方主题") {
+		t.Fatalf("should clarify topic is safe: %q", reply)
+	}
+	if !strings.Contains(reply, "未预填会议目标") {
+		t.Fatalf("should note empty template goal: %q", reply)
+	}
+}
+
+func TestBriefWizardAcceptsTemplateAgenda(t *testing.T) {
+	r := &MeetRunner{
+		Cfg: config.Config{Meeting: config.Meeting{MeetPresets: config.DefaultMeetPresets(config.Config{})}},
+		Discord: config.DiscordTransport{
+			Locale:           "zh",
+			MeetParticipants: "designer:策划:gameplay",
+		},
+	}
+	sess := meetSetupSession{
+		config: meetLaunchConfig{
+			Topic: "测试",
+			Brief: meetBrief{
+				Goal:         "形成共识",
+				AgendaTitles: []string{"核心结论", "主要风险"},
+			},
+		},
+		step: setupStepBriefAgenda,
+	}
+	reply := formatAskBriefAgendaPrompt(LocaleZH, sess.config.Brief, true)
+	if !strings.Contains(reply, "核心结论") || !strings.Contains(reply, "确认") {
+		t.Fatalf("agenda prompt should show template draft: %q", reply)
+	}
+	sess, reply = r.advanceBriefAgenda(sess, "确认", LocaleZH)
+	if sess.step != setupStepBriefScope || len(sess.config.Brief.AgendaTitles) != 2 {
+		t.Fatalf("confirm keeps agenda: step=%v agenda=%v", sess.step, sess.config.Brief.AgendaTitles)
+	}
+	sess, reply = r.advanceBriefScope(sess, "0", LocaleZH)
+	if sess.step != setupStepPresetMenu {
+		t.Fatalf("scope skip: step=%v reply=%q", sess.step, reply)
+	}
+}
+
 func TestBriefWizardToPresetMenu(t *testing.T) {
 	r := &MeetRunner{
 		Cfg: config.Config{Meeting: config.Meeting{MeetPresets: config.DefaultMeetPresets(config.Config{})}},
@@ -123,7 +168,7 @@ func TestBriefWizardToPresetMenu(t *testing.T) {
 	if sess.step != setupStepBriefScope || len(sess.config.Brief.AgendaTitles) != 2 || !strings.Contains(reply, "边界与完成标准") {
 		t.Fatalf("scope step: step=%v agenda=%v reply=%q", sess.step, sess.config.Brief.AgendaTitles, reply)
 	}
-	sess, reply = r.advanceBriefScope(sess, "-", LocaleZH)
+	sess, reply = r.advanceBriefScope(sess, "0", LocaleZH)
 	if sess.step != setupStepPresetMenu || !strings.Contains(reply, "请选择会议方案") {
 		t.Fatalf("preset menu: step=%v reply=%q", sess.step, reply)
 	}

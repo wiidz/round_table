@@ -70,16 +70,6 @@ export function ParticipantMultiSelect({
 
   return (
     <div className="space-y-2.5">
-      {selectedExperts.length > 0 && (
-        <BriefMeetingExpertsList
-          experts={selectedExperts}
-          removable
-          disabled={disabled || loading}
-          onRemove={(participantId) =>
-            onChange(value.filter((current) => current !== participantId))
-          }
-        />
-      )}
       <SearchableSelect
         id={id}
         multiple
@@ -91,6 +81,16 @@ export function ParticipantMultiSelect({
         onChange={onChange}
         hideSelectedChips
       />
+      {selectedExperts.length > 0 && (
+        <BriefMeetingExpertsList
+          experts={selectedExperts}
+          removable
+          disabled={disabled || loading}
+          onRemove={(participantId) =>
+            onChange(value.filter((current) => current !== participantId))
+          }
+        />
+      )}
     </div>
   )
 }

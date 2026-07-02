@@ -43,6 +43,8 @@ func (r *MeetRunner) InputPhase(channelID string) ChannelInputPhase {
 	if r.setups.pending(channelID) {
 		sess, _ := r.setups.get(channelID)
 		switch sess.step {
+		case setupStepPickTemplate:
+			return InputPhaseSetupBrief
 		case setupStepAskTopic:
 			return InputPhaseSetupTopic
 		case setupStepPickParticipants:
@@ -197,7 +199,7 @@ func inputPhaseHint(loc Locale, phase ChannelInputPhase) string {
 		case InputPhaseSetupParticipants:
 			return "发送 **阵容编号**（如 C1）、**专家编号/名字**（如 1,2 或 designer,player），**0** 全员，或 **取消会议**。"
 		case InputPhaseSetupBrief:
-			return "按主持人上一条提示填写 **目标 / 讨论议题 / 边界与完成标准**；发送 **-** 跳过当前步，**取消会议** 放弃。"
+			return "按主持人上一条提示确认或修改 **简报**；**1** / **确认** 采用模板内容，**0** / **跳过** 留空，或直接发文字修改；**取消会议** 放弃。"
 		case InputPhaseSetupMenu:
 			return "发送预设编号 **1–6** / **J1–J5**，**0** 自定义，**取消会议** 放弃。"
 		case InputPhaseSetupCustom:
@@ -228,7 +230,7 @@ func inputPhaseHint(loc Locale, phase ChannelInputPhase) string {
 	case InputPhaseSetupParticipants:
 		return "Send **cast id** (e.g. C1), **participant index/name** (e.g. 1,2), **0** for all, or **取消会议**."
 	case InputPhaseSetupBrief:
-		return "Follow the Moderator brief prompt; **-** to skip step, **取消会议** to cancel."
+		return "Follow the brief prompt: **1** / **confirm** to accept template content, **0** / **skip** to leave empty, or send text to edit; **取消会议** to cancel."
 	case InputPhaseSetupMenu:
 		return "Reply **1–6** / **J1–J5**, **0** for custom, **取消会议** to cancel."
 	case InputPhaseSetupCustom:

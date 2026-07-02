@@ -34,6 +34,8 @@ interface PageThreeColumnLayoutProps {
   sidebarFrom?: PageSidebarBreakpoint
   /** 侧栏宽度策略；圆桌三栏请用 gutter */
   sideColumnWidth?: PageSideColumnWidth
+  /** main 纵向撑满父级 flex 容器（如聊天页全高壳） */
+  fillHeight?: boolean
   className?: string
 }
 
@@ -49,6 +51,7 @@ export function PageThreeColumnLayout({
   children,
   sidebarFrom = '96rem',
   sideColumnWidth = 'compact',
+  fillHeight = false,
   className,
 }: PageThreeColumnLayoutProps) {
   const sideVisible = sidebarVisibleClass(sidebarFrom)
@@ -61,6 +64,7 @@ export function PageThreeColumnLayout({
     'mx-auto w-full max-w-6xl gap-5',
     wideSide,
     gutterSide && hasRight && 'min-[96rem]:max-w-none xl:max-w-none',
+    fillHeight && 'flex min-h-0 flex-1 flex-col',
   )
 
   const asideScrollClass = cn(
@@ -77,6 +81,7 @@ export function PageThreeColumnLayout({
 
   const mainClass = cn(
     'min-w-0 w-full',
+    (gutterSide && hasRight) || fillHeight ? 'flex min-h-0 flex-1 flex-col' : undefined,
     gutterSide && hasRight && 'h-full min-h-0',
   )
 

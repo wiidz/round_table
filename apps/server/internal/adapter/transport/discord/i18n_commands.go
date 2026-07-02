@@ -143,9 +143,9 @@ func meetDisabledText(loc Locale) string {
 
 func meetUsageText(loc Locale, prefix string) string {
 	if loc == LocaleZH {
-		return fmt.Sprintf("用法：`%smeet [-mode decision|deliberation] 会议主题`\n主持人会展示研讨 **1–6**、裁决 **J1–J5** 选项；**0** 进入自定义。", prefix)
+		return fmt.Sprintf("用法：`%smeet [-mode decision|deliberation] [-template 模板ID] 会议主题`\n可选 `-template` 预填简报；主持人会展示研讨 **1–6**、裁决 **J1–J5**；**0** 自定义。", prefix)
 	}
-	return fmt.Sprintf("Usage: `%smeet [-mode decision|deliberation] topic`\nModerator shows deliberation **1–6**, decision **J1–J5**; **0** for custom.", prefix)
+	return fmt.Sprintf("Usage: `%smeet [-mode decision|deliberation] [-template id] topic`\nOptional `-template` pre-fills the brief; presets **1–6** / **J1–J5**; **0** custom.", prefix)
 }
 
 func meetNeedBindText(loc Locale) string {

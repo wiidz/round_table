@@ -2,19 +2,20 @@ import { Plus, Trash2 } from 'lucide-react'
 
 import { BriefTemplateMeetingConfigFields } from '@/components/brief/brief-template-meeting-config-fields'
 import { BriefTemplateMetaFields } from '@/components/brief/brief-template-meta-fields'
-import { briefTemplateBodyGridClass } from '@/components/brief/brief-template-preview'
 import { BriefTemplateScopeFields } from '@/components/brief/brief-template-scope-fields'
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import {
   briefFieldCaptionClass,
+  briefTemplateBodyGridClass,
   briefTemplateLeftColumnClass,
   briefTemplateRightColumnClass,
+  briefTemplateSectionDividerClass,
 } from '@/components/brief/brief-template-sections'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useI18n } from '@/hooks/use-i18n'
 import { getBriefSections, getBriefTopicEmptyCopy } from '@/lib/i18n/brief-sections'
-import { hePressable, heSpring } from '@/lib/highend-styles'
+import { heColumnTitleBrand, heFieldHint, hePressable, heSpring } from '@/lib/highend-styles'
 import { emptyBriefDocument } from '@/lib/brief-template-document'
 import type { BriefTemplateDocument } from '@/types/brief-template'
 import { cn } from '@/lib/utils'
@@ -49,13 +50,19 @@ export function BriefTemplateFormFields({
     onChange({ ...document, brief: { ...currentBrief(), ...partial } })
   }
 
-  const agenda = currentBrief().agenda?.length ? currentBrief().agenda! : ['']
+  const agenda = currentBrief().agenda?.length ? currentBrief().agenda! : []
 
   return (
-    <div className="space-y-8">
+    <div>
       <BriefTemplateMetaFields document={document} readonly={readonly} onChange={onChange} />
 
-      <div className={briefTemplateBodyGridClass}>
+      <section className={cn(briefTemplateSectionDividerClass, 'mt-8 space-y-6 pt-8')}>
+        <div className="space-y-1">
+          <p className={heColumnTitleBrand}>{t('brief.meetingInfo.sectionTitle')}</p>
+          <p className={heFieldHint}>{t('brief.meetingInfo.sectionHint')}</p>
+        </div>
+
+        <div className={briefTemplateBodyGridClass}>
         <div className={briefTemplateLeftColumnClass}>
           <section className="space-y-4">
             <BriefSectionHeading
@@ -78,7 +85,7 @@ export function BriefTemplateFormFields({
               </div>
               <div className="space-y-2">
                 <label htmlFor="brief-goal" className={briefFieldCaptionClass}>
-                  {t('brief.fields.goal')} <span className="text-destructive">*</span>
+                  {t('brief.fields.goal')}
                 </label>
                 <Textarea
                   id="brief-goal"
@@ -86,6 +93,7 @@ export function BriefTemplateFormFields({
                   readOnly={readonly}
                   rows={3}
                   className="min-h-[6rem] font-sans text-sm leading-relaxed"
+                  placeholder={t('brief.fields.goalPlaceholder')}
                   onChange={(e) => patchBrief({ goal: e.target.value })}
                 />
               </div>
@@ -116,6 +124,9 @@ export function BriefTemplateFormFields({
             </div>
 
             <ul className="space-y-2">
+                {agenda.length === 0 && readonly && (
+                  <li className="text-[13px] text-text-tertiary">{t('brief.fields.agendaEmpty')}</li>
+                )}
                 {agenda.map((item, index) => (
                   <li
                     key={`agenda-row-${index}`}
@@ -142,13 +153,9 @@ export function BriefTemplateFormFields({
                         className={cn(
                           'inline-flex size-9 items-center justify-center rounded-lg text-text-tertiary hover:bg-black/[0.04] hover:text-destructive',
                           hePressable,
-                          agenda.length <= 1 && 'pointer-events-none opacity-30',
                         )}
-                        disabled={agenda.length <= 1}
                         onClick={() => {
-                          if (agenda.length <= 1) return
-                          const next = agenda.filter((_, i) => i !== index)
-                          patchBrief({ agenda: next.length ? next : [''] })
+                          patchBrief({ agenda: agenda.filter((_, i) => i !== index) })
                         }}
                       >
                         <Trash2 className="size-4" />
@@ -178,7 +185,8 @@ export function BriefTemplateFormFields({
           onChange={onChange}
           className={briefTemplateRightColumnClass}
         />
-      </div>
+        </div>
+      </section>
     </div>
   )
 }
