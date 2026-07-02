@@ -15,13 +15,13 @@ type ChannelSender struct {
 	AuthorName string
 }
 
-// NewModeratorSender returns a sender that posts as 司仪.
+// NewModeratorSender returns a sender that posts as 主持人.
 func NewModeratorSender(hub *Hub) *ChannelSender {
 	return &ChannelSender{
 		Hub:        hub,
 		Role:       RoleModerator,
 		AuthorID:   "moderator",
-		AuthorName: "司仪",
+		AuthorName: "主持人",
 	}
 }
 

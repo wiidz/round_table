@@ -21,7 +21,7 @@
 |------|------|------|
 | **M0** | 文档 + ADR（本文） | ADR-0013 Draft，roadmap 更新 | ✅ |
 | **M1** | 状态层 + 摘要 + Drawer | turn 序号、condense、Drawer 可读 Markdown | ✅ |
-| **M2** | RoundTableStage 静态布局 | 3/5/6 人 roster 席位正确、司仪/我固定方位 | ✅ |
+| **M2** | RoundTableStage 静态布局 | 3/5/6 人 roster 席位正确、主持人/我固定方位 | ✅ |
 | **M3** | Live 气泡 + 高亮/暗沉 | 新消息切换 activeSpeaker；每席 1 条；#turn 一致 | ✅ |
 | **M4** | TranscriptStrip + 模式切换 | 小历史条、点击 Drawer；会议中进行切圆桌 | ✅ |
 | **M5** | 降级与 polish | `< md` IM 降级、新消息浮钮、空状态 | ✅ |
@@ -142,7 +142,7 @@ export interface ChatMessage {
 
 - [x] `@media (max-width: 768px)` → 强制 IM 或 Strip-only
 - [x] 点击 Strip 行 → 可选高亮对应 Seat
-- [x] 空 roster / 仅司仪时的占位 UI
+- [x] 空 roster / 仅主持人时的占位 UI
 - [x] 更新 `chat-page` 描述文案
 
 ---

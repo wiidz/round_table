@@ -10,7 +10,7 @@ export const nav = {
 export const domain = {
   participant: '专家',
   principal: '委托人',
-  moderator: '司仪',
+  moderator: '主持人',
   meeting: '会议',
 } as const
 

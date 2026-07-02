@@ -37,7 +37,7 @@ describe('computeRoundTableSeats', () => {
       'participant',
       'principal',
     ])
-    expect(seats.find((s) => s.kind === 'moderator')?.label).toBe('司仪')
+    expect(seats.find((s) => s.kind === 'moderator')?.label).toBe('主持人')
     expect(seats.find((s) => s.kind === 'principal')?.label).toBe('我')
   })
 })

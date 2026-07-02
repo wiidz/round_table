@@ -10,7 +10,7 @@ export const profile = {
     'AGENTS.md': 'Meeting 内行为规则与发言方式',
     'TOOLS.md': '工具与环境约定',
     'USER.md':
-      'Principal 偏好与背景（界面语言、确认审阅习惯、行业约束）。Moderator 服务你的长期设定，不是单次会议议题。',
+      'Principal 偏好与背景（界面语言、确认审阅习惯、行业约束）。主持人 服务你的长期设定，不是单次会议议题。',
   },
   list: {
     principalRole: '决策委托人',
@@ -54,13 +54,13 @@ export const profile = {
     preferences: '偏好',
     languageLabel: '界面语言',
     languageHint:
-      '与「设置 → 服务」中的界面语言一致；Moderator 与 Reception 也按此语言面向你。跟随系统设置，此处不可单独修改；修改请前往「设置」。',
+      '与「设置 → 服务」中的界面语言一致；主持人 与 Reception 也按此语言面向你。跟随系统设置，此处不可单独修改；修改请前往「设置」。',
     confirmationLabel: '确认审阅习惯',
     confirmationHint:
       '会议确认关（Confirmation）时，你希望主持人如何呈报、你如何审阅与拍板。例如是否逐项核对编号清单、是否需要简短摘要、是否强调责任人与截止时间。',
     contextLabel: '背景与约束',
     contextHint:
-      '行业、团队、项目约束；供 Moderator 长期理解你的语境。补充团队背景、业务约束与决策偏好（不是单次议题）。',
+      '行业、团队、项目约束；供 主持人 长期理解你的语境。补充团队背景、业务约束与决策偏好（不是单次议题）。',
     contextPlaceholder: '例如：手游研发团队，关注可执行结论与上线风险',
     confirmationPlaceholder: '例如：逐项审阅编号清单；偏好简短摘要',
     save: '保存偏好',
@@ -88,7 +88,7 @@ export const profile = {
       newTitleHint: '为不同领域准备一份偏好档案；系统会自动分配 ID',
     },
     preview: {
-      description: '当前档案偏好预览。Moderator 在会议准备阶段会读取此档案。',
+      description: '当前档案偏好预览。主持人 在会议准备阶段会读取此档案。',
     },
     presets: {
       confirmation: {

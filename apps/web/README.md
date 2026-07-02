@@ -12,7 +12,7 @@ Web 端面向中文用户，领域概念遵循 [docs/NAMING.md](../../docs/NAMIN
 |-------------------|---------------|--------------|
 | Participant | 专家 | 专家 · Participant |
 | Principal | 委托人 | 委托人 · Principal |
-| Moderator | 司仪 | — |
+| Moderator | 主持人 | — |
 
 **Workspace / 档案文件**统一显示为 **中文名 · 文件名**，例如：
 

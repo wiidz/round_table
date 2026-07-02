@@ -43,7 +43,7 @@ Principal 反馈：线性堆叠聊天窗 **不像「几个人在桌上开会」*
 
 | 会话阶段 | 主视图 |
 |----------|--------|
-| 空闲 / Setup / Reception 确认 | **IM 基线**（`3561e2e` 线性聊天窗）或简化版 Stage（仅司仪 + 我） |
+| 空闲 / Setup / Reception 确认 | **IM 基线**（`3561e2e` 线性聊天窗）或简化版 Stage（仅主持人 + 我） |
 | 会议进行中（`InputPhaseMeeting*`） | **圆桌 Live** |
 | 会议结束（`InputPhasePostMeeting`） | 圆桌最后一帧 + TranscriptStrip；Drawer 便于拉交付物 |
 
@@ -77,7 +77,7 @@ activeSpeakerId: speakerId | null   // 最近一次占 turn 的发言者
 
 **用户（Principal）**：固定席位（建议 6 点钟方向）；用户消息不占 `turn`，不参与「专家轮次」序号，但可在 Strip 中显示「我」标签。
 
-**司仪（Moderator）**：独立席位（建议 12 点钟）；占 turn，与专家同等规则。
+**主持人（Moderator）**：独立席位（建议 12 点钟）；占 turn，与专家同等规则。
 
 ### 3. TranscriptStrip（浓缩历史）
 
@@ -103,7 +103,7 @@ activeSpeakerId: speakerId | null   // 最近一次占 turn 的发言者
 - 根据 **当前会议 roster**（来自配置 `meet_participants` 或 setup 已选 subset）动态排布。
 - 3–8 人：椭圆/圆形等分角度；**Principal** 固定底部中心；**Moderator** 固定顶部中心。
 - 气泡复用现有 `.chat-bubble` 尖角样式，尾巴指向 **圆心或头像**（与 IM 基线一致）。
-- 中心：**议题标题** + 可选 meeting id / 轮次（只读，来自 status 或首条司仪进度）。
+- 中心：**议题标题** + 可选 meeting id / 轮次（只读，来自 status 或首条主持人进度）。
 
 **不采用** React Flow 作为 v1 布局引擎（见「拒绝的选项」）。
 

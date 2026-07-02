@@ -13,7 +13,7 @@ RoundTable 是一个 **Multi-Agent Meeting Engine（多智能体会议引擎）*
 RoundTable 把复杂问题建模为一场 **Meeting（会议）**：
 
 - **Principal（委托人）** 提出议题，拥有最终验收权
-- **Moderator（司仪）** 控制发言顺序、总结讨论、检测共识
+- **Moderator（主持人）** 控制发言顺序、总结讨论、检测共识
 - **Participant（专家）** 各司其职，只在被邀请时发言
 - 多轮 **Round** 推进讨论，产出 **Consensus**、**Minutes** 与 **Artifacts**
 

@@ -16,7 +16,7 @@ describe('listTranscriptSpeakers', () => {
       msg({ id: '4', role: 'participant', content: 'd', authorId: 'dev', authorName: '开发' }),
     ]
     expect(listTranscriptSpeakers(messages)).toEqual([
-      { id: 'moderator', label: '司仪' },
+      { id: 'moderator', label: '主持人' },
       { id: 'dev', label: '开发' },
     ])
   })

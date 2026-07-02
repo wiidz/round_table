@@ -171,7 +171,7 @@ func (s *Service) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		s.hub.SendTyping(r.Context(), sessionID, webtransport.RoleModerator, "moderator", "司仪")
+		s.hub.SendTyping(r.Context(), sessionID, webtransport.RoleModerator, "moderator", "主持人")
 		reply, handleErr := s.handler.Handle(r.Context(), msg)
 		if handleErr != nil {
 			_ = writeFrame(webtransport.Frame{
@@ -187,7 +187,7 @@ func (s *Service) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if reply.AsModerator {
 				role = webtransport.RoleModerator
 				authorID = "moderator"
-				authorName = "司仪"
+				authorName = "主持人"
 			}
 			if err := s.hub.SendOutbound(r.Context(), sessionID, webtransport.Outbound{
 				Role:       role,

@@ -72,7 +72,7 @@ export function computeRoundTableSeats(
   seats.push({
     id: 'moderator',
     kind: 'moderator',
-    label: '司仪',
+    label: '主持人',
     angleDeg: MODERATOR_ANGLE,
     ...modPos,
   })

@@ -23,7 +23,7 @@ export const settings = {
     botsTitle: 'Discord Bots',
     botsHeaderDescription:
       '修改 Token 并保存后，可点「同步信息」获取 Developer Portal 里的资料（{status}）',
-    moderatorBadge: 'Moderator',
+    moderatorBadge: '主持人',
     syncProfiles: '同步信息',
     syncing: '同步中…',
     lastFetched: '上次：{datetime}',

@@ -141,7 +141,7 @@ function parseMinutesSections(ctx: ParseContext, minutesMd: string): void {
     } else if (sectionKind === 'free-dialogue') {
       parseFreeDialogueBlock(ctx, body)
     } else if (sectionKind === 'moderator-summary') {
-      pushMessage(ctx, 'moderator', body, undefined, '司仪')
+      pushMessage(ctx, 'moderator', body, undefined, '主持人')
     }
   }
 

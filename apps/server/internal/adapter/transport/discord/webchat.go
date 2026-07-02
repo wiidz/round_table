@@ -87,7 +87,7 @@ func ParseMeetArgs(args []string, defaultMode string) (meetParseResult, error) {
 
 func webChatPrincipalUnavailableText(loc Locale) string {
 	if loc == LocaleZH {
-		return "浏览器聊天不使用 Principal 绑定；请直接发送消息与司仪对话。"
+		return "浏览器聊天不使用 Principal 绑定；请直接发送消息与主持人对话。"
 	}
 	return "Web chat does not use Principal binding; send messages to talk to the moderator."
 }
@@ -111,7 +111,7 @@ func WebChatMutatingUnavailableText(loc Locale) string {
 	return webChatMutatingUnavailableText(loc)
 }
 
-// IsWebPlatformHint reports copy that should render as system (not 司仪) in browser chat.
+// IsWebPlatformHint reports copy that should render as system (not 主持人) in browser chat.
 func IsWebPlatformHint(reply string) bool {
 	s := strings.TrimSpace(reply)
 	if s == "" {

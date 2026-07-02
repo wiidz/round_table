@@ -3,10 +3,10 @@ export const chat = {
     me: '我',
     system: '系统',
     participant: '专家',
-    moderator: '司仪',
+    moderator: '主持人',
   },
   window: {
-    title: '与司仪对话',
+    title: '与主持人对话',
     transportHint: '浏览器 Transport · 无需 Principal',
     narrowStrip: '窄屏记录',
     narrowList: '窄屏列表',

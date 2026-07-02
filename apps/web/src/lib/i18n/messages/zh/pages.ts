@@ -138,7 +138,7 @@ export const home = {
     manage: '管理 Bot',
     empty: '尚未配置 Discord Bot',
     goSettings: '前往设置添加',
-    hostTag: '司仪',
+    hostTag: '主持人',
     participantTag: '参与',
     tokenMissing: 'Token 未配置',
     restHint:
@@ -147,15 +147,15 @@ export const home = {
     unconfiguredHint: '尚未填写 Bot Token，无法在 Discord 中发话或接收指令。',
     gatewayConnecting: 'Gateway 连接中',
     gatewayConnectingHint:
-      '司仪 Bot 正在连接 Discord Gateway。连接成功后会在 Discord 成员列表显示在线，并负责接收频道指令。',
+      '主持人 Bot 正在连接 Discord Gateway。连接成功后会在 Discord 成员列表显示在线，并负责接收频道指令。',
     waitingTransport: '等待 Transport',
     waitingTransportHint: 'Discord Transport 启动中，参与 Bot 需等待服务就绪后才可 REST 发话。',
     unavailable: '不可用',
-    unavailableHostHint: 'Discord Transport 未运行，司仪 Bot 未连接 Gateway，Discord 中将显示离线。',
+    unavailableHostHint: 'Discord Transport 未运行，主持人 Bot 未连接 Gateway，Discord 中将显示离线。',
     unavailableParticipantHint: 'Discord Transport 未运行，参与 Bot 暂时无法发话。',
     gatewayOnline: 'Gateway 在线',
     gatewayOnlineHint:
-      '司仪 Bot 已连接 Discord Gateway，在成员列表显示在线；负责接收指令、推进会议流程并协调发话。',
+      '主持人 Bot 已连接 Discord Gateway，在成员列表显示在线；负责接收指令、推进会议流程并协调发话。',
     restSend: 'REST 发话',
     restSendHint: '参与 Bot 仅通过 REST 发消息，不会在 Discord 成员列表显示在线，但会议中可正常发言。',
   },
@@ -165,7 +165,7 @@ export const transcript = {
   history: {
     title: '发言记录',
     emptyTitle: '暂无发言',
-    emptyDescription: '会议开始后，司仪、专家与你的消息会按顺序出现在这里。',
+    emptyDescription: '会议开始后，主持人、专家与你的消息会按顺序出现在这里。',
   },
   detail: {
     title: '发言详情',
