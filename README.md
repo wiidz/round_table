@@ -13,6 +13,17 @@ RoundTable is a **Multi-Agent Meeting Engine** — structured meetings where mul
 
 ---
 
+## What it is / is not
+
+| | |
+|---|---|
+| ❌ Another AI agent | ✅ A Meeting Engine coordinating experts |
+| ❌ Agent runtime (LangGraph / AutoGen / CrewAI) | ✅ Domain engine independent of runtime |
+| ❌ Workflow engine | ✅ Structured discussion, not a task DAG |
+| ❌ Chatbot | ✅ Chat is UI; discussion is architecture |
+
+---
+
 ## Quick start
 
 Pick either path. **Just want to explore the UI?** Run `make seed-demo` first — no API key required to browse a sample meeting in the Web app.
@@ -94,17 +105,6 @@ Details: [docs/domain/](./docs/domain/README.md) · Constitution: [CONSTITUTION.
 | **Planned** | 🔜 More model providers and transports (Slack, enterprise IM, …) — Engine core is adapter-decoupled; see **Architecture independence** below |
 
 CLI local runs: `apps/server/cmd/meet` (developer tooling, not the primary end-user path).
-
----
-
-## What it is / is not
-
-| | |
-|---|---|
-| ❌ Another AI agent | ✅ A Meeting Engine coordinating experts |
-| ❌ Agent runtime (LangGraph / AutoGen / CrewAI) | ✅ Domain engine independent of runtime |
-| ❌ Workflow engine | ✅ Structured discussion, not a task DAG |
-| ❌ Chatbot | ✅ Chat is UI; discussion is architecture |
 
 ---
 

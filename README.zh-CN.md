@@ -13,6 +13,17 @@ RoundTable 是一个 **Multi-Agent Meeting Engine（多智能体会议引擎）*
 
 ---
 
+## 它是什么 / 不是什么
+
+| | |
+|---|---|
+| ❌ 另一个 AI Agent | ✅ 协调多个专家的 Meeting Engine |
+| ❌ Agent Runtime（LangGraph / AutoGen / CrewAI） | ✅ 独立于 Runtime 的领域引擎 |
+| ❌ Workflow Engine | ✅ 结构化讨论，不是 DAG 任务流 |
+| ❌ 聊天机器人 | ✅ Chat 只是界面，Discussion 才是架构 |
+
+---
+
 ## 快速启动
 
 两种方式任选其一。**只想先看看界面？** 两种方式都可以先 `make seed-demo`，无需 API Key 即可在 Web 里浏览一场示例会议。
@@ -94,17 +105,6 @@ make docker-up      # 构建并启动 Web + API + Discord Supervisor
 | **后续** | 🔜 更多模型供应商、更多 Transport（Slack、企业 IM 等）——Engine 核心与 Adapter 解耦，见下方「架构独立性」 |
 
 CLI 本地跑会：`apps/server/cmd/meet`（开发调试用，非面向最终用户的主路径）。
-
----
-
-## 它是什么 / 不是什么
-
-| | |
-|---|---|
-| ❌ 另一个 AI Agent | ✅ 协调多个专家的 Meeting Engine |
-| ❌ Agent Runtime（LangGraph / AutoGen / CrewAI） | ✅ 独立于 Runtime 的领域引擎 |
-| ❌ Workflow Engine | ✅ 结构化讨论，不是 DAG 任务流 |
-| ❌ 聊天机器人 | ✅ Chat 只是界面，Discussion 才是架构 |
 
 ---
 
