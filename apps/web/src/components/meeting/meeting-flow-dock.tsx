@@ -4,12 +4,14 @@ import {
   GitBranch,
   Layers,
   MessageCircle,
+  RotateCcw,
   Scan,
   Sparkles,
   UserCheck,
 } from 'lucide-react'
 
 import { useI18n } from '@/hooks/use-i18n'
+import { CollapsibleSidebarPanel } from '@/components/meeting/collapsible-sidebar-panel'
 import {
   MeetingFlowOutcomeBanner,
   meetingFlowProgressBarClass,
@@ -21,7 +23,7 @@ import type {
   MeetingFlowStepKind,
   MeetingFlowStepStatus,
 } from '@/lib/meeting-flow'
-import { hePanelShell, hePressable, heSpring } from '@/lib/highend-styles'
+import { hePressable, heSpring } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
 import type { MeetingDetail } from '@/types/meeting'
@@ -31,6 +33,7 @@ const STEP_ICONS: Record<MeetingFlowStepKind, LucideIcon> = {
   'debate-round': Layers,
   'free-dialogue': MessageCircle,
   synthesis: Sparkles,
+  'confirmation-rejection': RotateCcw,
   confirmation: UserCheck,
   closing: Flag,
 }
@@ -191,27 +194,17 @@ export function MeetingFlowDock({
       : meetingModeShort('decision')
 
   return (
-    <aside
-      className={cn(
-        hePanelShell,
-        'overflow-visible p-4',
-        sticky && 'lg:sticky lg:top-20 lg:self-start',
-        className,
-      )}
-    >
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <GitBranch className="size-3.5 shrink-0 text-info" aria-hidden />
-            <p className="text-[12px] font-semibold text-text-primary">
-              {t('meetingUi.flow.title')}
-            </p>
-          </div>
-          <p className="mt-0.5 text-[10px] text-text-tertiary">{modeLabel}</p>
-        </div>
+    <CollapsibleSidebarPanel
+      panelTitle={t('meetingUi.flow.title')}
+      subtitle={modeLabel}
+      icon={GitBranch}
+      iconClassName="text-info"
+      className={cn(sticky && 'lg:sticky lg:top-20 lg:self-start', className)}
+      defaultExpanded
+      trailing={
         <span
           className={cn(
-            'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums ring-1 ring-inset',
+            'rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums ring-1 ring-inset',
             flow.outcome === 'completed' &&
               'bg-success-soft/60 text-success ring-success/20',
             flow.outcome === 'aborted' && 'bg-danger-soft/60 text-danger ring-danger/20',
@@ -221,8 +214,8 @@ export function MeetingFlowDock({
         >
           {meetingFlowProgressLabel(t, flow, completedCount)}
         </span>
-      </div>
-
+      }
+    >
       <MeetingFlowOutcomeBanner flow={flow} />
 
       <div
@@ -260,7 +253,7 @@ export function MeetingFlowDock({
           />
         ))}
       </ol>
-    </aside>
+    </CollapsibleSidebarPanel>
   )
 }
 

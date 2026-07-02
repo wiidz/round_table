@@ -7,6 +7,7 @@ import {
   briefAgendaItemShell,
   briefFieldLabelClass,
 } from '@/components/brief/brief-template-sections'
+import { MarkdownSnippet, MarkdownSnippetOrEmpty } from '@/components/markdown/markdown-snippet'
 import { MeetingModeInline } from '@/components/meeting/meeting-mode-badge'
 import { MeetingOverviewStatCards } from '@/components/meeting/meeting-overview-stat-cards'
 import { MeetingStatusBadge } from '@/components/meeting/meeting-status-badge'
@@ -115,14 +116,11 @@ export function MeetingDetailOverview({
               <span className="size-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
               <p className={briefFieldLabelClass}>{t('meetingUi.overview.conclusion')}</p>
             </div>
-            <p
-              className={cn(
-                'pl-3.5 text-[15px] leading-relaxed',
-                conclusion ? 'font-medium text-text-primary' : 'text-text-tertiary',
-              )}
-            >
-              {conclusion || conclusionEmpty}
-            </p>
+            {conclusion ? (
+              <MarkdownSnippet content={conclusion} className="pl-3.5" />
+            ) : (
+              <p className="pl-3.5 text-[15px] leading-relaxed text-text-tertiary">{conclusionEmpty}</p>
+            )}
             {conclusion && brief.conclusionSource && onOpenConclusion && (
               <button
                 type="button"

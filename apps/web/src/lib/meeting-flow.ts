@@ -11,7 +11,12 @@ export type {
   MeetingFlowStepStatus,
 } from '@/lib/i18n/meeting-flow'
 
-export { parseConfirmationRequired } from '@/lib/i18n/meeting-flow'
+export {
+  parseConfirmationRequired,
+  listDebateRoundNumbers,
+  parseConfirmationCycle,
+  parseConfirmationRejectionCount,
+} from '@/lib/i18n/meeting-flow'
 
 const fallbackLocale: AppLocale = 'zh'
 

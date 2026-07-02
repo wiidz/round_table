@@ -139,7 +139,7 @@ export const settings = {
     maxRoundsHint: '本场最多 {cap} 轮（受「设定上限 → 辩论轮次上限」约束）。',
     confirmationLabel: '确认关',
     confirmationHint:
-      '开启后，会议结束前 Principal 须批准合成方案；驳回后可继续讨论。最多审阅几轮由上方「确认关轮次上限」控制。',
+      '开启后，会议结束前委托人须批准合成方案；驳回后可继续讨论。最多审阅几轮由上方「确认关轮次上限」控制。',
     freeDialogueLabel: '自由对话',
     freeDialogueHint: '每位专家（Participant）在辩论前可提问的轮数；0 表示关闭。',
     save: '保存预设菜单',

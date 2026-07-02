@@ -8,6 +8,7 @@ import {
   type BriefScopePreset,
 } from '@/components/brief/brief-scope-presets'
 import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
+import { MarkdownSnippetOrEmpty } from '@/components/markdown/markdown-snippet'
 import {
   briefFieldLabelClass,
   briefScopeBlockShell,
@@ -211,14 +212,12 @@ function ScopePreviewBlock({
         <span className={briefScopeIconShell}>{icon}</span>
         <p className={briefFieldLabelClass}>{label}</p>
       </div>
-      <p
-        className={cn(
-          'text-[14px] leading-relaxed',
-          text ? 'font-medium text-text-primary' : 'text-text-tertiary',
-        )}
-      >
-        {text || empty}
-      </p>
+      <MarkdownSnippetOrEmpty
+        content={text ?? ''}
+        empty={empty}
+        className={text ? 'font-medium' : undefined}
+        emptyClassName="text-text-tertiary"
+      />
     </div>
   )
 }

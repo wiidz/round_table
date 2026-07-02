@@ -1,4 +1,5 @@
-import { getTranslator } from '@/lib/i18n'
+import { getTranslator, MESSAGES } from '@/lib/i18n'
+import type { MessageTree } from '@/lib/i18n/translate'
 import type { AppLocale } from '@/lib/locale'
 
 export type MeetingStatusTone = 'neutral' | 'running' | 'warning' | 'success' | 'danger'
@@ -25,10 +26,12 @@ const STATUS_TONES: Record<string, MeetingStatusTone> = {
 
 export function meetingStatusLabel(locale: AppLocale, status: string): string {
   if (!status) return getTranslator(locale)('meeting.status.unknown')
+  const t = getTranslator(locale)
+  if (status === 'Principal 确认中') return t('meeting.status.Confirmation')
   const key = `meeting.status.${status}`
-  const translated = getTranslator(locale)(key)
+  const translated = t(key)
   if (translated !== key) return translated
-  if (status === '已中断') return getTranslator(locale)('meeting.status.aborted')
+  if (status === '已中断') return t('meeting.status.aborted')
   return status
 }
 
@@ -84,16 +87,18 @@ export function meetingFileCategoryLabel(locale: AppLocale, category: MeetingFil
   return getTranslator(locale)(`meeting.fileCategory.${category}`)
 }
 
-const STATIC_FILE_KEYS: Record<string, string> = {
-  'MEETING.md': 'meeting.files.MEETING.md',
-  'MINUTES.md': 'meeting.files.MINUTES.md',
-  'action-items.md': 'meeting.files.action-items.md',
-  'pre-meeting/perspectives.md': 'meeting.files.pre-meeting/perspectives.md',
-  'artifacts/design-draft.md': 'meeting.files.artifacts/design-draft.md',
-  'artifacts/open-questions.md': 'meeting.files.artifacts/open-questions.md',
-  'usage/summary.md': 'meeting.files.usage/summary.md',
-  'confirmation/brief.md': 'meeting.files.confirmation/brief.md',
-  'moderator/executive-recap.md': 'meeting.files.moderator/executive-recap.md',
+function meetingFilesMessageTree(locale: AppLocale): MessageTree | undefined {
+  const meeting = MESSAGES[locale].meeting
+  if (!meeting || typeof meeting !== 'object') return undefined
+  const files = (meeting as MessageTree).files
+  return files && typeof files === 'object' ? files : undefined
+}
+
+function meetingFileStaticTitle(locale: AppLocale, path: string): string | undefined {
+  const files = meetingFilesMessageTree(locale)
+  if (!files) return undefined
+  const title = files[path]
+  return typeof title === 'string' ? title : undefined
 }
 
 const MEETING_FILE_LABEL_PATTERNS: Array<{
@@ -123,8 +128,8 @@ function meetingFileResolvedTitle(
       ? t('meeting.files.minutesDecision')
       : t('meeting.files.minutesArchive')
   }
-  const staticKey = STATIC_FILE_KEYS[path]
-  if (staticKey) return t(staticKey)
+  const staticTitle = meetingFileStaticTitle(locale, path)
+  if (staticTitle) return staticTitle
   for (const { re, key } of MEETING_FILE_LABEL_PATTERNS) {
     const m = path.match(re)
     if (m) return t(`meeting.files.${key}`, { n: parseInt(m[1], 10) })

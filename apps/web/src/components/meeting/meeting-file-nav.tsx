@@ -48,97 +48,85 @@ interface FileNavSectionProps {
   activeFile: string
   files?: Record<string, string>
   modeKind?: MeetingModeKind
-  collapsed?: boolean
-  onToggle?: () => void
+  expanded: boolean
+  onToggle: () => void
   onSelect: (path: string) => void
 }
 
 function FileNavSectionHeader({
   category,
   count,
-  collapsed,
-  collapsible,
+  expanded,
   onToggle,
 }: {
   category: MeetingFileCategory
   count: number
-  collapsed?: boolean
-  collapsible?: boolean
-  onToggle?: () => void
+  expanded: boolean
+  onToggle: () => void
 }) {
   const { t } = useI18n()
   const isDeliverable = category === 'deliverable'
   const isProcess = category === 'process'
   const Icon = FILE_CATEGORY_ICONS[category]
-
-  const title = (
-    <span className="flex min-w-0 items-center gap-1.5">
-      <Icon
-        className={cn(
-          'size-3.5 shrink-0',
-          isDeliverable && 'text-brand',
-          isProcess && 'text-text-secondary',
-          !isDeliverable && !isProcess && 'text-text-tertiary',
-        )}
-        aria-hidden
-      />
-      <span
-        className={cn(
-          heFieldLabel,
-          'min-w-0 truncate',
-          isDeliverable && 'text-brand',
-          isProcess && 'text-text-secondary',
-        )}
-      >
-        {t(`meeting.fileCategory.${category}`)}
-      </span>
-    </span>
-  )
-
-  const countBadge = (
-    <span
-      className={cn(
-        'shrink-0 tabular-nums text-[11px]',
-        isDeliverable && 'text-brand/65',
-        isProcess && 'text-text-tertiary',
-        !isDeliverable && !isProcess && 'text-text-tertiary/70',
-      )}
-    >
-      {t('meetingUi.fileNav.sectionCount', { count })}
-    </span>
-  )
-
-  if (collapsible) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left',
-          heSpring,
-          'hover:bg-black/[0.03]',
-        )}
-      >
-        {title}
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          {countBadge}
-          <ChevronDown
-            className={cn(
-              'size-3.5 text-text-tertiary transition-transform',
-              collapsed && '-rotate-90',
-            )}
-            aria-hidden
-          />
-        </span>
-      </button>
-    )
-  }
+  const titleText = t(`meeting.fileCategory.${category}`)
 
   return (
-    <div className="flex items-center gap-2 px-1">
-      {title}
-      <span className="ml-auto">{countBadge}</span>
-    </div>
+    <button
+      type="button"
+      aria-expanded={expanded}
+      aria-label={
+        expanded
+          ? t('meetingUi.sidebar.collapseAria', { title: titleText })
+          : t('meetingUi.sidebar.expandAria', { title: titleText })
+      }
+      onClick={onToggle}
+      className={cn(
+        'flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left',
+        heSpring,
+        'hover:bg-black/[0.03]',
+      )}
+    >
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <Icon
+          className={cn(
+            'size-3.5 shrink-0',
+            isDeliverable && 'text-brand',
+            isProcess && 'text-text-secondary',
+            !isDeliverable && !isProcess && 'text-text-tertiary',
+          )}
+          aria-hidden
+        />
+        <span
+          className={cn(
+            heFieldLabel,
+            'min-w-0 truncate',
+            isDeliverable && 'text-brand',
+            isProcess && 'text-text-secondary',
+          )}
+        >
+          {titleText}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5">
+        <span
+          className={cn(
+            'tabular-nums text-[11px]',
+            isDeliverable && 'text-brand/65',
+            isProcess && 'text-text-tertiary',
+            !isDeliverable && !isProcess && 'text-text-tertiary/70',
+          )}
+        >
+          {t('meetingUi.fileNav.sectionCount', { count })}
+        </span>
+        <ChevronDown
+          className={cn(
+            'size-3.5 text-text-tertiary transition-transform',
+            !expanded && '-rotate-90',
+          )}
+          aria-hidden
+        />
+      </span>
+    </button>
   )
 }
 function FileNavActiveStats({ content }: { content: string }) {
@@ -250,25 +238,21 @@ function FileNavSection({
   activeFile,
   files,
   modeKind,
-  collapsed,
+  expanded,
   onToggle,
   onSelect,
 }: FileNavSectionProps) {
   if (items.length === 0) return null
-
-  const collapsible = category === 'process'
-  const isCollapsed = collapsible && collapsed
 
   return (
     <section>
       <FileNavSectionHeader
         category={category}
         count={items.length}
-        collapsed={isCollapsed}
-        collapsible={collapsible}
+        expanded={expanded}
         onToggle={onToggle}
       />
-      {!isCollapsed && (
+      {expanded && (
         <nav
           className={cn(
             'mt-2 flex flex-col',
@@ -292,6 +276,12 @@ function FileNavSection({
   )
 }
 
+const DEFAULT_SECTION_EXPANDED: Record<MeetingFileCategory, boolean> = {
+  overview: true,
+  deliverable: true,
+  process: false,
+}
+
 export function MeetingFileNav({
   names,
   activeFile,
@@ -300,12 +290,14 @@ export function MeetingFileNav({
   onSelect,
 }: MeetingFileNavProps) {
   const groups = groupMeetingFileNames(names)
-  const [processExpanded, setProcessExpanded] = useState(false)
+  const [sectionExpanded, setSectionExpanded] = useState(DEFAULT_SECTION_EXPANDED)
 
   useEffect(() => {
-    if (activeFile && meetingFileCategory(activeFile) === 'process') {
-      setProcessExpanded(true)
-    }
+    if (!activeFile) return
+    const category = meetingFileCategory(activeFile)
+    setSectionExpanded((prev) =>
+      prev[category] ? prev : { ...prev, [category]: true },
+    )
   }, [activeFile])
 
   return (
@@ -318,11 +310,12 @@ export function MeetingFileNav({
           activeFile={activeFile}
           files={files}
           modeKind={modeKind}
-          collapsed={category === 'process' ? !processExpanded : undefined}
-          onToggle={
-            category === 'process'
-              ? () => setProcessExpanded((v) => !v)
-              : undefined
+          expanded={sectionExpanded[category]}
+          onToggle={() =>
+            setSectionExpanded((prev) => ({
+              ...prev,
+              [category]: !prev[category],
+            }))
           }
           onSelect={onSelect}
         />

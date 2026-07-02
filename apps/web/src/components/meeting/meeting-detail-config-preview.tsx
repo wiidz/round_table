@@ -1,13 +1,14 @@
+import { Hash } from 'lucide-react'
+
 import { BriefMeetingExpertsList } from '@/components/brief/brief-meeting-experts-list'
-import { BriefSectionHeading } from '@/components/brief/brief-section-heading'
 import { BriefMeetingConfigRow } from '@/components/brief/brief-meeting-config-row'
 import { briefConfigPanelShell, meetingDetailConfigPanelClass } from '@/components/brief/brief-template-sections'
+import { CollapsibleSidebarPanel } from '@/components/meeting/collapsible-sidebar-panel'
 import { useI18n } from '@/hooks/use-i18n'
 import { getBriefMeetingConfigLabels, getBriefSections } from '@/lib/i18n/brief-sections'
 import { meetingModeKind, type MeetingModeKind } from '@/lib/meeting-labels'
 import { parseParticipantsFromMeetingMd } from '@/lib/meeting-participants'
 import { parseConfirmationRequired } from '@/lib/meeting-flow'
-import { hePanelShell } from '@/lib/highend-styles'
 import { cn } from '@/lib/utils'
 
 import type { MeetingDetail } from '@/types/meeting'
@@ -88,13 +89,14 @@ export function MeetingDetailConfigPreview({
   const expertsEmptyLabel = expertEmptyLabel(experts)
 
   return (
-    <aside className={cn(hePanelShell, meetingDetailConfigPanelClass, 'overflow-visible p-4', className)}>
-      <div className="mb-3">
-        <BriefSectionHeading
-          title={sections.meeting.title}
-          description={sections.meeting.description}
-        />
-      </div>
+    <CollapsibleSidebarPanel
+      panelTitle={sections.meeting.title}
+      subtitle={sections.meeting.description}
+      icon={Hash}
+      iconClassName="text-info"
+      className={cn(meetingDetailConfigPanelClass, className)}
+      defaultExpanded
+    >
       <div className={briefConfigPanelShell}>
         <BriefMeetingConfigRow
           layout="detail"
@@ -141,6 +143,6 @@ export function MeetingDetailConfigPreview({
           }
         />
       </div>
-    </aside>
+    </CollapsibleSidebarPanel>
   )
 }

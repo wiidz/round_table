@@ -293,6 +293,8 @@ export const meetingUi = {
     view: 'View',
     outcomeCompletedTitle: 'Flow completed normally',
     outcomeCompletedHint: 'Standard path from prep through closure was finished',
+    outcomeCompletedWithRejections:
+      'Confirmation was rejected {count} time(s) before final approval and closure',
     outcomeAbortedTitle: 'Meeting aborted',
     outcomeAbortedHint: 'Flow did not finish; the red step marks where it stopped',
     outcomeAbortedAt: 'Stopped at: {title}',
@@ -301,4 +303,8 @@ export const meetingUi = {
     progressAborted: '{done}/{total} · incomplete',
   },
   fileNav: { sectionCount: '{count} files', primaryDeliverable: 'Primary' },
+  sidebar: {
+    expandAria: 'Expand {title}',
+    collapseAria: 'Collapse {title}',
+  },
 } as const

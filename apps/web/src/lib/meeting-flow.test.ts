@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildMeetingFlow, parseConfirmationRequired } from '@/lib/meeting-flow'
+import {
+  listDebateRoundNumbers,
+  parseConfirmationCycle,
+  parseConfirmationRejectionCount,
+} from '@/lib/i18n/meeting-flow'
 
 import type { MeetingDetail } from '@/types/meeting'
 
@@ -117,5 +122,71 @@ describe('buildMeetingFlow', () => {
     const flow = buildMeetingFlow(detail)
     expect(flow.outcome).toBe('completed')
     expect(flow.steps.every((s) => s.status === 'completed')).toBe(true)
+  })
+
+  it('omits unplayed rounds when meeting completed with bumped max_rounds', () => {
+    const detail: MeetingDetail = {
+      id: 'mtg-extra-cap',
+      topic: '测试',
+      status: '已结束',
+      mode_kind: 'deliberation',
+      max_rounds: 5,
+      free_dialogue: true,
+      updated_at: '',
+      files: {
+        'MEETING.md': '| 确认模式 | 需要 Principal 确认 |',
+        'pre-meeting/perspectives.md': '# views',
+        'rounds/round-001.md': '# r1',
+        'rounds/round-002.md': '# r2',
+        'rounds/round-003.md': '# r3',
+        'rounds/round-004.md': '# r4',
+        'free-dialogue/after-round-001.md': '# fd',
+        'artifacts/design-draft.md': '# draft',
+        'confirmation/brief.md': '# Confirmation Brief (cycle 3)\n\napproved',
+        'artifacts/minutes.md': '# archive',
+      },
+    }
+
+    const flow = buildMeetingFlow(detail)
+    expect(flow.steps.map((s) => s.id)).toEqual([
+      'pre-meeting',
+      'round-1',
+      'free-dialogue',
+      'round-2',
+      'round-3',
+      'round-4',
+      'synthesis',
+      'confirmation-rejected-1',
+      'confirmation-rejected-2',
+      'confirmation',
+      'closing',
+    ])
+    expect(flow.confirmationRejections).toBe(2)
+    expect(flow.steps.every((s) => s.status === 'completed')).toBe(true)
+  })
+})
+
+describe('confirmation rejection helpers', () => {
+  it('parses confirmation cycle from brief header', () => {
+    expect(parseConfirmationCycle('# Confirmation Brief (cycle 3)\n\nbody')).toBe(3)
+    expect(parseConfirmationCycle('# other')).toBeUndefined()
+  })
+
+  it('counts rejections as cycle minus one when completed', () => {
+    const files = {
+      'confirmation/brief.md': '# Confirmation Brief (cycle 3)\n',
+    }
+    expect(parseConfirmationRejectionCount(files, true)).toBe(2)
+    expect(parseConfirmationRejectionCount(files, false)).toBe(0)
+  })
+
+  it('lists debate round numbers from workspace files', () => {
+    expect(
+      listDebateRoundNumbers({
+        'rounds/round-001.md': 'a',
+        'rounds/round-004.md': 'b',
+        'MINUTES.md': 'c',
+      }),
+    ).toEqual([1, 4])
   })
 })

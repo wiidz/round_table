@@ -12,6 +12,7 @@ export type MeetingFlowStepKind =
   | 'debate-round'
   | 'free-dialogue'
   | 'synthesis'
+  | 'confirmation-rejection'
   | 'confirmation'
   | 'closing'
 
@@ -41,10 +42,55 @@ export interface MeetingFlow {
   outcome: MeetingFlowOutcome
   /** 中断时停在哪一步（若有） */
   interruptedStepId?: string
+  /** Principal 确认被驳回的次数（从 confirmation/brief.md 推断） */
+  confirmationRejections?: number
 }
 
 function roundFilePath(n: number): string {
   return `rounds/round-${String(n).padStart(3, '0')}.md`
+}
+
+const ROUND_FILE_RE = /^rounds\/round-(\d+)\.md$/
+
+export function listDebateRoundNumbers(files: Record<string, string>): number[] {
+  const rounds: number[] = []
+  for (const path of Object.keys(files)) {
+    const match = path.match(ROUND_FILE_RE)
+    if (!match) continue
+    const n = parseInt(match[1], 10)
+    if (n > 0) rounds.push(n)
+  }
+  return rounds.sort((a, b) => a - b)
+}
+
+export function parseConfirmationCycle(confirmationBrief: string): number | undefined {
+  const match = confirmationBrief.match(/Confirmation Brief \(cycle\s+(\d+)\)/i)
+  if (!match) return undefined
+  const cycle = parseInt(match[1], 10)
+  return cycle > 0 ? cycle : undefined
+}
+
+export function parseConfirmationRejectionCount(
+  files: Record<string, string>,
+  successfullyCompleted: boolean,
+): number {
+  if (!successfullyCompleted) return 0
+  const brief = files['confirmation/brief.md']?.trim() ?? ''
+  if (!brief) return 0
+  const cycle = parseConfirmationCycle(brief)
+  if (!cycle || cycle <= 1) return 0
+  return cycle - 1
+}
+
+function resolveDisplayMaxRounds(
+  configuredMax: number,
+  highestRoundWithFile: number,
+  successfullyCompleted: boolean,
+): number {
+  if (successfullyCompleted) {
+    return Math.max(highestRoundWithFile, 1)
+  }
+  return Math.max(configuredMax, highestRoundWithFile, 1)
 }
 
 function hasFile(files: Record<string, string>, path: string): boolean {
@@ -162,6 +208,14 @@ export function buildMeetingFlow(locale: AppLocale, detail: MeetingDetail): Meet
   const successfullyCompleted = isMeetingSuccessfullyCompletedStatus(detail.status)
   const running = isMeetingRunningStatus(detail.status)
   const outcome = resolveMeetingFlowOutcome(aborted, successfullyCompleted, running)
+  const roundNumbers = listDebateRoundNumbers(files)
+  const highestRoundWithFile = roundNumbers.length > 0 ? roundNumbers[roundNumbers.length - 1]! : 0
+  const displayMaxRounds = resolveDisplayMaxRounds(
+    maxRounds,
+    highestRoundWithFile,
+    successfullyCompleted,
+  )
+  const confirmationRejections = parseConfirmationRejectionCount(files, successfullyCompleted)
 
   const steps: MeetingFlowStep[] = []
   const preMeetingPath = 'pre-meeting/perspectives.md'
@@ -174,7 +228,7 @@ export function buildMeetingFlow(locale: AppLocale, detail: MeetingDetail): Meet
     filePath: hasFile(files, preMeetingPath) ? preMeetingPath : undefined,
   })
 
-  for (let round = 1; round <= maxRounds; round++) {
+  for (let round = 1; round <= displayMaxRounds; round++) {
     const roundPath = roundFilePath(round)
     const summaryPath = `moderator/round-${String(round).padStart(3, '0')}-summary.md`
     const hasSummary = hasFile(files, summaryPath)
@@ -213,12 +267,25 @@ export function buildMeetingFlow(locale: AppLocale, detail: MeetingDetail): Meet
   }
 
   if (confirmationRequired) {
+    for (let rejection = 1; rejection <= confirmationRejections; rejection++) {
+      steps.push({
+        id: `confirmation-rejected-${rejection}`,
+        kind: 'confirmation-rejection',
+        title: t('meeting.flow.confirmationRejected', { n: rejection }),
+        subtitle: t('meeting.flow.confirmationRejectedSub'),
+        status: successfullyCompleted ? 'completed' : 'pending',
+      })
+    }
+
     const confirmationPath = 'confirmation/brief.md'
     steps.push({
       id: 'confirmation',
       kind: 'confirmation',
       title: t('meeting.flow.confirmation'),
-      subtitle: t('meeting.flow.confirmationSub'),
+      subtitle:
+        confirmationRejections > 0
+          ? t('meeting.flow.confirmationSubAfterRejections', { count: confirmationRejections })
+          : t('meeting.flow.confirmationSub'),
       status: stepCompletedByArtifact(files, confirmationPath) ? 'completed' : 'pending',
       filePath: hasFile(files, confirmationPath) ? confirmationPath : undefined,
     })
@@ -249,7 +316,7 @@ export function buildMeetingFlow(locale: AppLocale, detail: MeetingDetail): Meet
     applyRunningActiveStep(steps)
   }
 
-  return { steps, modeKind, roundLabel, outcome, interruptedStepId }
+  return { steps, modeKind, roundLabel, outcome, interruptedStepId, confirmationRejections }
 }
 
 export function meetingFlowStepStatusLabel(

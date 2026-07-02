@@ -294,6 +294,7 @@ export const meetingUi = {
     view: '查看',
     outcomeCompletedTitle: '流程已正常完成',
     outcomeCompletedHint: '已走完会前准备到结案的标准路径',
+    outcomeCompletedWithRejections: '确认环节曾被驳回 {count} 次，最终已通过并结案',
     outcomeAbortedTitle: '会议被迫中断',
     outcomeAbortedHint: '流程未走完，标红步骤为中断位置',
     outcomeAbortedAt: '中断于：{title}',
@@ -302,4 +303,8 @@ export const meetingUi = {
     progressAborted: '{done}/{total} · 未完成',
   },
   fileNav: { sectionCount: '共 {count} 份', primaryDeliverable: '主交付' },
+  sidebar: {
+    expandAria: '展开{title}',
+    collapseAria: '收起{title}',
+  },
 } as const

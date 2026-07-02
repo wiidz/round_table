@@ -7,6 +7,7 @@ import {
   Layers,
   MessageCircle,
   OctagonX,
+  RotateCcw,
   Scan,
   Sparkles,
   UserCheck,
@@ -28,6 +29,7 @@ const STEP_ICONS: Record<MeetingFlowStepKind, LucideIcon> = {
   'debate-round': Layers,
   'free-dialogue': MessageCircle,
   synthesis: Sparkles,
+  'confirmation-rejection': RotateCcw,
   confirmation: UserCheck,
   closing: Flag,
 }

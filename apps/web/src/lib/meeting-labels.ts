@@ -30,7 +30,7 @@ export const MEETING_STATUS_LABELS: Record<string, string> = {
   Running: '进行中',
   Paused: '已暂停',
   Consensus: '共识达成',
-  Confirmation: 'Principal 确认中',
+  Confirmation: '委托人确认中',
   Completed: '已结束',
   Archived: '已归档',
   aborted: '已中断',

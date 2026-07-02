@@ -54,7 +54,11 @@ export function MeetingFlowOutcomeBanner({ flow, className }: MeetingFlowOutcome
             {t('meetingUi.flow.outcomeCompletedTitle')}
           </p>
           <p className="text-[10px] leading-relaxed text-text-secondary">
-            {t('meetingUi.flow.outcomeCompletedHint')}
+            {flow.confirmationRejections && flow.confirmationRejections > 0
+              ? t('meetingUi.flow.outcomeCompletedWithRejections', {
+                  count: flow.confirmationRejections,
+                })
+              : t('meetingUi.flow.outcomeCompletedHint')}
           </p>
         </div>
       </div>
