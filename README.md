@@ -1,3 +1,5 @@
+**English** | [中文](README.zh-CN.md)
+
 # RoundTable
 
 > **Build AI Teams, not AI Agents.**
@@ -7,180 +9,180 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![CI](https://github.com/wiidz/round_table/actions/workflows/ci.yml/badge.svg)](https://github.com/wiidz/round_table/actions/workflows/ci.yml)
 
-RoundTable 是一个 **Multi-Agent Meeting Engine（多智能体会议引擎）**——用结构化会议的方式，让多个 AI 专家讨论、辩论并达成共识，而不是堆叠一个更强的单体 Agent。
+RoundTable is a **Multi-Agent Meeting Engine** — structured meetings where multiple AI experts debate and reach consensus, instead of stacking one stronger monolithic agent.
 
 ---
 
-## 快速启动
+## Quick start
 
-两种方式任选其一。**只想先看看界面？** 两种方式都可以先 `make seed-demo`，无需 API Key 即可在 Web 里浏览一场示例会议。
+Pick either path. **Just want to explore the UI?** Run `make seed-demo` first — no API key required to browse a sample meeting in the Web app.
 
-### 方式 A · 本机开发（Go + Node）
+### Option A · Local dev (Go + Node)
 
-**需要：** Go 1.25+、Node.js 22+、Make（见 `apps/server/go.mod`）
+**Requires:** Go 1.25+, Node.js 22+, Make (see `apps/server/go.mod`)
 
 ```bash
-git clone <your-repo-url> round_table
+git clone https://github.com/wiidz/round_table.git
 cd round_table
 
-cp deploy/.env.example deploy/.env   # 仅浏览演示可暂不填 Key
+cp deploy/.env.example deploy/.env   # optional for demo-only browsing
 
-make seed-demo      # 导入示例会议（无需 API Key）
-make server-dev     # 终端 1：API → http://localhost:7777
-make web-dev        # 终端 2：Web → http://localhost:5173
+make seed-demo      # import sample meeting (no API key)
+make server-dev     # terminal 1: API → http://localhost:7777
+make web-dev        # terminal 2: Web → http://localhost:5173
 ```
 
-打开 Web → **会议** → `mtg-demo-001`，可查看概览、文档、流程与回放。
+Open the Web app → **Meetings** → `mtg-demo-001` for overview, documents, flow, and replay.
 
-**在 Discord 里真实跑会**（需配置 `DEEPSEEK_API_KEY` + `DISCORD_BOT_TOKEN`）：
+**Run a real meeting on Discord** (set `DEEPSEEK_API_KEY` + `DISCORD_BOT_TOKEN`):
 
 ```bash
-make run-discord    # 另开终端；大陆访问 Discord 见 Makefile 内代理说明
+make run-discord    # separate terminal; see Makefile for proxy notes in CN
 ```
 
-更细的步骤见 [docs/getting-started.md](./docs/getting-started.md)。
+Step-by-step guide: [docs/getting-started.md](./docs/getting-started.md).
 
-### 方式 B · Docker 一键部署（推荐上服务器）
+### Option B · Docker one-command deploy (servers)
 
-**需要：** Docker 24+、Docker Compose v2（生产环境建议 Linux；Mac Docker Desktop 的 host 网络行为不同）
+**Requires:** Docker 24+, Docker Compose v2 (Linux recommended for production; Mac Docker Desktop host networking differs)
 
 ```bash
-git clone <your-repo-url> round_table
+git clone https://github.com/wiidz/round_table.git
 cd round_table
 
-cp deploy/.env.example deploy/.env   # 填入 DEEPSEEK_API_KEY、DISCORD_BOT_TOKEN
+cp deploy/.env.example deploy/.env   # set DEEPSEEK_API_KEY, DISCORD_BOT_TOKEN
 sh deploy/init-data-dirs.sh
 
-make docker-up      # 构建并启动 Web + API + Discord Supervisor
+make docker-up      # build & start Web + API + Discord Supervisor
 ```
 
-默认访问 <http://127.0.0.1:7777>。日志：`make docker-logs` / `make docker-logs-discord`。
+Default: <http://127.0.0.1:7777>. Logs: `make docker-logs` / `make docker-logs-discord`.
 
-详见 [deploy/README.md](./deploy/README.md)。
+See [deploy/README.md](./deploy/README.md).
 
 ---
 
-## 核心名词（先读这个）
+## Core concepts (read this first)
 
-| 名词 | 是谁 | 做什么 |
-|------|------|--------|
-| **会议（Meeting）** | 整场讨论的单位 | 围绕一个 **议题（Topic）** 从会前准备到结案，产出纪要、交付物与 Token 统计；一切状态由 **事件（Event）** 驱动并可审计 |
-| **委托人（Principal）** | 人类决策者 | 发起会议、设定议题与边界，拥有最终 **验收权**；确认关里可批准或驳回方案 |
-| **主持人（Moderator）** | 调度型 Agent | **控场**——安排发言顺序、轮次总结、检测是否可进入共识/合成；提供专业判断的是专家，不是主持人 |
-| **专家（Participant）** | 领域 Agent | 各守角色与专长（如策划、研发、运营），**只在被邀请时发言**，彼此不直连 |
-| **会议流程** | Engine 标准路径 | 会前准备（Round 0）→ 辩论/研讨轮次（Round 1+）→ 可选自由问答 → 主持人总结 → 共识/方案合成 → 可选 **委托人确认** → 结案产出 |
+| Term | Who | Role |
+|------|-----|------|
+| **Meeting** | The unit of discussion | One **Topic** from pre-meeting through closure; produces minutes, deliverables, and token usage; state is **event-sourced** and auditable |
+| **Principal** | Human decision-maker | Starts meetings, sets scope, holds final **acceptance**; may approve or reject in the confirmation gate |
+| **Moderator** | Facilitator agent | **Runs the room** — speaking order, round summaries, readiness for consensus/synthesis; expertise lives with Participants, not the Moderator |
+| **Participant** | Domain expert agent | Role-bound specialists (e.g. design, engineering, ops); **speak only when invited**, no direct peer channels |
+| **Meeting flow** | Engine standard path | Pre-meeting (Round 0) → debate/deliberation rounds (Round 1+) → optional free dialogue → Moderator summary → consensus / synthesis → optional **Principal confirmation** → closure & artifacts |
 
-研讨型（deliberation）侧重方案草案；裁决型（decision）侧重可执行共识。驳回后会追加研讨并再次呈报确认。
+**Deliberation** mode focuses on a design draft; **decision** mode on actionable consensus. Rejection triggers more rounds and re-submission for confirmation.
 
 ```
-委托人定议题 → 主持人调度 → 专家多轮发言 → 内部共识 → [委托人确认] → 纪要 / 交付物
-                              ↑                    │
-                              └──── 驳回后追加研讨 ─┘
+Principal sets topic → Moderator schedules → Participants debate → consensus → [confirmation] → minutes / artifacts
+                                              ↑                         │
+                                              └──── reject → more rounds ┘
 ```
 
-领域细节：[docs/domain/](./docs/domain/README.md) · 架构宪法：[CONSTITUTION.md](./docs/CONSTITUTION.md)
+Details: [docs/domain/](./docs/domain/README.md) · Constitution: [CONSTITUTION.md](./docs/CONSTITUTION.md)
 
 ---
 
-## 当前支持与后续扩展
+## Current support & roadmap
 
-| 能力 | 现状 |
-|------|------|
-| **大模型** | ✅ [DeepSeek](https://platform.deepseek.com/)（`DEEPSEEK_API_KEY`） |
-| **对外通道（Transport）** | ✅ **Discord**（Bot 跑会、确认关、自由问答） |
-| **工作台** | ✅ Web UI（浏览会议、文档、流程、圆桌回放） |
-| **后续** | 🔜 更多模型供应商、更多 Transport（Slack、企业 IM 等）——Engine 核心与 Adapter 解耦，见下方「架构独立性」 |
+| Capability | Status |
+|------------|--------|
+| **LLM** | ✅ [DeepSeek](https://platform.deepseek.com/) (`DEEPSEEK_API_KEY`) |
+| **Transport** | ✅ **Discord** (bot meetings, confirmation gate, free dialogue) |
+| **Workbench** | ✅ Web UI (meetings, documents, flow, round-table replay) |
+| **Planned** | 🔜 More model providers and transports (Slack, enterprise IM, …) — Engine core is adapter-decoupled; see **Architecture independence** below |
 
-CLI 本地跑会：`apps/server/cmd/meet`（开发调试用，非面向最终用户的主路径）。
+CLI local runs: `apps/server/cmd/meet` (developer tooling, not the primary end-user path).
 
 ---
 
-## 它是什么 / 不是什么
+## What it is / is not
 
 | | |
 |---|---|
-| ❌ 另一个 AI Agent | ✅ 协调多个专家的 Meeting Engine |
-| ❌ Agent Runtime（LangGraph / AutoGen / CrewAI） | ✅ 独立于 Runtime 的领域引擎 |
-| ❌ Workflow Engine | ✅ 结构化讨论，不是 DAG 任务流 |
-| ❌ 聊天机器人 | ✅ Chat 只是界面，Discussion 才是架构 |
+| ❌ Another AI agent | ✅ A Meeting Engine coordinating experts |
+| ❌ Agent runtime (LangGraph / AutoGen / CrewAI) | ✅ Domain engine independent of runtime |
+| ❌ Workflow engine | ✅ Structured discussion, not a task DAG |
+| ❌ Chatbot | ✅ Chat is UI; discussion is architecture |
 
 ---
 
-## 项目状态
+## Project status
 
-🚧 **Phase 1** — Engine 可本地端到端跑会。  
-🚧 **Phase 1.5** — Discord Transport 可完整跑会（委托人绑定 → 简报向导 → 预设菜单 → 确认关 → 交付物）。
+🚧 **Phase 1** — Engine runs end-to-end locally.  
+🚧 **Phase 1.5** — Discord transport runs full meetings (Principal bind → brief wizard → presets → confirmation → deliverables).
 
-Engine 已实现：Event Sourcing、Pre-meeting、多轮辩论/研讨、自由对话、主持人摘要、共识/合成、Confirmation（含驳回与轮次上限）、Workspace 投影、Token 统计。  
-Discord 已实现：自然语言/`!rt` 发起、三步简报向导、确认关、运行期干预、Executive Recap、多 Bot、中文 i18n 等。详见 [docs/adapters/discord-transport.md](./docs/adapters/discord-transport.md)。
+Engine: event sourcing, pre-meeting, multi-round debate/deliberation, free dialogue, Moderator summaries, consensus/synthesis, confirmation (rejections & cycle limits), workspace projection, token accounting.  
+Discord: natural language / `!rt` launch, three-step brief wizard, confirmation gate, runtime interventions, executive recap, multi-bot, Chinese i18n, etc. See [docs/adapters/discord-transport.md](./docs/adapters/discord-transport.md).
 
 ```
-apps/server/cmd/discord/         # Discord Transport
+apps/server/cmd/discord/         # Discord transport
 apps/server/cmd/roundtable/      # HTTP API
 apps/server/internal/engine/     # Meeting Engine
-apps/web/                        # React 工作台
+apps/web/                        # React workbench
 ```
 
-路线图：[docs/roadmap.md](./docs/roadmap.md)
+Roadmap: [docs/roadmap.md](./docs/roadmap.md)
 
 ---
 
-## 文档
+## Documentation
 
-| 文档 | 说明 |
-|------|------|
-| [getting-started.md](./docs/getting-started.md) | 分步上手（演示数据、Discord、开发细节） |
-| [CONTRIBUTING.md](./CONTRIBUTING.md) | 贡献指南 |
-| [SECURITY.md](./SECURITY.md) | 安全报告 |
-| [CONSTITUTION.md](./docs/CONSTITUTION.md) | 架构宪法 |
-| [domain/](./docs/domain/README.md) | 领域模型详解 |
-| [deploy/README.md](./deploy/README.md) | Docker 部署 |
-| [apps/web/README.md](./apps/web/README.md) | Web UI 说明 |
-| [architecture/](./docs/architecture/README.md) | ADR 索引 |
+| Doc | Description |
+|-----|-------------|
+| [getting-started.md](./docs/getting-started.md) | Hands-on setup (demo data, Discord, dev details) |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | How to contribute |
+| [SECURITY.md](./SECURITY.md) | Security reporting |
+| [CONSTITUTION.md](./docs/CONSTITUTION.md) | Architecture constitution |
+| [domain/](./docs/domain/README.md) | Domain model |
+| [deploy/README.md](./deploy/README.md) | Docker deployment |
+| [apps/web/README.md](./apps/web/README.md) | Web UI |
+| [architecture/](./docs/architecture/README.md) | ADR index |
 
 ---
 
-## 开发与测试（贡献者）
+## Development & testing (contributors)
 
-日常命令（完整列表见根目录 `Makefile`）：
+Common commands (full list in root `Makefile`):
 
-| 命令 | 用途 |
-|------|------|
-| `make seed-demo` | 导入演示会议与档案 |
-| `make server-dev` | API 热重载 |
-| `make web-dev` | 前端开发服务器 |
-| `make run-discord` | 本地 Discord Bot |
-| `make docker-up` | Docker  compose 启动 |
-| `make sync-data-pull` | 从部署机拉取 `data/`（见 `deploy/sync-data.sh`） |
+| Command | Purpose |
+|---------|---------|
+| `make seed-demo` | Import demo meeting & profiles |
+| `make server-dev` | API with hot reload |
+| `make web-dev` | Frontend dev server |
+| `make run-discord` | Local Discord bot |
+| `make docker-up` | Docker Compose up |
+| `make sync-data-pull` | Pull `data/` from deploy host (`deploy/sync-data.sh`) |
 
-**测试与 CI：**
+**Tests & CI:**
 
 ```bash
-make test                    # Go 单元/集成测试
-cd apps/web && npm test      # 前端 Vitest
-cd apps/web && npm run build # 前端生产构建
+make test                    # Go unit/integration tests
+cd apps/web && npm test      # Frontend Vitest
+cd apps/web && npm run build # Frontend production build
 ```
 
-CI 配置：`.github/workflows/ci.yml`。贡献前请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 与 [COMMITS.md](./docs/COMMITS.md)。
+CI: `.github/workflows/ci.yml`. Before contributing, read [CONTRIBUTING.md](./CONTRIBUTING.md) and [COMMITS.md](./docs/COMMITS.md).
 
 ---
 
-## 设计原则
+## Design principles
 
-1. **Everything is a Meeting** — 不是 Workflow，不是 Prompt，不是 Agent  
-2. **Moderator controls the discussion** — 专家不能抢话  
-3. **Participants own expertise** — 各守 Role 边界  
-4. **Consensus over Completion** — 团队一致，而非单体执行  
+1. **Everything is a Meeting** — not a workflow, prompt, or agent  
+2. **Moderator controls the discussion** — Participants cannot interrupt  
+3. **Participants own expertise** — stay within role boundaries  
+4. **Consensus over Completion** — team alignment, not solo execution  
 5. **Discussion is structured** — Round / Agenda / Minutes / Consensus / Confirmation  
-6. **Principal owns the decision** — 最终决策权在委托人  
+6. **Principal owns the decision** — final authority stays with the Principal  
 
-详见 [PRINCIPLES.md](./docs/PRINCIPLES.md)。
+See [PRINCIPLES.md](./docs/PRINCIPLES.md).
 
 ---
 
-## 架构独立性
+## Architecture independence
 
-Meeting Engine **核心领域不依赖**具体 Runtime、Model 或 Transport，均通过 Adapter 接入。详见 [CONSTITUTION.md](./docs/CONSTITUTION.md)。
+The Meeting Engine **core domain does not depend** on a specific runtime, model, or transport — all plug in via adapters. See [CONSTITUTION.md](./docs/CONSTITUTION.md).
 
 ---
 

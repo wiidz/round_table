@@ -20,7 +20,7 @@
 ## 1. 克隆与配置
 
 ```bash
-git clone <your-fork-url> round_table
+git clone https://github.com/wiidz/round_table.git
 cd round_table
 
 cp deploy/.env.example deploy/.env

@@ -15,7 +15,7 @@
 ## 1. 拉代码
 
 ```bash
-git clone <your-repo-url> round_table
+git clone https://github.com/wiidz/round_table.git
 cd round_table
 ```
 
