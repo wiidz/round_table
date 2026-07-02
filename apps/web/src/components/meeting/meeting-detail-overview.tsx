@@ -7,7 +7,7 @@ import {
   briefAgendaItemShell,
   briefFieldLabelClass,
 } from '@/components/brief/brief-template-sections'
-import { MarkdownSnippet, MarkdownSnippetOrEmpty } from '@/components/markdown/markdown-snippet'
+import { MarkdownSnippet } from '@/components/markdown/markdown-snippet'
 import { MeetingModeInline } from '@/components/meeting/meeting-mode-badge'
 import { MeetingOverviewStatCards } from '@/components/meeting/meeting-overview-stat-cards'
 import { MeetingStatusBadge } from '@/components/meeting/meeting-status-badge'

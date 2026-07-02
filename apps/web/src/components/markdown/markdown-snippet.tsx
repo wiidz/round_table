@@ -28,11 +28,9 @@ const snippetComponents: Components = {
 interface MarkdownSnippetProps {
   content: string
   className?: string
-  /** Plain fallback tone when content is empty */
-  emptyClassName?: string
 }
 
-export function MarkdownSnippet({ content, className, emptyClassName }: MarkdownSnippetProps) {
+export function MarkdownSnippet({ content, className }: MarkdownSnippetProps) {
   const text = content.trim()
   if (!text) return null
 
@@ -50,7 +48,7 @@ export function MarkdownSnippetOrEmpty({
   empty,
   className,
   emptyClassName,
-}: MarkdownSnippetProps & { empty: string }) {
+}: MarkdownSnippetProps & { empty: string; emptyClassName?: string }) {
   const text = content.trim()
   if (!text) {
     return <p className={cn('text-[15px] leading-relaxed text-text-tertiary', emptyClassName)}>{empty}</p>
