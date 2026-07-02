@@ -31,11 +31,17 @@ tmp/
 data/workspaces/
 data/profiles/participants/
 data/profiles/principals/
+data/briefs/
 data/knowledge/participants/
 data/knowledge/principals/
 data/knowledge/shared/
 data/transport/
 data/logs/
+
+# Local server runtime / binaries (do not commit)
+apps/server/data/
+apps/server/discord
+temp.txt
 
 # Web (apps/web)
 apps/web/node_modules/

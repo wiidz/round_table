@@ -68,6 +68,7 @@ data/
 
 | 场景 | 命令 | 说明 |
 |------|------|------|
+| **演示数据** | `make seed-demo` | 导入 `mtg-demo-001`，无需 API Key 浏览 Web |
 | 3 轮辩论 | `make meet-3round` | skeptic + pragmatist，含 Pre-meeting、Round 1 自由对话、Token 统计 |
 
 场景定义：`data/_templates/scenarios/3-round-debate/`（README + Participant Profile）。

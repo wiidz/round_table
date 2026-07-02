@@ -5,15 +5,15 @@ MEET_CMD := $(SERVER)/cmd/meet
 DISCORD_CMD := $(SERVER)/cmd/discord
 BIN_DIR  := ./bin
 
-# China-friendly module proxy for local dev (see apps/server/README.md)
-export GOPROXY := https://goproxy.cn,direct
+# China-friendly module proxy for local dev (override: GOPROXY=https://proxy.golang.org,direct)
+export GOPROXY ?= https://goproxy.cn,direct
 
 SCENARIO_GAME_CLASS := data/_templates/scenarios/game-class-design
 TOPIC_GAME_CLASS    := 设计新职业「影舞者」的核心技能与定位
 
 WEB     := ./apps/web
 
-.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class run-discord stop-discord sync-data-push sync-data-pull sync-data-status docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-reinstall web-dev web-preview web-build
+.PHONY: run build test clean migrate tidy meet seed-scenario-3round meet-3round seed-scenario-game-class meet-game-class seed-demo run-discord stop-discord sync-data-push sync-data-pull sync-data-status docker-build docker-up docker-down docker-logs docker-logs-discord server-dev server-build web-install web-reinstall web-dev web-preview web-build
 
 SCENARIO_3ROUND := data/_templates/scenarios/3-round-debate
 TOPIC_3ROUND    := 是否将用户认证拆为独立 Auth Service（JWT + Redis 撤销）并批准进入开发？
@@ -43,6 +43,10 @@ sync-data-pull:
 ## sync-data-status: preview sync diff both directions (dry-run)
 sync-data-status:
 	bash deploy/sync-data.sh status
+
+## seed-demo: copy demo workspace + profiles for Web UI (no API key required)
+seed-demo:
+	bash scripts/seed-demo.sh
 
 ## meet: run a meeting with DeepSeek (requires DEEPSEEK_API_KEY in deploy/.env)
 meet:

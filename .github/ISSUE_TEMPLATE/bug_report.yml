@@ -1,0 +1,66 @@
+name: Bug report
+description: 报告可复现的缺陷
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请勿在 Issue 中粘贴 API Key、Bot Token 或真实会议敏感内容。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 发生了什么？期望是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 从 clone / 启动命令到出现问题
+      placeholder: |
+        1. make seed-demo && make server-dev
+        2. make web-dev
+        3. 打开 …
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit / 版本
+      description: `git rev-parse --short HEAD` 或 release tag
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 组件
+      options:
+        - server (Engine / API)
+        - web (UI)
+        - discord (Transport)
+        - docs
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 环境
+      placeholder: "macOS 15 / Go 1.25 / Node 22 / Docker"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 相关终端输出（可打码）
+    validations:
+      required: false

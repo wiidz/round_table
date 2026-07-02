@@ -4,6 +4,11 @@
 
 *One problem. Many minds. One decision.*
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![CI](https://github.com/wiidz/round_table/actions/workflows/ci.yml/badge.svg)](https://github.com/wiidz/round_table/actions/workflows/ci.yml)
+
+**新手上路：** [docs/getting-started.md](./docs/getting-started.md) · **贡献：** [CONTRIBUTING.md](./CONTRIBUTING.md)
+
 RoundTable 是一个 **Multi-Agent Meeting Engine（多智能体会议引擎）**——用结构化会议的方式，让多个 AI 专家讨论、辩论并达成共识，而不是堆叠一个更强的单体 Agent。
 
 ---
@@ -79,6 +84,7 @@ apps/server/internal/platform/   # config、bootstrap
 
 ```bash
 make test          # 运行测试
+make seed-demo     # 导入演示会议（无需 API Key，可浏览 Web）
 make run           # 启动 :7777 /health
 make server-dev    # 热重载 API + 自动拉起 Discord 子进程（另开终端）
 make web-dev       # Vite 前端 :5173（勿用 6666，Chrome 会拦截）
@@ -109,6 +115,9 @@ make docker-logs-discord             # data/logs/discord-transport.log
 
 | 文档 | 说明 |
 |------|------|
+| [getting-started.md](./docs/getting-started.md) | **快速上手**（演示数据 + 本地 Web） |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | 贡献指南 |
+| [SECURITY.md](./SECURITY.md) | 安全报告与敏感信息 |
 | [VISION.md](./docs/VISION.md) | 项目愿景 |
 | [CONSTITUTION.md](./docs/CONSTITUTION.md) | 架构宪法（权威定义） |
 | [PRINCIPLES.md](./docs/PRINCIPLES.md) | 六条设计原则 |

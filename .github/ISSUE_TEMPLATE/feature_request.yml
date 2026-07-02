@@ -1,0 +1,46 @@
+name: Feature request
+description: 提议新功能或改进
+title: "[feat]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先确认提案符合 [CONSTITUTION.md](../../docs/CONSTITUTION.md)（Meeting Engine，非 Agent 框架）。
+        若为架构级变更，建议先开 Discussion 或附 ADR 草案。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决什么问题？
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 可含 UI 草图、API 草图、与现有 Moderator/Meeting 流程的关系
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影响范围
+      options:
+        - 仅 Web UI
+        - Engine / 领域模型
+        - Transport (Discord / Web)
+        - 文档 / 开发者体验
+        - 跨模块
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: generic
+    attributes:
+      label: 通用性确认
+      options:
+        - label: 本提案是通用能力，而非单个 workspace / 场景特化
+          required: true

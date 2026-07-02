@@ -73,13 +73,24 @@ describe('resolveMeetingLineup', () => {
     ).toEqual(lineup)
   })
 
-  it('seats nobody during setup', () => {
+  it('seats confirmed lineup during setup', () => {
     expect(
       resolveMeetingLineup('setup', {
         roster,
         meetingMdParticipants: lineup,
         messageParticipants: lineup,
         spokenParticipants: [{ id: 'a', label: 'A' }],
+      }),
+    ).toEqual(lineup)
+  })
+
+  it('seats nobody during setup before lineup confirm', () => {
+    expect(
+      resolveMeetingLineup('setup', {
+        roster,
+        meetingMdParticipants: lineup,
+        messageParticipants: [],
+        spokenParticipants: [],
       }),
     ).toEqual([])
   })
