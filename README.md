@@ -7,24 +7,95 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![CI](https://github.com/wiidz/round_table/actions/workflows/ci.yml/badge.svg)](https://github.com/wiidz/round_table/actions/workflows/ci.yml)
 
-**新手上路：** [docs/getting-started.md](./docs/getting-started.md) · **贡献：** [CONTRIBUTING.md](./CONTRIBUTING.md)
-
 RoundTable 是一个 **Multi-Agent Meeting Engine（多智能体会议引擎）**——用结构化会议的方式，让多个 AI 专家讨论、辩论并达成共识，而不是堆叠一个更强的单体 Agent。
 
 ---
 
-## 它是什么
+## 快速启动
 
-RoundTable 把复杂问题建模为一场 **Meeting（会议）**：
+两种方式任选其一。**只想先看看界面？** 两种方式都可以先 `make seed-demo`，无需 API Key 即可在 Web 里浏览一场示例会议。
 
-- **Principal（委托人）** 提出议题，拥有最终验收权
-- **Moderator（主持人）** 控制发言顺序、总结讨论、检测共识
-- **Participant（专家）** 各司其职，只在被邀请时发言
-- 多轮 **Round** 推进讨论，产出 **Consensus**、**Minutes** 与 **Artifacts**
+### 方式 A · 本机开发（Go + Node）
 
-目标不是「Agent 自动干完」，而是**协作推理、集体决策**。
+**需要：** Go 1.25+、Node.js 22+、Make（见 `apps/server/go.mod`）
 
-## 它不是什么
+```bash
+git clone <your-repo-url> round_table
+cd round_table
+
+cp deploy/.env.example deploy/.env   # 仅浏览演示可暂不填 Key
+
+make seed-demo      # 导入示例会议（无需 API Key）
+make server-dev     # 终端 1：API → http://localhost:7777
+make web-dev        # 终端 2：Web → http://localhost:5173
+```
+
+打开 Web → **会议** → `mtg-demo-001`，可查看概览、文档、流程与回放。
+
+**在 Discord 里真实跑会**（需配置 `DEEPSEEK_API_KEY` + `DISCORD_BOT_TOKEN`）：
+
+```bash
+make run-discord    # 另开终端；大陆访问 Discord 见 Makefile 内代理说明
+```
+
+更细的步骤见 [docs/getting-started.md](./docs/getting-started.md)。
+
+### 方式 B · Docker 一键部署（推荐上服务器）
+
+**需要：** Docker 24+、Docker Compose v2（生产环境建议 Linux；Mac Docker Desktop 的 host 网络行为不同）
+
+```bash
+git clone <your-repo-url> round_table
+cd round_table
+
+cp deploy/.env.example deploy/.env   # 填入 DEEPSEEK_API_KEY、DISCORD_BOT_TOKEN
+sh deploy/init-data-dirs.sh
+
+make docker-up      # 构建并启动 Web + API + Discord Supervisor
+```
+
+默认访问 <http://127.0.0.1:7777>。日志：`make docker-logs` / `make docker-logs-discord`。
+
+详见 [deploy/README.md](./deploy/README.md)。
+
+---
+
+## 核心名词（先读这个）
+
+| 名词 | 是谁 | 做什么 |
+|------|------|--------|
+| **会议（Meeting）** | 整场讨论的单位 | 围绕一个 **议题（Topic）** 从会前准备到结案，产出纪要、交付物与 Token 统计；一切状态由 **事件（Event）** 驱动并可审计 |
+| **委托人（Principal）** | 人类决策者 | 发起会议、设定议题与边界，拥有最终 **验收权**；确认关里可批准或驳回方案 |
+| **主持人（Moderator）** | 调度型 Agent | **控场**——安排发言顺序、轮次总结、检测是否可进入共识/合成；提供专业判断的是专家，不是主持人 |
+| **专家（Participant）** | 领域 Agent | 各守角色与专长（如策划、研发、运营），**只在被邀请时发言**，彼此不直连 |
+| **会议流程** | Engine 标准路径 | 会前准备（Round 0）→ 辩论/研讨轮次（Round 1+）→ 可选自由问答 → 主持人总结 → 共识/方案合成 → 可选 **委托人确认** → 结案产出 |
+
+研讨型（deliberation）侧重方案草案；裁决型（decision）侧重可执行共识。驳回后会追加研讨并再次呈报确认。
+
+```
+委托人定议题 → 主持人调度 → 专家多轮发言 → 内部共识 → [委托人确认] → 纪要 / 交付物
+                              ↑                    │
+                              └──── 驳回后追加研讨 ─┘
+```
+
+领域细节：[docs/domain/](./docs/domain/README.md) · 架构宪法：[CONSTITUTION.md](./docs/CONSTITUTION.md)
+
+---
+
+## 当前支持与后续扩展
+
+| 能力 | 现状 |
+|------|------|
+| **大模型** | ✅ [DeepSeek](https://platform.deepseek.com/)（`DEEPSEEK_API_KEY`） |
+| **对外通道（Transport）** | ✅ **Discord**（Bot 跑会、确认关、自由问答） |
+| **工作台** | ✅ Web UI（浏览会议、文档、流程、圆桌回放） |
+| **后续** | 🔜 更多模型供应商、更多 Transport（Slack、企业 IM 等）——Engine 核心与 Adapter 解耦，见下方「架构独立性」 |
+
+CLI 本地跑会：`apps/server/cmd/meet`（开发调试用，非面向最终用户的主路径）。
+
+---
+
+## 它是什么 / 不是什么
 
 | | |
 |---|---|
@@ -35,79 +106,22 @@ RoundTable 把复杂问题建模为一场 **Meeting（会议）**：
 
 ---
 
-## 核心流程
-
-```
-Principal → Moderator → Participant → … → Consensus → Confirmation → Decision
-                              ↑              │
-                              └── Rejected ──┘
-                                   （继续讨论）
-```
-
-**单次 Meeting 内（Running）**：
-
-```
-Pre-meeting (R0) → Debate (R1…) → [R1 后 Free Dialogue] → Moderator 总结 → Consensus
-```
-
-1. **Principal** 创建 Meeting，设定 Topic / Agenda  
-2. **Moderator** 调度 Pre-meeting、辩论 Round、Round 1 后自由对话、轮间总结  
-3. Participant 达成 **Consensus**（内部一致）  
-4. **Confirmation**（可选）：Moderator 整理确认清单，Principal 批准或驳回  
-5. 输出 **Minutes**、**Artifacts**、**Action Items**、**usage/**（Token 统计）
-
-`confirmation_mode: skip` 时可跳过第 4 步。`free_dialogue_max_questions: 0` 可跳过 Round 1 后 Q&A。
-
-本地端到端：`make meet-3round`（需 `DEEPSEEK_API_KEY`）。详见 [data/README.md](./data/README.md)。
-
----
-
 ## 项目状态
 
-🚧 **Phase 1** — Meeting Engine 可本地端到端跑会（DeepSeek + `cmd/meet`）。  
-🚧 **Phase 1.5** — **Discord Transport** 可完整跑会（Principal 绑定 → 预设菜单 → 确认关 → 交付物）。
+🚧 **Phase 1** — Engine 可本地端到端跑会。  
+🚧 **Phase 1.5** — Discord Transport 可完整跑会（委托人绑定 → 简报向导 → 预设菜单 → 确认关 → 交付物）。
 
-**Engine（CLI）**已实现：Event Sourcing 主循环、Pre-meeting（Round 0）、多轮辩论、Round 1 自由对话（含 Principal turn boundary 代问）、Moderator 轮间摘要、Consensus / Confirmation（含 ItemNotes、上限三选一）、deliberation 合成、Workspace 投影、Token 用量统计。
-
-**Discord**已实现：自然语言/`!rt` 发起、**三步简报向导**（目标 / 讨论议题 / 边界与完成标准）、数字预设菜单、确认关交互、运行期干预、Principal 自由问答 `提问`、Executive Recap + 草案合成、结束 artifact 节选推送（拉取指令仅在最后一条）与按需拉取、多 Bot 发言、中文 i18n、Typing 指示、发送重试与重连提示。详见 [docs/adapters/discord-transport.md](./docs/adapters/discord-transport.md)。
+Engine 已实现：Event Sourcing、Pre-meeting、多轮辩论/研讨、自由对话、主持人摘要、共识/合成、Confirmation（含驳回与轮次上限）、Workspace 投影、Token 统计。  
+Discord 已实现：自然语言/`!rt` 发起、三步简报向导、确认关、运行期干预、Executive Recap、多 Bot、中文 i18n 等。详见 [docs/adapters/discord-transport.md](./docs/adapters/discord-transport.md)。
 
 ```
-apps/server/cmd/meet/            # 本地 CLI 跑会
-apps/server/cmd/discord/         # Discord Transport bot
-apps/server/cmd/roundtable/      # HTTP 服务入口（/health）
-apps/server/internal/domain/     # 纯领域（Meeting、Event、Consensus）
-apps/server/internal/engine/     # Meeting Engine 编排
-apps/server/internal/scheduler/  # Moderator Fixed Order
-apps/server/internal/adapter/    # model、participant、workspace、transport…
-apps/server/internal/platform/   # config、bootstrap
+apps/server/cmd/discord/         # Discord Transport
+apps/server/cmd/roundtable/      # HTTP API
+apps/server/internal/engine/     # Meeting Engine
+apps/web/                        # React 工作台
 ```
 
-```bash
-make test          # 运行测试
-make seed-demo     # 导入演示会议（无需 API Key，可浏览 Web）
-make run           # 启动 :7777 /health
-make server-dev    # 热重载 API + 自动拉起 Discord 子进程（另开终端）
-make web-dev       # Vite 前端 :5173（勿用 6666，Chrome 会拦截）
-make run-discord   # 仅启动 Discord bot（需 DISCORD_BOT_TOKEN）
-make stop-discord  # 清理孤儿 Discord 进程（Ctrl+C 后若 Bot 仍在线）
-make meet-3round   # 三轮辩论场景（DeepSeek）
-make meet TOPIC="…" MEET_FLAGS='-max-rounds 2 -participants "a:Role:x,b:Role:y"'
-make sync-data-pull   # 从部署机拉取 data/workspaces 等（见 deploy/sync-data.sh）
-```
-
-**Ubuntu 服务器 Docker 部署**（单容器 Web + API + Discord Supervisor）见 [deploy/README.md](./deploy/README.md)。
-
-```bash
-cp deploy/.env.example deploy/.env   # 填入 DEEPSEEK_API_KEY 等
-sh deploy/init-data-dirs.sh
-make docker-up                       # host 网络，默认 http://127.0.0.1:7777
-make docker-logs
-make docker-logs-discord             # data/logs/discord-transport.log
-```
-
-结构说明见 [ADR-0008](./docs/architecture/ADR-0008-project-structure.md)。数据目录见 [data/README.md](./data/README.md)。
-
-**Web 会议详情**按 Workspace 相对路径展示产出，侧栏与正文标题均为「中文名 · 路径」（如 `会议纪要 · MINUTES.md` 与 `结论纪要 · artifacts/minutes.md` 并列可辨）。见 [apps/web/README.md](./apps/web/README.md)。
+路线图：[docs/roadmap.md](./docs/roadmap.md)
 
 ---
 
@@ -115,55 +129,46 @@ make docker-logs-discord             # data/logs/discord-transport.log
 
 | 文档 | 说明 |
 |------|------|
-| [getting-started.md](./docs/getting-started.md) | **快速上手**（演示数据 + 本地 Web） |
+| [getting-started.md](./docs/getting-started.md) | 分步上手（演示数据、Discord、开发细节） |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | 贡献指南 |
-| [SECURITY.md](./SECURITY.md) | 安全报告与敏感信息 |
-| [VISION.md](./docs/VISION.md) | 项目愿景 |
-| [CONSTITUTION.md](./docs/CONSTITUTION.md) | 架构宪法（权威定义） |
-| [PRINCIPLES.md](./docs/PRINCIPLES.md) | 六条设计原则 |
-| [NAMING.md](./docs/NAMING.md) | 命名约定与 rationale |
-| [COMMITS.md](./docs/COMMITS.md) | Git Commit 规范 |
-| [domain/](./docs/domain/README.md) | 领域概念（Meeting、Principal、Moderator…） |
-| [adapters/discord-transport.md](./docs/adapters/discord-transport.md) | Discord 指令与频道行为 |
-| [apps/web/README.md](./apps/web/README.md) | Web UI 用语与 Workspace 文件展示 |
-| [roadmap.md](./docs/roadmap.md) | 产品路线图（P0–P4） |
-| [deploy/README.md](./deploy/README.md) | Ubuntu Docker 部署 |
-| [flow/](./docs/flow/context_diagram.md) | 状态机与上下文图 |
-| [architecture/](./docs/architecture/README.md) | 架构决策记录（ADR） |
+| [SECURITY.md](./SECURITY.md) | 安全报告 |
+| [CONSTITUTION.md](./docs/CONSTITUTION.md) | 架构宪法 |
+| [domain/](./docs/domain/README.md) | 领域模型详解 |
+| [deploy/README.md](./deploy/README.md) | Docker 部署 |
+| [apps/web/README.md](./apps/web/README.md) | Web UI 说明 |
+| [architecture/](./docs/architecture/README.md) | ADR 索引 |
 
-### 领域概念速览
+---
 
-| 概念 | 一句话 |
-|------|--------|
-| [Meeting](./docs/domain/meeting.md) | 围绕一个主题的完整结构化讨论 |
-| [Principal](./docs/domain/principal.md) | 委托人，发起 Meeting 并拥有最终验收权 |
-| [Moderator](./docs/domain/moderator.md) | 调度者，控场但不提供专业判断 |
-| [Participant](./docs/domain/participant.md) | 领域专家，只响应邀请、不直连 |
-| [Round](./docs/domain/round.md) | Meeting 内的一轮有序讨论 |
-| [Consensus](./docs/domain/consensus.md) | Participant 之间是否达成一致 |
-| [Confirmation](./docs/domain/confirmation.md) | Principal 确认关，审阅结论是否符合预期 |
-| [Event](./docs/domain/event.md) | 领域事件，驱动状态变更与审计 |
+## 开发与测试（贡献者）
 
-### 已接受的 ADR
+日常命令（完整列表见根目录 `Makefile`）：
 
-| ADR | 主题 |
-|-----|------|
-| [ADR-0002](./docs/architecture/ADR-0002-consensus-strategy.md) | Consensus 判定策略 |
-| [ADR-0003](./docs/architecture/ADR-0003-event-model.md) | Event 模型与持久化 |
-| [ADR-0004](./docs/architecture/ADR-0004-principal-confirmation.md) | Principal Confirmation 确认关 |
-| [ADR-0005](./docs/architecture/ADR-0005-round-termination.md) | Round 终止条件 |
-| [ADR-0007](./docs/architecture/ADR-0007-moderator-scheduling.md) | Moderator 调度策略 |
-| [ADR-0006](./docs/architecture/ADR-0006-knowledge-scope.md) | Knowledge 作用域（默认隔离） |
-| [ADR-0009](./docs/architecture/ADR-0009-meeting-workspace.md) | Meeting Workspace 文件产出 |
-| [ADR-0010](./docs/architecture/ADR-0010-agent-profiles.md) | Agent Profile（SOUL/USER） |
-| [ADR-0011](./docs/architecture/ADR-0011-meeting-mode.md) | Meeting Mode（decision / deliberation） |
+| 命令 | 用途 |
+|------|------|
+| `make seed-demo` | 导入演示会议与档案 |
+| `make server-dev` | API 热重载 |
+| `make web-dev` | 前端开发服务器 |
+| `make run-discord` | 本地 Discord Bot |
+| `make docker-up` | Docker  compose 启动 |
+| `make sync-data-pull` | 从部署机拉取 `data/`（见 `deploy/sync-data.sh`） |
+
+**测试与 CI：**
+
+```bash
+make test                    # Go 单元/集成测试
+cd apps/web && npm test      # 前端 Vitest
+cd apps/web && npm run build # 前端生产构建
+```
+
+CI 配置：`.github/workflows/ci.yml`。贡献前请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 与 [COMMITS.md](./docs/COMMITS.md)。
 
 ---
 
 ## 设计原则
 
 1. **Everything is a Meeting** — 不是 Workflow，不是 Prompt，不是 Agent  
-2. **Moderator controls the discussion** — Participant 不能抢话  
+2. **Moderator controls the discussion** — 专家不能抢话  
 3. **Participants own expertise** — 各守 Role 边界  
 4. **Consensus over Completion** — 团队一致，而非单体执行  
 5. **Discussion is structured** — Round / Agenda / Minutes / Consensus / Confirmation  
@@ -175,27 +180,10 @@ make docker-logs-discord             # data/logs/discord-transport.log
 
 ## 架构独立性
 
-Meeting Engine 核心领域**不依赖**：
-
-- **Runtime** — OpenClaw、LangGraph、AutoGen、CrewAI…
-- **Model** — OpenAI、Anthropic、DeepSeek…
-- **Transport** — Discord、Slack、Web UI…
-
-上述均通过 Adapter 层接入。详见 [CONSTITUTION.md](./docs/CONSTITUTION.md)。
-
----
-
-## 参与贡献
-
-本项目处于早期架构阶段。贡献前请：
-
-1. 阅读 [CONSTITUTION.md](./docs/CONSTITUTION.md) 与 [NAMING.md](./docs/NAMING.md)  
-2. 遵循领域语言，不引入未经讨论的核心概念  
-3. 架构变更请先写 ADR  
-4. Commit 遵循 [COMMITS.md](./docs/COMMITS.md) 结构化格式（可配置 `git config commit.template .gitmessage`）
+Meeting Engine **核心领域不依赖**具体 Runtime、Model 或 Transport，均通过 Adapter 接入。详见 [CONSTITUTION.md](./docs/CONSTITUTION.md)。
 
 ---
 
 ## License
 
-待定。
+[Apache 2.0](LICENSE)
