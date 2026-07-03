@@ -94,11 +94,15 @@ profile:
 
 ## 后果
 
+### 已实现（v0.2）
+
+- [x] Participant 注册 API → `POST /api/participants` + `EnsureParticipant`
+- [x] Engine：Participant 响应时经 `adapter/participant/llm` 加载 SOUL / AGENTS 拼上下文
+- [x] Transport：Web Principal Persona 编辑 `USER.md`（`PUT /api/principals/{id}/personas/{personaId}/user-profile`）
+
 ### 待实现
 
-- [ ] Participant 注册 API → `EnsureParticipant`
-- [ ] Engine：Invite 时加载 profile 拼上下文
-- [ ] Transport：Principal 编辑 USER.md
+- [ ] Engine：Principal `USER.md` 注入 Moderator / 合成 prompt（与 Brief 模板独立，见 ADR-0014）
 
 ---
 

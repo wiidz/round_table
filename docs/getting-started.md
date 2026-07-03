@@ -67,7 +67,16 @@ make web-dev
 
 默认 <http://localhost:5173>（端口见终端输出）。
 
-打开 **会议** → `mtg-demo-001`，可体验概览、文档三栏、流程结局与 Markdown 目录。
+打开 **会议** → `mtg-demo-001`，可体验概览、文档三栏、流程结局与 Markdown 目录。侧栏还可进入：
+
+| 页面 | 路径 | 说明 |
+|------|------|------|
+| 简报模板 | `/brief-templates` | 查看/编辑 `BRIEF.yaml` 模板，可从历史会议克隆 |
+| 委托人 | `/principals` | 管理 Principal Persona 与 `USER.md` 偏好 |
+| 专家 | `/participants` | 浏览 Participant 档案（SOUL / AGENTS） |
+| 设置 | `/settings` | 运行时配置；`ROUND_TABLE_LOCALE` 切换中/英文界面 |
+
+会议详情页支持 **打包下载** workspace（zip）与 **删除** 会议记录。
 
 ## 4. Discord 跑会（可选）
 

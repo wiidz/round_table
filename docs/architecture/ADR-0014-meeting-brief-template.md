@@ -184,14 +184,18 @@ POST /api/meetings/clone-brief         # body: { meeting_id } → 返回 meetLau
 - 多一层存储与 API；需维护 YAML schema 版本。
 - 历史克隆依赖 `MEETING.md` 格式稳定；格式变更需同步解析器。
 
+### 已实现（v0.2）
+
+- [x] `adapter/brief` FS store + `List` / `Read` / `Write`
+- [x] `_templates/briefs/` seed 模板（`decision-review`）
+- [x] Discord：开会时 `-template` / 向导内选模板并套用
+- [x] Web：Brief 模板页（`/brief-templates`）+ 表单编辑
+- [x] `POST /api/meetings/clone-brief` + `MEETING.md` 逆向解析
+- [x] `data/README.md` 补充 brief 层说明
+
 ### 待实现
 
-- [ ] `adapter/brief` FS store + `List` / `Read` / `Write`
-- [ ] `_templates/briefs/` 至少 1 个 seed 模板
-- [ ] Discord 向导：选模板 / 存为模板
-- [ ] Web：Brief 模板页 + 创建 Meeting 预填
-- [ ] `POST /api/meetings/clone-brief` + `MEETING.md` 逆向解析
-- [ ] `data/README.md` 补充 brief 层说明
+- [ ] Discord 向导：**存为模板**（选模板已支持）
 - [ ] ADR-0010 待办：Principal `USER.md` Engine 注入（与 Brief 独立）
 
 ---
