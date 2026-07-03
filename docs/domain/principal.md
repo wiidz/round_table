@@ -60,6 +60,7 @@ Participant × N
 | **Identity** | Principal 的唯一标识（Domain 内；外部账号如 OAuth、Discord ID 在 Adapter 层绑定为 Principal Identity） |
 | **DisplayName** | 显示名称（可选，Transport 层提供） |
 | **Preferences** | 默认 Meeting 配置（如 `confirmation_mode`） |
+| **Persona** | Adapter 层：一位 Principal 可有多个 Persona，各含独立 `USER.md`（偏好与沟通风格）；Web 可编辑，Engine prompt 注入待实现 |
 
 Principal 不是 Meeting 内的集合——**一个 Meeting 有且仅有一个 Principal**（创建者）。
 
@@ -101,6 +102,17 @@ Confirmation 是 Principal 的专属环节——Moderator 整理清单，**Princ
 | Consensus | Participant 之间 |
 | Confirmation | Principal + Moderator |
 
+### Persona 与 `USER.md`（Adapter 层）
+
+Principal 的**个人偏好**存放在 Profile 层，与 [Meeting Brief Template](../architecture/ADR-0014-meeting-brief-template.md)（单次开会意图）职责分离：
+
+| 层 | 存储 | 用途 |
+|----|------|------|
+| Principal Persona | `profiles/principals/{id}/personas/{personaId}/USER.md` | 沟通风格、默认确认模式等长期偏好 |
+| Brief Template | `briefs/{id}/BRIEF.yaml` | 某类会议的 Goal / Agenda / 范围模板 |
+
+v0.2 Web 支持多 Persona 管理与 `USER.md` 结构化编辑；**Engine 尚未将 `USER.md` 注入 Moderator / 合成 prompt**（见 [ADR-0010](../architecture/ADR-0010-agent-profiles.md) 待办）。
+
 ---
 
 ## 命名约定
@@ -130,5 +142,7 @@ Confirmation 是 Principal 的专属环节——Moderator 整理清单，**Princ
 - 父索引：[README.md](./README.md)
 - 验收环节：[confirmation.md](./confirmation.md)
 - 调度者：[moderator.md](./moderator.md)
+- Profile 与 Persona：[profile.md](./profile.md)
+- Brief 模板（非 Domain）：[ADR-0014](../architecture/ADR-0014-meeting-brief-template.md)
 - 权威原则：[CONSTITUTION.md](../CONSTITUTION.md) § Core Concepts — Principal
 - 事件 Actor：[event.md](./event.md)

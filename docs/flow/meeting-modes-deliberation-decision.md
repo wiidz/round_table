@@ -108,14 +108,14 @@ flowchart TD
 
 6. **Discord 合成阶段 UX** — 避免流式 JSON 泄露。
 7. **裁决型 Decision Recap** — 争点表 + 推荐结论再进 Confirmation。
-8. **Principal 档案未注入** — ADR-0010 `USER.md` 未进 Engine prompt。
+8. **Principal 档案未注入** — ADR-0010 `USER.md` 未进 Engine prompt。（Web Persona 编辑 ✅；Engine 注入仍 🔲）
 
 ### P2 — 机制与产品
 
 9. **自由对话模型偏窄** — 仅 R1 后、相邻配对。
 10. **发言顺序固定** — 后发言者信息优势。
 11. **Reception `start_meeting` 未走 Brief 向导**。
-12. **Web 与 Discord parity**。
+12. **Web 与 Discord parity** — 部分完成：Artifact 浏览、Brief 模板、Principal 画像、下载/删除 ✅；完整开会向导、Confirmation ItemNotes 编辑 🔲。
 13. **会中 Brief 修正**。
 14. **质量闭环** — Confirmation 驳回原因结构化反馈。
 15. **Readiness 与末轮追问** — 轻量规则 guard。

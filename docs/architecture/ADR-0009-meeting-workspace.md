@@ -121,9 +121,8 @@ workspace:
 - [x] Engine：`RoundCompleted` / `ModeratorSummarized` / `FreeDialogueCompleted` → 投影
 - [x] Engine：`ParticipantResponded` 等携带 `TokenUsage` → `usage/`
 - [x] Participant adapter：读 `MEETING.md` + Discussion context 作 prompt
-### 待实现
-
-- [ ] Transport：Principal 下载 artifacts / minutes API
+- [x] Transport：`GET /api/meetings/{id}/archive` 打包下载 workspace（zip）；Web 会议详情页触发
+- [x] Transport：`DELETE /api/meetings/{id}` 删除会议记录与 workspace
 
 ### 正影响
 

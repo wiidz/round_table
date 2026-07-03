@@ -122,6 +122,9 @@ Domain 层不得引用上述具体实现。
 | [ADR-0009](../architecture/ADR-0009-meeting-workspace.md) | Meeting Workspace | Accepted |
 | [ADR-0010](../architecture/ADR-0010-agent-profiles.md) | Agent Profile | Accepted |
 | [ADR-0011](../architecture/ADR-0011-meeting-mode.md) | Meeting Mode（decision / deliberation） | Accepted |
+| [ADR-0012](../architecture/ADR-0012-transport-reception-agent.md) | Transport Reception Agent | Accepted |
+| [ADR-0013](../architecture/ADR-0013-web-round-table-live-ui.md) | Web 圆桌 Live 视图 | Accepted |
+| [ADR-0014](../architecture/ADR-0014-meeting-brief-template.md) | Meeting Brief Template | Accepted |
 
 完整索引：[architecture/README.md](../architecture/README.md)
 
